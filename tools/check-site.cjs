@@ -14,14 +14,20 @@ const pages = fs.readdirSync(root, { recursive: true })
 
 for (const file of pages) {
   const html = fs.readFileSync(path.join(root, file), 'utf8');
-  for (const [, attribute, url] of html.matchAll(/\b(href|src)=["'](\/(?!\/)[^"']*)["']/g)) {
-    const pathname = decodeURIComponent(url.split(/[?#]/)[0]);
-    let target = path.join(root, pathname);
+  for (const [, attribute, url] of html.matchAll(/\b(href|src)=["']([^"']*)["']/g)) {
+    if (/^(?:#|https?:|\/\/|data:|mailto:|tel:|javascript:|blob:)/i.test(url)) continue;
+    if (!url && attribute === 'href') continue;
+    if (/^(?:file:|[a-z]:[\\/])/i.test(url)) { failures.push(`${file}: 引用了本机文件 ${url}`); continue; }
+    let pathname;
+    try { pathname = decodeURIComponent(new URL(url, 'https://blog.local/' + file.split(path.sep).join('/')).pathname); }
+    catch { failures.push(`${file}: 无效的资源地址 ${url}`); continue; }
+    let target = path.resolve(root, '.' + pathname);
+    if (target !== root && !target.startsWith(root + path.sep)) { failures.push(`${file}: 资源超出站点目录 ${url}`); continue; }
     if (fs.existsSync(target) && fs.statSync(target).isDirectory()) {
       target = path.join(target, 'index.html');
     }
     if (!fs.existsSync(target)) failures.push(`${file}: ${url} 不存在`);
-    if (attribute === 'src' && target.endsWith('.html')) {
+    if (attribute === 'src' && (!url || target.endsWith('.html'))) {
       failures.push(`${file}: ${url} 将 HTML 作为资源加载`);
     }
   }

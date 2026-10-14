@@ -11,12 +11,17 @@
     "check": "node tools/check-site.cjs",
     "clean": "hexo clean",
     "deploy": "hexo deploy",
-    "server": "hexo server"
+    "server": "hexo server",
+    "publish:article": "node tools/publish-article.cjs",
+    "test:publish": "node --test tools/prepare-article.test.cjs tools/publish-site.test.cjs"
   },
   "hexo": {
     "version": "8.1.1"
   },
   "dependencies": {
+    "js-yaml": "4.1.1",
+    "mdast-util-from-markdown": "2.1.0",
+    "parse5": "8.0.1",
     "hexo": "^8.0.0",
     "hexo-butterfly-clock-anzhiyu": "^1.1.9",
     "hexo-butterfly-footer-beautify": "^1.0.6",
