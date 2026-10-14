@@ -1,0 +1,116 @@
+/* Site customizations live outside the Butterfly theme. */
+:root {
+  --blog-card-bg: rgba(246, 243, 235, 0.94);
+  --blog-reading-bg: rgba(249, 247, 241, 0.96);
+  --blog-card-border: rgba(255, 250, 237, 0.4);
+}
+
+html[data-theme="dark"] {
+  --blog-card-bg: rgba(25, 31, 35, 0.94);
+  --blog-reading-bg: rgba(25, 31, 35, 0.96);
+  --blog-card-border: rgba(205, 225, 227, 0.14);
+}
+
+@supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  :root {
+    --blog-card-bg: rgba(246, 243, 235, 0.76);
+    --blog-reading-bg: rgba(249, 247, 241, 0.86);
+  }
+
+  html[data-theme="dark"] {
+    --blog-card-bg: rgba(25, 31, 35, 0.76);
+    --blog-reading-bg: rgba(25, 31, 35, 0.86);
+  }
+}
+
+body:not(.read-mode) .layout > div:first-child:not(.nc),
+#recent-posts .recent-post-item,
+#aside-content .card-widget {
+  border: 1px solid var(--blog-card-border);
+  border-radius: 16px;
+  background: var(--blog-card-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 28px rgba(13, 24, 31, 0.12);
+}
+
+body:not(.read-mode) .layout > #post,
+body:not(.read-mode) .layout > #page {
+  background: var(--blog-reading-bg);
+}
+
+#page-header.not-home-page,
+#page-header.post-bg,
+#footer,
+#footer .footer-other,
+#footer::before {
+  background-color: transparent;
+}
+
+#footer > *,
+#footer a {
+  color: #fff4e4;
+  text-shadow: 0 1px 3px #14202c, 0 0 10px #14202c;
+}
+
+#footer a:hover {
+  color: #ffe0a3;
+}
+
+#page-header.full_page #site-title {
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: 0.08em;
+  color: #9fe8ef;
+  letter-spacing: 0.035em;
+}
+
+#page-header.full_page #site-subtitle {
+  min-height: 3em;
+  margin-top: 0.55rem;
+  padding-inline: 0.75rem;
+  text-wrap: balance;
+}
+
+#page-header.full_page #subtitle {
+  color: #ffe0a3;
+}
+
+#page-header.full_page .typed-cursor {
+  color: #ffc4d8;
+}
+
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  #page-header.full_page #site-title,
+  #page-header.full_page #subtitle {
+    background-image: linear-gradient(110deg, #9fe8ef 5%, #fff0b5 48%, #ffc4d8 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 3px #132a42) drop-shadow(0 0 12px #132a4280);
+  }
+}
+
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid #e7a448;
+  outline-offset: 4px;
+}
+
+@media (max-width: 767px) {
+  #live2d-widget {
+    display: none;
+  }
+
+  #page-header.full_page #site-title {
+    font-size: clamp(1.6rem, 7vw, 2.3rem);
+  }
+
+  #page-header.full_page #site-subtitle {
+    font-size: 1.05rem;
+    line-height: 1.9;
+  }
+}
