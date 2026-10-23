@@ -114,3 +114,481 @@ button:focus-visible,
     line-height: 1.9;
   }
 }
+
+/* ============================================================
+   About Page / Personal Homepage Customizations
+   ============================================================ */
+
+.about-page {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  margin-top: 0.5rem;
+}
+
+.about-card {
+  border: 1px solid var(--blog-card-border);
+  border-radius: 18px;
+  background: var(--blog-card-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(13, 24, 31, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* 顶部欢迎卡片 */
+.about-hero {
+  padding: 2.4rem 2.2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(40, 143, 152, 0.12);
+  color: #1a7880;
+  margin-bottom: 14px;
+}
+
+html[data-theme="dark"] .about-hero-badge {
+  background: rgba(159, 232, 239, 0.18);
+  color: #9fe8ef;
+}
+
+.about-hero-title {
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-weight: 800;
+  margin: 0 0 12px;
+  line-height: 1.25;
+}
+
+.gradient-text {
+  background-image: linear-gradient(110deg, #1890ff 0%, #13c2c2 45%, #eb2f96 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+}
+
+html[data-theme="dark"] .gradient-text {
+  background-image: linear-gradient(110deg, #9fe8ef 5%, #fff0b5 48%, #ffc4d8 90%);
+}
+
+.about-hero-desc {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  opacity: 0.9;
+  margin-bottom: 20px;
+}
+
+.about-hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--blog-card-border);
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .hero-tag {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.about-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.about-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-decoration: none !important;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #1890ff 0%, #36cfc9 100%);
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(24, 144, 255, 0.35);
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(24, 144, 255, 0.45);
+  filter: brightness(1.06);
+}
+
+.secondary-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--blog-card-border);
+  color: inherit !important;
+}
+
+html[data-theme="dark"] .secondary-btn {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.secondary-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="dark"] .secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* 栏目标题 */
+.about-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-header {
+  margin-bottom: 2px;
+}
+
+.section-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title i {
+  color: #1890ff;
+}
+
+html[data-theme="dark"] .section-title i {
+  color: #9fe8ef;
+}
+
+.section-subtitle {
+  font-size: 0.9rem;
+  opacity: 0.72;
+  margin: 0;
+}
+
+/* 特质网格 & 装备网格 */
+.traits-grid,
+.gear-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.trait-card,
+.gear-card {
+  padding: 1.6rem 1.4rem;
+}
+
+.trait-card:hover,
+.gear-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(13, 24, 31, 0.12);
+}
+
+.trait-icon,
+.gear-icon {
+  font-size: 2rem;
+  color: #1890ff;
+  margin-bottom: 14px;
+}
+
+html[data-theme="dark"] .trait-icon,
+html[data-theme="dark"] .gear-icon {
+  color: #9fe8ef;
+}
+
+.trait-card h3,
+.gear-card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.trait-card p,
+.gear-card p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  opacity: 0.85;
+  margin: 0;
+}
+
+/* 技术栈卡片 */
+.skills-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.skill-card {
+  padding: 1.5rem;
+}
+
+.skill-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(13, 24, 31, 0.1);
+}
+
+.skill-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.skill-head i {
+  font-size: 1.25rem;
+  color: #fa8c16;
+}
+
+html[data-theme="dark"] .skill-head i {
+  color: #ffd666;
+}
+
+.skill-head h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skill-tag {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--blog-card-border);
+}
+
+html[data-theme="dark"] .skill-tag {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* 代表性项目卡片 */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.project-card {
+  padding: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-left: 4px solid #1890ff;
+}
+
+.project-card.featured-project {
+  border-left-color: #36cfc9;
+  background: linear-gradient(145deg, var(--blog-card-bg) 0%, rgba(54, 207, 201, 0.08) 100%);
+}
+
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px rgba(13, 24, 31, 0.14);
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.project-badge {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(24, 144, 255, 0.12);
+  color: #1890ff;
+}
+
+html[data-theme="dark"] .project-badge {
+  background: rgba(159, 232, 239, 0.18);
+  color: #9fe8ef;
+}
+
+.project-link {
+  font-size: 1.3rem;
+  color: inherit;
+  opacity: 0.75;
+  transition: all 0.2s ease;
+}
+
+.project-link:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  color: #1890ff;
+}
+
+.project-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+.project-desc {
+  font-size: 0.88rem;
+  line-height: 1.7;
+  opacity: 0.85;
+  margin: 0 0 14px;
+  flex-grow: 1;
+}
+
+.project-techs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.p-tech {
+  font-size: 0.76rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.04);
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .p-tech {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* 时间轴 */
+.timeline-card {
+  padding: 1.8rem 2rem;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 24px;
+  padding-bottom: 22px;
+  border-left: 2px solid rgba(24, 144, 255, 0.3);
+}
+
+.timeline-item:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -7px;
+  top: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #1890ff;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.2);
+}
+
+html[data-theme="dark"] .timeline-dot {
+  background: #9fe8ef;
+  box-shadow: 0 0 0 3px rgba(159, 232, 239, 0.25);
+}
+
+.timeline-time {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1890ff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+html[data-theme="dark"] .timeline-time {
+  color: #9fe8ef;
+}
+
+.timeline-title {
+  font-size: 1.08rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.timeline-desc {
+  font-size: 0.88rem;
+  line-height: 1.65;
+  opacity: 0.85;
+  margin: 0;
+}
+
+/* 结语联系卡片 */
+.about-contact-card {
+  padding: 2.6rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(145deg, var(--blog-card-bg) 0%, rgba(24, 144, 255, 0.06) 100%);
+}
+
+.contact-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.contact-quote {
+  font-size: 0.96rem;
+  opacity: 0.8;
+  font-style: italic;
+  margin: 0 0 14px;
+}
+
+.contact-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+}
+
+@media (max-width: 767px) {
+  .about-hero {
+    padding: 1.8rem 1.4rem;
+  }
+
+  .timeline-card {
+    padding: 1.4rem 1.2rem;
+  }
+
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+}
