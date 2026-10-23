@@ -39,6 +39,50 @@ body:not(.read-mode) .layout > #page {
   background: var(--blog-reading-bg);
 }
 
+/* 锁定左右双栏架构：确保侧边栏（公告、最新文章等）稳定在右侧，防止被主内容撑开挤压至下方 */
+@media screen and (min-width: 769px) {
+  .layout {
+    display: flex !important;
+    -webkit-flex-direction: row !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .layout > div:first-child {
+    width: calc(100% - 310px) !important;
+    max-width: calc(100% - 310px) !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    box-sizing: border-box !important;
+  }
+
+  #aside-content {
+    width: 290px !important;
+    min-width: 290px !important;
+    max-width: 290px !important;
+    flex: 0 0 290px !important;
+    margin-left: 20px !important;
+    margin-top: 0 !important;
+    padding-left: 0 !important;
+    display: block !important;
+    box-sizing: border-box !important;
+  }
+
+  #aside-content .sticky_layout {
+    position: sticky !important;
+    top: 20px !important;
+  }
+}
+
+#page, #recent-posts, .about-page {
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
 #page-header.not-home-page,
 #page-header.post-bg,
 #footer,
@@ -297,8 +341,10 @@ html[data-theme="dark"] .section-title i {
 .traits-grid,
 .gear-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .trait-card,
@@ -342,8 +388,10 @@ html[data-theme="dark"] .gear-icon {
 /* 技术栈卡片 */
 .skills-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .skill-card {
@@ -399,8 +447,10 @@ html[data-theme="dark"] .skill-tag {
 /* 代表性项目卡片 */
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 18px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .project-card {
