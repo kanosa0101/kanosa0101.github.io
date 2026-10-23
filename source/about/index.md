@@ -126,6 +126,72 @@ type: about
     </div>
   </div>
 
+  <!-- 精选代表性项目 -->
+  <div class="about-section">
+    <div class="section-header">
+      <h2 class="section-title"><i class="fas fa-laptop-code"></i> 代表性作品集</h2>
+      <p class="section-subtitle">沉淀在 GitHub 的开源项目与工程实践</p>
+    </div>
+    <div class="projects-grid">
+      <!-- 第一个项目：PromptX -->
+      <div class="about-card project-card">
+        <div class="project-header">
+          <div class="project-badge">前端工具 · TypeScript</div>
+          <a class="project-link" href="https://github.com/kanosa0101/PromptX" target="_blank" rel="noopener" title="查看 GitHub 仓库">
+            <i class="fab fa-github"></i>
+          </a>
+        </div>
+        <h3 class="project-title">PromptX · 智能交互与提示词框架</h3>
+        <p class="project-desc">
+          基于 TypeScript 构建的轻量级前端框架，专注于智能交互流管理与提示词模块化编排。
+        </p>
+        <div class="project-techs">
+          <span class="p-tech">TypeScript</span>
+          <span class="p-tech">Frontend</span>
+          <span class="p-tech">Framework</span>
+        </div>
+      </div>
+
+      <!-- 第二个项目：DocuMind -->
+      <div class="about-card project-card">
+        <div class="project-header">
+          <div class="project-badge">企业级 · 知识库</div>
+          <a class="project-link" href="https://github.com/kanosa0101/DocuMind" target="_blank" rel="noopener" title="查看 GitHub 仓库">
+            <i class="fab fa-github"></i>
+          </a>
+        </div>
+        <h3 class="project-title">DocuMind · 智能文档与知识库系统</h3>
+        <p class="project-desc">
+          基于 Java 生态打造的结构化知识库系统，提供海量文档的分级归类、知识检索与协同管理。
+        </p>
+        <div class="project-techs">
+          <span class="p-tech">Java</span>
+          <span class="p-tech">Spring Boot</span>
+          <span class="p-tech">Knowledge Base</span>
+        </div>
+      </div>
+
+      <!-- 第三个项目：Moodisle -->
+      <div class="about-card project-card">
+        <div class="project-header">
+          <div class="project-badge">移动跨端 · 交互</div>
+          <a class="project-link" href="https://github.com/kanosa0101/Moodisle" target="_blank" rel="noopener" title="查看 GitHub 仓库">
+            <i class="fab fa-github"></i>
+          </a>
+        </div>
+        <h3 class="project-title">Moodisle (情绪岛屿) · 跨端移动应用</h3>
+        <p class="project-desc">
+          基于 Dart / Flutter 打造的轻量级跨平台移动客户端，聚焦心理情绪记录与细腻的动效交互体验。
+        </p>
+        <div class="project-techs">
+          <span class="p-tech">Dart</span>
+          <span class="p-tech">Flutter</span>
+          <span class="p-tech">Mobile App</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 生涯历程与时间线 -->
   <div class="about-section">
     <div class="section-header">
@@ -143,7 +209,7 @@ type: about
         <div class="timeline-dot"></div>
         <div class="timeline-time">持续进行</div>
         <div class="timeline-title">全栈工程架构与技术探索</div>
-        <div class="timeline-desc">专注分布式系统、云存储、现代 Web 架构与多智能体系统开发，追求高可用、高内聚低耦合的代码工程质量。</div>
+        <div class="timeline-desc">专注分布式系统、现代 Web 架构、跨端移动开发与多智能体系统开发，追求高可用、高内聚低耦合的代码工程质量。</div>
       </div>
     </div>
   </div>

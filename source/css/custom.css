@@ -457,6 +457,98 @@ html[data-theme="dark"] .skill-tag {
 
 
 
+/* 项目卡片展示 */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.project-card {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-left: 4px solid #1890ff;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.project-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(13, 24, 31, 0.12);
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.project-badge {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(24, 144, 255, 0.12);
+  color: #1890ff;
+}
+
+html[data-theme="dark"] .project-badge {
+  background: rgba(159, 232, 239, 0.18);
+  color: #9fe8ef;
+}
+
+.project-link {
+  font-size: 1.25rem;
+  color: inherit;
+  opacity: 0.75;
+  transition: all 0.2s ease;
+}
+
+.project-link:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  color: #1890ff;
+}
+
+.project-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+.project-desc {
+  font-size: 0.88rem;
+  line-height: 1.7;
+  opacity: 0.85;
+  margin: 0 0 14px;
+  flex-grow: 1;
+}
+
+.project-techs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.p-tech {
+  font-size: 0.76rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.04);
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .p-tech {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+
 /* 时间轴 */
 .timeline-card {
   padding: 1.8rem 2rem;
