@@ -126,105 +126,6 @@ type: about
     </div>
   </div>
 
-  <!-- 代表性作品集 -->
-  <div class="about-section">
-    <div class="section-header">
-      <h2 class="section-title"><i class="fas fa-laptop-code"></i> 代表性作品集</h2>
-      <p class="section-subtitle">沉淀在 GitHub 的开源项目与工程实践</p>
-    </div>
-    <div class="projects-grid">
-      <div class="about-card project-card featured-project">
-        <div class="project-header">
-          <div class="project-badge">系统底层 · 高性能</div>
-          <a class="project-link" href="https://github.com/kanosa0101/cloud-storage-system" target="_blank" rel="noopener" title="查看 GitHub 仓库">
-            <i class="fab fa-github"></i>
-          </a>
-        </div>
-        <h3 class="project-title">cloud-storage-system · C++ 高性能云存储</h3>
-        <p class="project-desc">
-          基于现代 C++ 实现的高性能对象与文件存储服务，深入底层数据流分块处理、并发 I/O 调度与存储完整性校验。
-        </p>
-        <div class="project-techs">
-          <span class="p-tech">Modern C++</span>
-          <span class="p-tech">Storage</span>
-          <span class="p-tech">High-Performance</span>
-        </div>
-      </div>
-
-      <div class="about-card project-card">
-        <div class="project-header">
-          <div class="project-badge">Multi-Agent · 智能体</div>
-          <a class="project-link" href="https://github.com/kanosa0101/openclaw-system" target="_blank" rel="noopener" title="查看 GitHub 仓库">
-            <i class="fab fa-github"></i>
-          </a>
-        </div>
-        <h3 class="project-title">openclaw-system · 多智能体协同状态同步</h3>
-        <p class="project-desc">
-          探索自主多智能体（Multi-Agent）在复杂多阶段任务中的角色分工、状态机同步与工具调用调度，构建高鲁棒性的智能体协同工作流。
-        </p>
-        <div class="project-techs">
-          <span class="p-tech">Multi-Agent</span>
-          <span class="p-tech">Python</span>
-          <span class="p-tech">Workflow</span>
-        </div>
-      </div>
-
-      <div class="about-card project-card">
-        <div class="project-header">
-          <div class="project-badge">企业级 · 知识库</div>
-          <a class="project-link" href="https://github.com/kanosa0101/DocuMind" target="_blank" rel="noopener" title="查看 GitHub 仓库">
-            <i class="fab fa-github"></i>
-          </a>
-        </div>
-        <h3 class="project-title">DocuMind · 智能文档与知识库系统</h3>
-        <p class="project-desc">
-          基于 Java 生态打造的结构化知识库系统，提供海量文档的分级归类、知识检索与协同管理。
-        </p>
-        <div class="project-techs">
-          <span class="p-tech">Java</span>
-          <span class="p-tech">Spring Boot</span>
-          <span class="p-tech">Knowledge Base</span>
-        </div>
-      </div>
-
-      <div class="about-card project-card">
-        <div class="project-header">
-          <div class="project-badge">移动跨端 · 交互</div>
-          <a class="project-link" href="https://github.com/kanosa0101/Moodisle" target="_blank" rel="noopener" title="查看 GitHub 仓库">
-            <i class="fab fa-github"></i>
-          </a>
-        </div>
-        <h3 class="project-title">Moodisle (情绪岛屿) · 跨端移动应用</h3>
-        <p class="project-desc">
-          基于 Dart / Flutter 打造的轻量级跨平台移动客户端，聚焦心理情绪记录与细腻的动效交互体验。
-        </p>
-        <div class="project-techs">
-          <span class="p-tech">Dart</span>
-          <span class="p-tech">Flutter</span>
-          <span class="p-tech">Mobile App</span>
-        </div>
-      </div>
-
-      <div class="about-card project-card">
-        <div class="project-header">
-          <div class="project-badge">前端工具 · TypeScript</div>
-          <a class="project-link" href="https://github.com/kanosa0101/PromptX" target="_blank" rel="noopener" title="查看 GitHub 仓库">
-            <i class="fab fa-github"></i>
-          </a>
-        </div>
-        <h3 class="project-title">PromptX · 智能交互与提示词框架</h3>
-        <p class="project-desc">
-          基于 TypeScript 构建的轻量级框架，专注于智能交互流管理与提示词模块化编排。
-        </p>
-        <div class="project-techs">
-          <span class="p-tech">TypeScript</span>
-          <span class="p-tech">Frontend</span>
-          <span class="p-tech">Framework</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 生涯历程与时间线 -->
   <div class="about-section">
     <div class="section-header">
@@ -241,8 +142,8 @@ type: about
       <div class="timeline-item">
         <div class="timeline-dot"></div>
         <div class="timeline-time">持续进行</div>
-        <div class="timeline-title">全栈工程架构与开源探索</div>
-        <div class="timeline-desc">持续推进分布式云存储、多智能体协同系统与知识库等开源项目，追求高可用、高内聚低耦合的代码工程质量。</div>
+        <div class="timeline-title">全栈工程架构与技术探索</div>
+        <div class="timeline-desc">专注分布式系统、云存储、现代 Web 架构与多智能体系统开发，追求高可用、高内聚低耦合的代码工程质量。</div>
       </div>
     </div>
   </div>

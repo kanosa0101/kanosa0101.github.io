@@ -39,10 +39,12 @@ body:not(.read-mode) .layout > #page {
   background: var(--blog-reading-bg);
 }
 
-/* 锁定左右双栏架构：确保侧边栏（公告、最新文章等）稳定在右侧，防止被主内容撑开挤压至下方 */
-@media screen and (min-width: 769px) {
+/* 锁定左右双栏架构：确保侧边栏（公告、最新文章等）始终稳定在右侧，绝不换行掉落到下方 */
+@media screen and (min-width: 600px) {
+  #content-inner.layout,
   .layout {
     display: flex !important;
+    -webkit-box-orient: horizontal !important;
     -webkit-flex-direction: row !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
@@ -52,6 +54,7 @@ body:not(.read-mode) .layout > #page {
     box-sizing: border-box !important;
   }
 
+  #content-inner.layout > div:first-child,
   .layout > div:first-child {
     width: calc(100% - 310px) !important;
     max-width: calc(100% - 310px) !important;
@@ -60,6 +63,7 @@ body:not(.read-mode) .layout > #page {
     box-sizing: border-box !important;
   }
 
+  #content-inner.layout > #aside-content,
   #aside-content {
     width: 290px !important;
     min-width: 290px !important;
@@ -72,9 +76,16 @@ body:not(.read-mode) .layout > #page {
     box-sizing: border-box !important;
   }
 
+  #aside-content .card-widget {
+    margin-bottom: 18px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
   #aside-content .sticky_layout {
     position: sticky !important;
     top: 20px !important;
+    width: 100% !important;
   }
 }
 
@@ -444,99 +455,7 @@ html[data-theme="dark"] .skill-tag {
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* 代表性项目卡片 */
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  gap: 18px;
-  width: 100%;
-  box-sizing: border-box;
-}
 
-.project-card {
-  padding: 1.6rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border-left: 4px solid #1890ff;
-}
-
-.project-card.featured-project {
-  border-left-color: #36cfc9;
-  background: linear-gradient(145deg, var(--blog-card-bg) 0%, rgba(54, 207, 201, 0.08) 100%);
-}
-
-.project-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 32px rgba(13, 24, 31, 0.14);
-}
-
-.project-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.project-badge {
-  font-size: 0.76rem;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 6px;
-  background: rgba(24, 144, 255, 0.12);
-  color: #1890ff;
-}
-
-html[data-theme="dark"] .project-badge {
-  background: rgba(159, 232, 239, 0.18);
-  color: #9fe8ef;
-}
-
-.project-link {
-  font-size: 1.3rem;
-  color: inherit;
-  opacity: 0.75;
-  transition: all 0.2s ease;
-}
-
-.project-link:hover {
-  opacity: 1;
-  transform: scale(1.15);
-  color: #1890ff;
-}
-
-.project-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  margin: 0 0 10px;
-  line-height: 1.4;
-}
-
-.project-desc {
-  font-size: 0.88rem;
-  line-height: 1.7;
-  opacity: 0.85;
-  margin: 0 0 14px;
-  flex-grow: 1;
-}
-
-.project-techs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.p-tech {
-  font-size: 0.76rem;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.04);
-  font-weight: 500;
-}
-
-html[data-theme="dark"] .p-tech {
-  background: rgba(255, 255, 255, 0.06);
-}
 
 /* 时间轴 */
 .timeline-card {
@@ -638,7 +557,5 @@ html[data-theme="dark"] .timeline-time {
     padding: 1.4rem 1.2rem;
   }
 
-  .projects-grid {
-    grid-template-columns: 1fr;
-  }
+
 }
