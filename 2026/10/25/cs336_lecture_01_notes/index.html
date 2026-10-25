@@ -1,0 +1,526 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Stanford CS336 语言模型从零构建第一讲深度笔记：系统剖析抽象层上移与泄漏、大模型效率黄金法则、五大核心模块演进，以及字节级 BPE 分词器的形式化定义、算法推导与从零代码实现。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/10/25/cs336_lecture_01_notes/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="Stanford CS336 语言模型从零构建第一讲深度笔记：系统剖析抽象层上移与泄漏、大模型效率黄金法则、五大核心模块演进，以及字节级 BPE 分词器的形式化定义、算法推导与从零代码实现。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-10-25T02:20:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T02:21:18.108Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="BPE">
+<meta property="article:tag" content="CS336">
+<meta property="article:tag" content="Tokenization">
+<meta property="article:tag" content="分布式系统">
+<meta property="article:tag" content="大语言模型">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview & Tokenization",
+  "url": "https://kanosa0101.github.io/2026/10/25/cs336_lecture_01_notes/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-10-25T02:20:00.000Z",
+  "dateModified": "2026-10-25T02:21:18.108Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/10/25/cs336_lecture_01_notes/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview & Tokenization',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">2</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">5</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-25T02:20:00.000Z" title="发表于 2026-10-25 10:20:00">2026-10-25</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-25T02:21:18.108Z" title="更新于 2026-10-25 10:21:18">2026-10-25</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/">笔记</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/CS336/">CS336</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Stanford-CS336-Spring-2026-Lecture-1-深度课程笔记：Overview-Tokenization"><a href="#Stanford-CS336-Spring-2026-Lecture-1-深度课程笔记：Overview-Tokenization" class="headerlink" title="Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization"></a>Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization</h1><blockquote>
+<p><strong>课程主页</strong>：<a target="_blank" rel="noopener" href="https://cs336.stanford.edu/">Stanford CS336: Language Modeling from Scratch (Spring 2026)</a><br><strong>主讲教师</strong>：Percy Liang &amp; Tatsunori Hashimoto（助教团队：Marcel Rød, Herman Brunborg, Steven Cao）<br><strong>配套资源</strong>：<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=JuoVZkPBiKk">Lecture 1 视频</a> · <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/lectures/blob/main/lecture_01.py">课件源码 (<code>lecture_01.py</code>)</a> · <a target="_blank" rel="noopener" href="https://cs336.stanford.edu/lectures/?trace=lecture_01">交互式执行轨迹 (Edtrace)</a> · <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment1-basics">Assignment 1 代码仓库</a></p>
+</blockquote>
+<hr>
+<h2 id="1-为什么要开设-CS336：从“调用-API”回归底层构建"><a href="#1-为什么要开设-CS336：从“调用-API”回归底层构建" class="headerlink" title="1. 为什么要开设 CS336：从“调用 API”回归底层构建"></a>1. 为什么要开设 CS336：从“调用 API”回归底层构建</h2><h3 id="1-1-抽象层上移带来的“技术断层”与抽象泄漏"><a href="#1-1-抽象层上移带来的“技术断层”与抽象泄漏" class="headerlink" title="1.1 抽象层上移带来的“技术断层”与抽象泄漏"></a>1.1 抽象层上移带来的“技术断层”与抽象泄漏</h3><p>在过去十年中，AI 研究者与底层技术栈的关系经历了显著的范式转移：</p>
+<table>
+<thead>
+<tr>
+<th align="left">时代阶段</th>
+<th align="left">核心研究范式</th>
+<th align="left">代表性模型与操作</th>
+<th align="left">抽象层级特征</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>2016 年前后</strong></td>
+<td align="left"><strong>从零实现与训练 (From Scratch)</strong></td>
+<td align="left">LSTM、早期 Seq2Seq</td>
+<td align="left">研究者自己编写模型结构、优化器与训练循环</td>
+</tr>
+<tr>
+<td align="left"><strong>2018 年前后</strong></td>
+<td align="left"><strong>预训练模型下载与微调 (Fine-tuning)</strong></td>
+<td align="left"><a target="_blank" rel="noopener" href="https://arxiv.org/abs/1802.05365">ELMo</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1810.04805">BERT</a></td>
+<td align="left">下载公开权重，在下游任务上做微调适配</td>
+</tr>
+<tr>
+<td align="left"><strong>2020–2026 年</strong></td>
+<td align="left"><strong>API 提示工程与智能体编排 (Prompting &amp; Agents)</strong></td>
+<td align="left"><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2303.08774">GPT-4</a>、Claude、Gemini</td>
+<td align="left">通过自然语言 Prompt 交互或构建复杂 Agent 工作流</td>
+</tr>
+</tbody></table>
+<p>虽然抽象层级的提升极大地解放了生产力，但与操作系统或编程语言不同，<strong>大语言模型的抽象是严重“泄漏”的（Leaky Abstractions）</strong>。当模型无法完成特定复杂推理、长上下文崩溃、或者训练过程梯度爆炸时，仅停留在 Prompt 层面的研究者往往束手无策，且其探索的设计空间（Design Space）被死死限制在黑盒接口之内。</p>
+<p>因此，要进行真正的基础性研究（Fundamental Research），必须具备**撕开整个技术栈（Tear up the whole stack）**的能力。CS336 的核心哲学正是：<strong>Understanding via Building（通过亲手从零构建来获得彻底的理解）</strong>。</p>
+<hr>
+<h3 id="1-2-语言模型工业化困境与小规模实验的局限性"><a href="#1-2-语言模型工业化困境与小规模实验的局限性" class="headerlink" title="1.2 语言模型工业化困境与小规模实验的局限性"></a>1.2 语言模型工业化困境与小规模实验的局限性</h3><p>当前前沿大模型（Frontier Models）已经进入高度工业化与黑盒化阶段：</p>
+<ul>
+<li><strong>高昂的算力成本</strong>：2023 年训练 <a target="_blank" rel="noopener" href="https://www.wired.com/story/openai-ceo-sam-altman-the-age-of-giant-ai-models-is-already-over/">GPT-4</a> 的成本据估计高达 1 亿美元，而 2025 年 xAI 为训练 Grok 构建了包含 <a target="_blank" rel="noopener" href="https://x.com/elonmusk/status/1947701807389515912">23 万张 GPU 的超算集群</a>，前沿训练成本向十亿美元量级逼近。</li>
+<li><strong>技术细节的封闭</strong>：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2303.08774">GPT-4 Technical Report</a> 明确声明，出于竞争格局与安全考量，不再公开模型架构、参数规模、硬件集群与训练数据配比等任何核心细节。</li>
+<li><strong>小模型（&lt;1B 参数）无法完全代表大模型</strong>：在课堂上我们只能训练小规模模型，但规模变化会导致定性与定量的双重偏移：<ol>
+<li><strong>算力分布偏移（FLOPs Distribution Shift）</strong>：根据 <a target="_blank" rel="noopener" href="https://x.com/stephenroller/status/1579993017234382849">Stephen Roller 的实证分析</a>，在小规模模型中，MLP（前馈网络）层仅占约 44% 的计算量（FLOPs），而 Attention 层与 Embedding 占比较高；但当模型扩展到 175B 规模时，MLP 层的计算量占比飙升至 <strong>80% 以上</strong>。在小模型上针对 Attention 的极致优化，放到大规模下收益可能被严重稀释。</li>
+<li><strong>涌现能力（Emergent Abilities）</strong>：如 <a target="_blank" rel="noopener" href="https://arxiv.org/pdf/2206.07682">Wei et al. (2022)</a> 所示，许多零样本或少样本（Few-shot In-Context Learning）推理能力在小规模下准确率几乎接近随机猜测，只有跨过特定算力与参数阈值后才会突然涌现。</li>
+</ol>
+</li>
+</ul>
+<hr>
+<h3 id="1-3-什么知识可以真正迁移到前沿规模？"><a href="#1-3-什么知识可以真正迁移到前沿规模？" class="headerlink" title="1.3 什么知识可以真正迁移到前沿规模？"></a>1.3 什么知识可以真正迁移到前沿规模？</h3><p>面对规模鸿沟，Percy Liang 将构建大模型的知识体系拆解为三个维度：</p>
+<ul>
+<li><strong>机制（Mechanics —— 完全可迁移）</strong>：事物运行的确定性底层原理。例如：Tokenizer 如何完成字节与整数序列的转换、Transformer 矩阵乘法如何映射、算子融合（Kernel Fusion）如何减少显存读写、分布式张量并行与流水线并行如何切分参数。这些通过代码构建即可 100% 掌握并迁移至任意规模。</li>
+<li><strong>思维模式（Mindset —— 完全可迁移）</strong>：系统工程方法论。包括精确的算力与显存记账（Resource Accounting）、极致压榨硬件性能（Squeezing the hardware）、凡事必做 Profiling 与 Benchmarking，以及严肃对待扩展定律（Scaling Laws）。</li>
+<li><strong>直觉（Intuitions —— 部分迁移，强依赖实验）</strong>：哪些架构微调或数据配比能带来更高的准确率。许多核心架构决策缺乏先验理论支撑，纯粹源于实验试错。最典型的例子是 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2002.05202">Noam Shazeer (2020) 提出 SwiGLU 激活函数的论文</a>，作者在结论部分坦诚写道：<blockquote>
+<p><em>“We offer no explanation as to why these architectures seem to work; we attribute their success, as all else, to divine benevolence.”</em><br>（我们对这些架构为何有效不提供任何解释；我们将它们的成功，如同其他一切一样，归功于神明的仁慈。）</p>
+</blockquote>
+</li>
+</ul>
+<hr>
+<h3 id="1-4-重新审视《苦涩的教训》（The-Bitter-Lesson）与效率公式"><a href="#1-4-重新审视《苦涩的教训》（The-Bitter-Lesson）与效率公式" class="headerlink" title="1.4 重新审视《苦涩的教训》（The Bitter Lesson）与效率公式"></a>1.4 重新审视《苦涩的教训》（The Bitter Lesson）与效率公式</h3><p>许多人对 Rich Sutton 的《The Bitter Lesson》存在误读，认为“只有堆算力规模（Scale）才重要，算法无关紧要”。CS336 给出了纠正后的核心解读：<strong>真正重要的是能够随算力规模扩展的算法（Algorithms that scale are what matter）</strong>。</p>
+<p>我们可以用一个简单的核心公式来概括模型能力：</p>
+<p>$$\text{Accuracy} &#x3D; \text{Efficiency} \times \text{Resources}$$</p>
+<ul>
+<li><strong>算法效率与硬件红利呈乘数效应</strong>：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2005.04305">Hernandez &amp; Brown (2020) 关于 AI 算法效率的研究</a> 表明，从 2012 年到 2019 年，在 ImageNet 上达到 AlexNet 同等准确率所需的计算量（FLOPs）下降了 <strong>44 倍</strong>（相当于每 16 个月算法效率翻倍），远超同期摩尔定律带来的 11 倍硬件成本下降。</li>
+<li><strong>规模越大，效率越生死攸关</strong>：在笔记本上跑小实验，效率慢一倍无非多等一小时；但在花费上亿美元的万卡集群上，哪怕 <strong>5% 的效率提升</strong>都意味着数百万美元的直接成本节约。</li>
+<li><strong>CS336 的终极核心命题（Course Framing）</strong>：<strong>在给定的计算预算（Compute Budget）和数据预算（Data Budget）约束下，如何最大化效率（Maximize Efficiency），训练出性能最强的语言模型？</strong></li>
+</ul>
+<hr>
+<h2 id="2-语言模型演进全景与开源生态（Landscape-Ecosystem）"><a href="#2-语言模型演进全景与开源生态（Landscape-Ecosystem）" class="headerlink" title="2. 语言模型演进全景与开源生态（Landscape &amp; Ecosystem）"></a>2. 语言模型演进全景与开源生态（Landscape &amp; Ecosystem）</h2><h3 id="2-1-四阶段技术演进脉络"><a href="#2-1-四阶段技术演进脉络" class="headerlink" title="2.1 四阶段技术演进脉络"></a>2.1 四阶段技术演进脉络</h3><ol>
+<li><p><strong>前神经网络时代（Pre-neural, 2010 年代之前）</strong>：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.bell-labs.com/">Claude Shannon (1950)</a> 最早利用语言模型来估计英语的信息熵（Entropy of English）。</li>
+<li><a target="_blank" rel="noopener" href="https://aclanthology.org/D07-1090/">Brants et al. (2007)</a> 在机器翻译与语音识别系统中大规模应用 N-gram 统计语言模型（Stupid Backoff），用于保证输出文本的流畅度。</li>
+</ul>
+</li>
+<li><p><strong>深度学习核心组件积淀期（Neural Ingredients, 2010 年代）</strong>：</p>
+<ul>
+<li><strong>循环与前馈网络</strong>：<a target="_blank" rel="noopener" href="https://direct.mit.edu/neco/article/9/8/1735/6109/Long-Short-Term-Memory">Hochreiter &amp; Schmidhuber (1997) 的 LSTM</a> 与 <a target="_blank" rel="noopener" href="https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf">Bengio et al. (2003) 的首个前馈神经语言模型</a>。</li>
+<li><strong>序列生成与注意力</strong>：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1409.3215">Sutskever et al. (2014) 的 Seq2Seq 模型</a>（首次将整句压缩为向量）、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1412.6980">Kingma &amp; Ba (2014) 的 Adam 优化器</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1409.0473">Bahdanau et al. (2015) 的注意力机制</a>，直至 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1706.03762">Vaswani et al. (2017) 提出 Transformer 架构</a>。</li>
+<li><strong>稀疏激活与分布式并行</strong>：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1701.06538">Shazeer et al. (2017) 提出稀疏门控 Mixture of Experts (MoE)</a>，以及 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1811.06965">GPipe (2018)</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1910.02054">ZeRO (2019)</a> 和 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1909.08053">Megatron-LM (2019)</a> 奠定了现代模型并行的系统基石。</li>
+</ul>
+</li>
+<li><p><strong>早期基座模型与扩展定律觉醒（Late 2010s – Early 2020s）</strong>：</p>
+<ul>
+<li><strong>预训练+微调范式</strong>：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1802.05365">ELMo (2018)</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1810.04805">BERT (2018)</a> 以及将所有任务统一为 Text-to-Text 的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1910.10683">Google T5 (11B, 2019)</a>。</li>
+<li><strong>拥抱 Scaling</strong>：<a target="_blank" rel="noopener" href="https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf">OpenAI GPT-2 (1.5B, 2019)</a> 初显零样本能力；<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2001.08361">Kaplan et al. (2020) 提出 Scaling Laws</a> 赋予了扩大规模的可预测性；随后 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2005.14165">GPT-3 (175B, 2020)</a> 展示了惊人的上下文学习（In-Context Learning）。</li>
+<li><strong>算力最优配比修正</strong>：Google 随后训练了庞大的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2204.02311">PaLM (540B, 2022)</a>，但很快 DeepMind 发表了里程碑式的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.15556">Chinchilla 论文 (70B, 2022)</a>，证明当时的巨型模型普遍处于“训练不足（Undertrained）”状态，并确立了算力最优（Compute-Optimal）的模型参数与训练数据配比。</li>
+</ul>
+</li>
+<li><p><strong>开源&#x2F;开放生态的崛起（Open Models Ecosystem）</strong>：</p>
+<ul>
+<li><strong>早期复现尝试（2021–2022）</strong>：草根组织 EleutherAI 构建了开源数据集 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2101.00027">The Pile</a> 与 <a target="_blank" rel="noopener" href="https://github.com/kingoflolz/mesh-transformer-jax">GPT-J</a>；Meta 复现 175B 的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2205.01068">OPT</a>（遭遇大量硬件故障）；BigScience 推出多语言模型 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2211.05100">BLOOM (176B)</a>。</li>
+<li><strong>高竞争力开放权重模型（Open-Weight Models: 权重 + 技术报告）</strong>：以 Meta 的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.21783">Llama 系列 (Llama 1–3)</a> 和 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2401.04088">Mistral &#x2F; Mixtral</a> 为开端，近两年中国开源大模型展现出极强的架构与系统创新力，包括 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2412.19437">DeepSeek 系列 (V2&#x2F;V3&#x2F;R1)</a>、阿里 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2412.15115">Qwen 2.5 &#x2F; Qwen 3</a>、Moonshot <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.12599">Kimi k1.5 &#x2F; k2.5</a>、智谱 <a target="_blank" rel="noopener" href="https://github.com/THUDM">GLM-4.5 &#x2F; GLM-5</a>、<a target="_blank" rel="noopener" href="https://www.minimaxi.com/">MiniMax-M2.5</a> 以及小米 <a target="_blank" rel="noopener" href="https://github.com/XiaomiMiMo">MiMo-v2</a>。这些开放权重模型在性能上已全面逼近闭源前沿模型。</li>
+<li><strong>完全开源模型（Full Open-Source Models: 权重 + 论文 + 训练代码 + 数据集）</strong>：为了推动真正的透明科学研究（参见 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2403.07918">Position Paper on Open Foundation Models</a>），AI2 的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.00656">OLMo 1 &#x2F; 2 &#x2F; 3</a>、NVIDIA 的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.16819">Nemotron</a> 以及 Percy Liang 团队主导的开源常青项目 <a target="_blank" rel="noopener" href="https://marin.community/">Marin (8B &#x2F; 32B)</a> 公开了完整的训练代码、清洗管线与训练日志。正是这些公开的技术报告与开源项目，使我们能够在 CS336 中通过“三角定位（Triangulate）”还原前沿大模型的完整构建蓝图。</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3 id="2-2-2026-年的语言模型形态：从对话到自主智能体（Agents）"><a href="#2-2-2026-年的语言模型形态：从对话到自主智能体（Agents）" class="headerlink" title="2.2 2026 年的语言模型形态：从对话到自主智能体（Agents）"></a>2.2 2026 年的语言模型形态：从对话到自主智能体（Agents）</h3><p>语言模型的交互形态已经从“微调对象（2018）” $\rightarrow$ “提示对象（2020）” $\rightarrow$ “<a target="_blank" rel="noopener" href="https://huggingface.co/datasets/HuggingFaceTB/smoltalk/viewer/all/train?row=72&conversation-viewer=72">对话伙伴（2022 SmolTalk 示例）</a>”演进到了 2026 年的 <strong>自主智能体（Autonomous Agents，如 <a target="_blank" rel="noopener" href="https://huggingface.co/datasets/nebius/SWE-rebench-openhands-trajectories/viewer/default/train?conversation-viewer=1">SWE-rebench OpenHands 轨迹</a>）</strong>。</p>
+<p>尽管上层应用演变为长达数万 Token 的 Agent 推理与工具调用轨迹，<strong>底层基石依然稳固</strong>（依然构建在 GPU&#x2F;Kernel、梯度优化与 Transformer&#x2F;Attention 之上），但<strong>工程技术指标（Specs）发生了深刻转移</strong>：对超长上下文（Long Context）与推理吞吐效率（Inference Efficiency）的要求达到了前所未有的高度。</p>
+<hr>
+<h2 id="3-CS336-全课程五大核心模块全览（Course-Syllabus-Deep-Dive）"><a href="#3-CS336-全课程五大核心模块全览（Course-Syllabus-Deep-Dive）" class="headerlink" title="3. CS336 全课程五大核心模块全览（Course Syllabus Deep-Dive）"></a>3. CS336 全课程五大核心模块全览（Course Syllabus Deep-Dive）</h2><p>CS336 为期 10 周（5 学分，以高强度代码实现著称，不提供填空式脚手架代码，仅提供单元测试 <code>pytest</code> 适配器与 <a target="_blank" rel="noopener" href="https://modal.com/">Modal B200 GPU 算力支持</a>，同时通过自定义 <code>AGENTS.md</code> 规范引导 AI 仅做启发式教学而非代写代码）。全课程围绕五大模块展开，直接对应五次大型编程作业：</p>
+<h3 id="3-1-模块一：基础构建（Basics-——-对应-Assignment-1）"><a href="#3-1-模块一：基础构建（Basics-——-对应-Assignment-1）" class="headerlink" title="3.1 模块一：基础构建（Basics —— 对应 Assignment 1）"></a>3.1 模块一：基础构建（Basics —— 对应 Assignment 1）</h3><p>目标是从零手写全部核心组件，打通一个标准 Transformer 语言模型的完整预训练闭环。核心设计必须围绕三大黄金原则做权衡：<strong>表达能力（Expressivity）</strong>、<strong>训练稳定性（Stability，将参数范数与梯度范数维持在“金发姑娘区 Goldilocks Zone”）</strong> 与 <strong>硬件执行效率（Efficiency）</strong>。</p>
+<ul>
+<li><strong>分词器（Tokenization）</strong>：实现字节级 BPE（Byte-Pair Encoding），探讨压缩率与自适应计算，以及前沿无分词器架构（如 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2105.13626">ByT5</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.07185">MegaByte</a>、Meta <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2412.09871">Byte Latent Transformer (BLT)</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.19223">T-Free</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.00001">H-Net (2025)</a>）。</li>
+<li><strong>现代模型架构演进（Model Architecture Refinements）</strong>：在原始 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1706.03762">Transformer (2017)</a> 基础上引入工业界标准改进：<ul>
+<li><strong>激活函数</strong>：从 ReLU 演进至门控线性单元 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2002.05202">SwiGLU (Shazeer, 2020)</a>。</li>
+<li><strong>位置编码</strong>：从正弦绝对位置编码演进至旋转位置编码 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2104.09864">RoPE (Su et al., 2021)</a>。</li>
+<li><strong>归一化层（Normalization）</strong>：从 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1607.06450">LayerNorm</a> 演进至省去均值中心化的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1910.07467">RMSNorm (Zhang &amp; Sennrich, 2019)</a>；从 Post-Norm 转向训练更稳定的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2002.04745">Pre-Norm</a>；并在注意力层引入防止软最大化饱和与梯度爆炸的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2302.05442">QK-Norm (2023)</a>。</li>
+<li><strong>注意力机制变体（克服 $O(N^2)$ 复杂度与 KV Cache 瓶颈）</strong>：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1904.10509">稀疏&#x2F;局部注意力 (Sparse Transformer)</a>、分组查询注意力 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.13245">GQA (Ainslie et al., 2023)</a>，以及 DeepSeek 提出的将 KV 压缩至低秩潜在空间的多头潜在注意力 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.04434">MLA (Multi-Head Latent Attention)</a>。</li>
+<li><strong>状态空间模型与线性注意力混合架构（SSM &#x2F; Linear Attention）</strong>：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2006.16236">Linear Attention (2020)</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.21060">Mamba-2 (2024)</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2412.06464">Gated DeltaNet (2024)</a> 及最新的 Mamba-3 混合架构。</li>
+<li><strong>前馈网络稀疏化（MoE）</strong>：从稠密 MLP 全面转向成为主流计算高效范式的混合专家模型（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1701.06538">MoE</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2101.03961">Switch Transformers</a>）。</li>
+<li><strong>模型形状超参数（Shape）</strong>：隐藏层维度 $d_{\text{model}}$、层数 $L$、注意力头数 $H$ 与专家数量配比。</li>
+</ul>
+</li>
+<li><strong>训练与优化机制（Training &amp; Optimization）</strong>：<ul>
+<li><strong>损失函数</strong>：标准自回归 Next-Token Prediction，以及提升表示学习效率的多 Token 预测 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2404.19737">Multi-Token Prediction (MTP, Gloeckle et al., 2024)</a>（已被 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2412.19437">DeepSeek-V3</a> 采用）。</li>
+<li><strong>优化器演进</strong>：从标准 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1412.6980">Adam</a> &#x2F; <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1711.05101">AdamW (Loshchilov &amp; Hutter, 2017)</a>，演进至二阶预条件优化器 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2409.11321">SOAP (2024)</a> 与基于正交化动量更新的 <a target="_blank" rel="noopener" href="https://github.com/KellerJordan/Muon">Muon 优化器 (2024)</a>（已在 Kimi k2.5 等最新开源大模型中大规模验证）。</li>
+<li><strong>参数初始化与跨尺度迁移</strong>：<a target="_blank" rel="noopener" href="https://proceedings.mlr.press/v9/glorot10a.html">Xavier 初始化 (Glorot &amp; Bengio, 2010)</a> 与最大更新参数化 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.03466">$\mu\text{P}$ (Maximal Update Parametrization, Yang et al., 2022)</a>。</li>
+<li><strong>学习率调度（LR Schedule）</strong>：经典 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1608.03983">Cosine Annealing</a> 与无需预先锁定总步数的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2404.06395">WSD (Warmup-Stable-Decay, Hu et al., 2024)</a>。</li>
+<li><strong>批大小与 MoE 负载均衡</strong>：临界批大小理论 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1812.06162">Critical Batch Size (2018)</a>，以及不损害主损失函数的无辅助损失负载均衡 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2408.15664">Auxiliary-Loss-Free Load Balancing (2024)</a>。</li>
+</ul>
+</li>
+<li><strong>Assignment 1 实战内容</strong>：手写 BPE 分词器、Transformer、交叉熵损失、AdamW 优化器与训练循环，完成 FLOPs 与显存记账，在 TinyStories 与 OpenWebText 上训练模型，并参与 <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/spring2025-assignment1-basics-leaderboard">Assignment 1 Leaderboard</a>（在单张 B200 GPU 限时 45 分钟内将 OpenWebText 困惑度降至最低）。</li>
+</ul>
+<hr>
+<h3 id="3-2-模块二：系统优化（Systems-——-对应-Assignment-2）"><a href="#3-2-模块二：系统优化（Systems-——-对应-Assignment-2）" class="headerlink" title="3.2 模块二：系统优化（Systems —— 对应 Assignment 2）"></a>3.2 模块二：系统优化（Systems —— 对应 Assignment 2）</h3><p>目标是极致压榨硬件（GPU&#x2F;TPU）性能，核心准则是<strong>通过重新组织计算来最小化数据搬运（Minimize Data Movement）</strong>。推荐配套阅读 Google 团队编写的开源书籍 <a target="_blank" rel="noopener" href="https://jax-ml.github.io/scaling-book/">《How to Scale Your Model》</a>。</p>
+<ul>
+<li><strong>硬件底座与资源记账（Resource Accounting &amp; Roofline Analysis）</strong>：<ul>
+<li><p><strong>预训练算力黄金近似公式</strong>：对于参数量为 $N$ 的 Transformer 模型，在 $D$ 个 Token 上进行预训练的总浮点运算次数约为：</p>
+<p>$$C \approx 6ND \text{ FLOPs}$$</p>
+<p>（其中前向传播约为 $2ND$，反向传播计算关于权重和激活的梯度约为 $4ND$）。例如，在 $D &#x3D; 1\text{T} (10^{12})$ Token 上训练一个 $N &#x3D; 70\text{B} (7\times 10^{10})$ 模型，总算力为 $6 \times 70\times 10^9 \times 10^{12} &#x3D; 4.2 \times 10^{23}\text{ FLOPs}$。</p>
+</li>
+<li><p><strong>存储墙与算术强度（Memory Wall &amp; Arithmetic Intensity）</strong>：计算单元（SMs）与显存（HBM）是物理分离的。以课程使用的 <a target="_blank" rel="noopener" href="https://docs.nvidia.com/dgx/dgxb200-user-guide/introduction-to-dgxb200.html">NVIDIA DGX B200</a> 为例，单卡 BF16 峰值算力高达 <strong>2.25 PFLOP&#x2F;s</strong>，但 HBM 显存带宽仅为 <strong>8 TB&#x2F;s</strong>。通过 <strong>Roofline 模型分析</strong> 可以判断算子究竟是计算受限（Compute-bound）还是访存带宽受限（Memory-bound）。</p>
+</li>
+</ul>
+</li>
+<li><strong>自定义 GPU 算子（Kernels &amp; Triton）</strong>：<ul>
+<li><strong>算子融合（Operator Fusion）</strong>：朴素 PyTorch 执行 <code>A</code> 和 <code>B</code> 两个逐元素操作会经历 <code>读 HBM -&gt; 算 A -&gt; 写 HBM -&gt; 读 HBM -&gt; 算 B -&gt; 写 HBM</code> 两次往返；融合算子将其压缩为 <code>读 HBM -&gt; 算 A 和 B -&gt; 写 HBM</code>，直接砍半显存带宽开销。</li>
+<li><strong>分块计算（Tiling）</strong>：以 FlashAttention 为代表，利用片上高速 SRAM 缓存分块完成 Softmax 归一化，避免将 $N \times N$ 注意力矩阵写回 HBM。</li>
+<li><strong>底层硬件特性</strong>：深入理解 Warp Divergence（线程束分化）、Memory Coalescing（访存合并）、Bank Conflicts（共享内存存储体冲突）、Occupancy（占用率）与异步大块内存传输，并使用 <strong>Triton</strong>（以及 CUDA &#x2F; CUTLASS &#x2F; ThunderKittens）编写高性能算子。</li>
+</ul>
+</li>
+<li><strong>大规模分布式并行（Parallelism at 1024+ GPUs）</strong>：<ul>
+<li>跨 GPU 通信（NVLink &#x2F; InfiniBand &#x2F; RoCE）比片内 HBM 更慢。利用集合通信原语（<code>All-Gather</code>, <code>Reduce-Scatter</code>, <code>All-Reduce</code>）将参数（Parameters）、梯度（Gradients）、优化器状态（Optimizer States）和激活值（Activations）分片（Sharding）到多卡上。</li>
+<li><strong>五维并行策略</strong>：数据并行（Data Parallelism, DDP&#x2F;FSDP&#x2F;ZeRO）、张量并行（Tensor Parallelism）、流水线并行（Pipeline Parallelism）、序列并行（Sequence Parallelism）与专家并行（Expert Parallelism）。</li>
+</ul>
+</li>
+<li><strong>推理加速（Inference Systems）</strong>：<ul>
+<li><strong>两阶段解耦</strong>：<ul>
+<li><strong>Prefill 阶段</strong>：并行处理整个输入 Prompt 并构建 KV Cache，属于 <strong>Compute-bound</strong>；</li>
+<li><strong>Decode 阶段</strong>：逐个自回归生成 Token，每生成一个 Token 都要把全部模型权重和历史 KV Cache 从 HBM 读入 SM 一次，属于极端的 <strong>Memory-bound</strong>。</li>
+</ul>
+</li>
+<li><strong>推理优化手段</strong>：模型剪枝&#x2F;量化&#x2F;蒸馏、<strong>投机采样（Speculative Decoding，用轻量 Draft 模型快速猜多个 Token，再用大模型并行一次前向传播做精确拒绝采样验证，保证无损加速）</strong>、专用融合推理算子以及动态连续批处理（Continuous Batching）。</li>
+</ul>
+</li>
+<li><strong>Assignment 2 实战内容</strong>：使用 Nsight 进行性能剖析，在 <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment2-systems">Assignment 2</a> 中用 Triton 手写融合 RMSNorm 与 FlashAttention-2 算子，并从零实现分布式数据并行（DDP）与优化器状态分片（ZeRO-1）。</li>
+</ul>
+<hr>
+<h3 id="3-3-模块三：扩展定律（Scaling-Laws-——-对应-Assignment-3）"><a href="#3-3-模块三：扩展定律（Scaling-Laws-——-对应-Assignment-3）" class="headerlink" title="3.3 模块三：扩展定律（Scaling Laws —— 对应 Assignment 3）"></a>3.3 模块三：扩展定律（Scaling Laws —— 对应 Assignment 3）</h3><p>当你拥有 $10^{25}$ FLOPs（价值数千万美元）的算力预算去训练一个旗舰模型时，你只有一次出手机会，绝不可能在全尺寸模型上做网格搜索调参。</p>
+<ul>
+<li><strong>核心范式转换：从“训练单个模型”转向“设计扩展配方（Scaling Recipe）”</strong>：<ul>
+<li>所谓 <strong>Scaling Recipe</strong>，是一个从算力预算 $C$ 到全套超参数配置（模型深度、宽度、学习率、批大小等 Config）的确定性映射函数。</li>
+<li>通过在多个小算力规模（如 $10^{18} \sim 10^{22}$ FLOPs）上运行实验，拟合幂律曲线（Power Law），从而在真正耗费巨资前<strong>精准外推预测目标规模（如 $10^{25}$ FLOPs）下的验证集 Loss</strong>。</li>
+</ul>
+</li>
+<li><strong>可预测性（Predictability）与超参数迁移（$\mu\text{P}$）</strong>：<ul>
+<li>扩展定律不是自然界自动生效的物理定律，而是通过精心的参数化设计“强行构建”出来的。如果小模型最优学习率忽高忽低，外推就会彻底失效。因此，<strong>可预测性至少与局部最优性同等重要</strong>，必须借助 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.03466">$\mu\text{P}$</a> 等方法保证超参数跨尺度平滑迁移。</li>
+</ul>
+</li>
+<li><strong>算力最优权衡（Chinchilla IsoFLOP Curves）</strong>：<ul>
+<li><p>给定预算 $C &#x3D; 6ND$，应该把算力花在更大的参数量 $N$ 还是更多的训练数据 $D$ 上？通过绘制不同算力预算下的 IsoFLOP 曲线并取包络线最低点，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.15556">Chinchilla (Hoffmann et al., 2022)</a> 给出了著名的经验法则：</p>
+<p>$$D_{\text{opt}} \approx 20 N$$</p>
+<p>即 70B 参数的模型在算力最优意义下应训练约 $1.4\text{T}$ Token。（注：现代开源模型如 Llama-3 8B 往往在 $15\text{T}$ Token 上“过度训练 Overtrain”，这是为了摊薄后续大规模部署时的<strong>推理成本</strong>）。</p>
+</li>
+<li><p><strong>Marin 项目实战印证</strong>：Percy Liang 展示了 <a target="_blank" rel="noopener" href="https://x.com/percyliang/status/2034367256277533100">Marin 团队在 X 上预注册（Pre-registered）的 $10^{22}$ FLOPs 训练预测曲线</a>，在真实大模型跑完前先行锁定预测 Loss。</p>
+</li>
+</ul>
+</li>
+<li><strong>Assignment 3 实战内容</strong>：通过调用课程提供的模拟训练缓存 API（给定小预算额度提交不同超参查询 Loss），在 <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment3-scaling">Assignment 3</a> 中拟合自己的 Scaling Law 并提交大算力预算下的最优超参配置。</li>
+</ul>
+<hr>
+<h3 id="3-4-模块四：评测与数据工程（Data-——-对应-Assignment-4）"><a href="#3-4-模块四：评测与数据工程（Data-——-对应-Assignment-4）" class="headerlink" title="3.4 模块四：评测与数据工程（Data —— 对应 Assignment 4）"></a>3.4 模块四：评测与数据工程（Data —— 对应 Assignment 4）</h3><p>架构与算力决定了模型的下限与训练速度，而<strong>数据质量与配比直接定义了模型的能力上限</strong>。</p>
+<ul>
+<li><strong>评测体系（Evaluation）的二元划分</strong>：<ol>
+<li><strong>内部开发指标（Internal Metrics）</strong>：用于指导架构与数据迭代。核心要求是<strong>跨尺度平滑性（Smoothness across scales）<strong>与相对排序一致性。最经典的指标是在未受互联网污染的私有留出集（Held-out private documents）上计算</strong>困惑度（Perplexity）</strong>，有效规避刷榜（Benchmaxing）与数据泄漏。</li>
+<li><strong>外部能力指标（External Metrics）</strong>：面向真实应用场景衡量绝对表现，核心要求是<strong>生态效度（Ecological Validity）</strong>。涵盖高难度推理基准如 GPQA、HLE（Humanity’s Last Exam），以及智能体编程基准 SWE-Bench 与 Terminal-Bench。</li>
+</ol>
+</li>
+<li><strong>数据获取与合规边界（Data Curation &amp; Legal Issues）</strong>：<ul>
+<li>数据不会从天而降，需从 Common Crawl 网页抓取、书籍、arXiv 论文、GitHub 代码等多源采集（如 <a target="_blank" rel="noopener" href="https://ar5iv.labs.arxiv.org/html/2101.00027/assets/pile_chart2.png">The Pile 构成图</a>）。</li>
+<li>涉及复杂的版权与合理使用（<a target="_blank" rel="noopener" href="https://arxiv.org/pdf/2303.15715.pdf">Fair Use 法律争议</a>）、无显式 License 的 GitHub 代码处理策略，以及商业数据授权采购（如 <a target="_blank" rel="noopener" href="https://www.reuters.com/technology/reddit-ai-content-licensing-deal-with-google-sources-say-2024-02-22/">Google 斥资采购 Reddit 数据授权</a>）。</li>
+</ul>
+</li>
+<li><strong>全链路数据清洗与合成管线（Data Processing Pipeline）</strong>：<ol>
+<li><strong>格式转换（Transformation）</strong>：原始数据并非纯文本，需从嘈杂的 HTML DOM 树、PDF 排版或代码目录中精准提取正文并保留数学公式与代码结构。</li>
+<li><strong>质量与安全过滤（Filtering）</strong>：随机一条 Common Crawl 网页极大概率是垃圾广告或破碎文本。从效率视角看，<strong>在垃圾数据上计算梯度是在浪费宝贵的算力预算</strong>。通常训练轻量级分类器（如 fastText 或小模型）滤除低质与有害内容。</li>
+<li><strong>去重（Deduplication）</strong>：利用 <strong>Bloom Filters（布隆过滤器）</strong> 或 <strong>MinHash + LSH</strong> 消除精确与近似重复文档，既节省算力又防止模型死记硬背（Memorization）。</li>
+<li><strong>数据配比（Data Mixing）</strong>：通过小规模回归代理模型动态优化不同数据源的采样权重（如 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.01492">RegMix (2025)</a>、OLMix (2026)）。</li>
+<li><strong>数据改写与合成（Rewriting &#x2F; Synthetic Data）</strong>：利用现有语言模型将原始嘈杂网页改写为类教材或问答格式（如 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2401.16380">WRAP (Web Rephrase Augmented Pre-training, 2024)</a>）。</li>
+</ol>
+</li>
+<li><strong>三阶段数据生命周期</strong>：<ul>
+<li><strong>预训练数据（Pretraining）</strong>：追求海量与多样性；</li>
+<li><strong>中期训练数据（Mid-training &#x2F; Annealing）</strong>：在预训练尾声注入高密度优质数据与长上下文语料（大型代码库、长书）；</li>
+<li><strong>后训练数据（Post-training）</strong>：聚焦指令对话与带工具调用的 Agent 轨迹。</li>
+</ul>
+</li>
+<li><strong>Assignment 4 实战内容</strong>：在 <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment4-data">Assignment 4</a> 中直接处理原始 Common Crawl 网页转储（WET&#x2F;WARC），手写 HTML 正文提取、训练质量与安全过滤分类器、实现 MinHash 去重，并在固定 Token 预算下争夺最低困惑度榜单。</li>
+</ul>
+<hr>
+<h3 id="3-5-模块五：对齐与强化学习推理（Alignment-Reasoning-RL-——-对应-Assignment-5）"><a href="#3-5-模块五：对齐与强化学习推理（Alignment-Reasoning-RL-——-对应-Assignment-5）" class="headerlink" title="3.5 模块五：对齐与强化学习推理（Alignment &amp; Reasoning RL —— 对应 Assignment 5）"></a>3.5 模块五：对齐与强化学习推理（Alignment &amp; Reasoning RL —— 对应 Assignment 5）</h3><p>当全监督预训练（Next-Token Prediction）完成后，我们通过<strong>弱监督（Weak Supervision）<strong>进一步激发模型的对话遵循与深度推理能力——因为对于复杂数学证明或长代码生成，</strong>“验证&#x2F;评判一个回答的好坏（Critique&#x2F;Verify）”往往比“从头写出标准答案（Generate）”容易得多</strong>。</p>
+<ul>
+<li><strong>后训练算法范式</strong>：<ol>
+<li>从模型采样生成多个候选回答（Rollouts）；</li>
+<li>使用人类标注员、确定性验证器（Verifier，如单元测试&#x2F;数学编译器）或 LM Judge 进行打分；</li>
+<li>更新策略网络以偏好高分回答：包括经典强化学习算法 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1707.06347">PPO (Schulman et al., 2017)</a> &#x2F; <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.02155">InstructGPT (2022)</a>、无需训练奖励模型直接优化偏好对的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.18290">DPO (Rafailov et al., 2023)</a>，以及 DeepSeek-R1 所采用的省去独立 Value Network（Critic）、通过组内采样归一化计算优势函数的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.03300">GRPO (Group Relative Policy Optimization, Shao et al., 2024)</a></strong>。</li>
+</ol>
+</li>
+<li><strong>大规模 RL 系统工程挑战（RL Systems at Scale）</strong>：<ul>
+<li>RL 不仅算法本身超参敏感、容易坍塌，在大规模下更是复杂的分布式系统工程：必须同时编排<strong>推理集群（Inference Server，负责异步高吞吐生成长思维链 Rollouts 及沙箱代码执行）<strong>与</strong>训练集群（Training Server，负责梯度更新）</strong>。</li>
+<li>如果推理 Worker 因某些长尾轨迹卡顿（Stragglers），策略权重更新后旧轨迹就会变成<strong>离策略（Off-policy）数据</strong>。工程上必须时刻在“最大化系统吞吐率（Throughput）”与“保持策略同分布性（On-policyness）”之间做精妙权衡。</li>
+</ul>
+</li>
+<li><strong>Assignment 5 实战内容</strong>：在 <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment5-alignment">Assignment 5</a> 中从零实现 SFT、DPO 与 GRPO（RLVR，基于可验证奖励的强化学习），提升模型在数学推理基准上的表现。</li>
+</ul>
+<hr>
+<h2 id="4-核心技术专题：Tokenization（分词器原理与从零实现）"><a href="#4-核心技术专题：Tokenization（分词器原理与从零实现）" class="headerlink" title="4. 核心技术专题：Tokenization（分词器原理与从零实现）"></a>4. 核心技术专题：Tokenization（分词器原理与从零实现）</h2><blockquote>
+<p>本单元致敬并深度参考了 <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=zduSFxRajkE">Andrej Karpathy 的经典 Tokenization 教学视频</a> 以及交互式可视化工具 <a target="_blank" rel="noopener" href="https://tiktokenizer.vercel.app/?encoder=gpt2">Tiktokenizer</a>。</p>
+</blockquote>
+<h3 id="4-1-形式化定义、抽象接口与评价指标"><a href="#4-1-形式化定义、抽象接口与评价指标" class="headerlink" title="4.1 形式化定义、抽象接口与评价指标"></a>4.1 形式化定义、抽象接口与评价指标</h3><ul>
+<li><p><strong>问题本质</strong>：原始人类文本在计算机中表示为 <strong>Unicode 字符串（Strings）</strong>，而语言模型是在离散的**整数索引序列（Sequences of Integer Indices，即 Tokens）**上定义概率分布 $P(x_1, x_2, \dots, x_T)$。分词器（Tokenizer）正是连接这两者的双向映射桥梁。</p>
+</li>
+<li><p><strong>核心契约（Round-trip Property）</strong>：任何合法的 Tokenizer 必须实现 <code>encode</code>（字符串 $\rightarrow$ 整数列表）和 <code>decode</code>（整数列表 $\rightarrow$ 字符串）两个方法，且满足无损往返恒等式：</p>
+<p>$$\forall s \in \Sigma^*, \quad \texttt{tokenizer.decode(tokenizer.encode(s))} &#x3D;&#x3D; s$$</p>
+</li>
+</ul>
+<p>在 <code>lecture_01.py</code> 中定义的抽象基类与核心评价指标 <strong>压缩率（Compression Ratio）</strong> 如下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> abc <span class="keyword">import</span> ABC</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Tokenizer</span>(<span class="title class_ inherited__">ABC</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;分词器抽象基类接口&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">encode</span>(<span class="params">self, string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">int</span>]:</span><br><span class="line">        <span class="keyword">raise</span> NotImplementedError</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">self, indices: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">        <span class="keyword">raise</span> NotImplementedError</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">get_compression_ratio</span>(<span class="params">string: <span class="built_in">str</span>, indices: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">float</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;</span></span><br><span class="line"><span class="string">    计算压缩率：每个 Token 平均代表多少个 UTF-8 字节 (Bytes per Token)。</span></span><br><span class="line"><span class="string">    压缩率越大 -&gt; 编码后的 Token 序列越短 -&gt; Transformer 注意力计算 (O(T^2)) 开销越小。</span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line">    num_bytes = <span class="built_in">len</span>(<span class="built_in">bytes</span>(string, encoding=<span class="string">&quot;utf-8&quot;</span>))</span><br><span class="line">    num_tokens = <span class="built_in">len</span>(indices)</span><br><span class="line">    <span class="keyword">return</span> num_bytes / num_tokens</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="4-2-工业界分词器的直观现象（以-OpenAI-tiktoken-为例）"><a href="#4-2-工业界分词器的直观现象（以-OpenAI-tiktoken-为例）" class="headerlink" title="4.2 工业界分词器的直观现象（以 OpenAI tiktoken 为例）"></a>4.2 工业界分词器的直观现象（以 OpenAI <code>tiktoken</code> 为例）</h3><p>在课堂演示中，Percy 使用 OpenAI 的 <code>o200k_base</code>（GPT-4o &#x2F; GPT-5 采用的 20 万词表分词器）对包含英文、Emoji 和中文的字符串 <code>&quot;Hello, 🌍! 你好!&quot;</code> 进行了测试：</p>
+<ul>
+<li>该字符串共包含 <strong>20 个 UTF-8 字节</strong>，被编码为 <strong>8 个 Token</strong>，压缩率为 $20 &#x2F; 8 &#x3D; \mathbf{2.5\text{ bytes&#x2F;token}}$。</li>
+<li>通过观察现代 BPE 分词器的输出，可以发现三个反直觉但极为关键的工程细节：<ol>
+<li><strong>前导空格与单词绑定</strong>：大多数学出来的 Token 是带有前导空格的完整词（如 <code>&quot; world&quot;</code> 是一个独立 Token），而不是把空格单独切开。</li>
+<li><strong>位置敏感的异构编码</strong>：出现在句首的 <code>&quot;hello&quot;</code> 和出现在句中的 <code>&quot; hello&quot;</code>（带前导空格）以及首字母大写的 <code>&quot;Hello&quot;</code>，会被映射为<strong>完全不同、毫无关联的整数 ID</strong>，模型必须在 Embedding 层重新学习它们的语义等价性。</li>
+<li><strong>数字切分的不一致性</strong>：不同分词器会将长数字切分为 1～3 位的片段（例如 <code>123456</code> 可能被切为 <code>123</code> 和 <code>456</code>，而 <code>12345</code> 被切为 <code>12</code> 和 <code>345</code>），这是导致早期 LLM 算术能力差的重要原因之一。</li>
+</ol>
+</li>
+<li><strong>词表大小（Vocabulary Size）与稀疏性权衡</strong>：扩大词表（现代多语言模型通常为 100K～200K）可以提高压缩率、缩短序列长度，但会导致 Embedding 矩阵与 LM Head 线性层参数膨胀，且尾部低频 Token 出现次数太少（Sparsity），模型难以充分训练其语义表征。</li>
+</ul>
+<hr>
+<h3 id="4-3-四种分词方案的全维度对比与演进推导"><a href="#4-3-四种分词方案的全维度对比与演进推导" class="headerlink" title="4.3 四种分词方案的全维度对比与演进推导"></a>4.3 四种分词方案的全维度对比与演进推导</h3><p>为什么现代大模型一致选择了基于字节的 BPE？我们顺着课堂代码逐一剖析前三种直观方案的致命缺陷：</p>
+<p>| 分词方案 | 基本切分粒度 | 词表大小 ($|V|$) | 压缩率 (<code>&quot;Hello, 🌍! 你好!&quot;</code>) | 核心优势 | 致命缺陷 |<br>| :— | :— | :— | :— | :— | :— |<br>| <strong>1. Character-level</strong> | Unicode 码点 (<code>ord</code>&#x2F;<code>chr</code>) | $\approx 150,000$ (下界 <code>127758</code>) | $\approx 1.54$ bytes&#x2F;token | 实现极简，单字符直接映射 | <strong>两头不讨好</strong>：词表极其庞大（含大量罕见 Emoji&#x2F;生僻字），但常用英文字符又完全没压缩 |<br>| <strong>2. Byte-level</strong> | UTF-8 字节 (<code>0..255</code>) | <strong>固定 256</strong> | <strong>恒为 1.00</strong> byte&#x2F;token | 词表极小且固定，绝无未知词 (<code>&lt;UNK&gt;</code>) | <strong>序列过长</strong>：压缩率为 1，长序列下 Transformer 的 $O(T^2)$ 注意力算力与显存直接爆炸 |<br>| <strong>3. Word-level</strong> | 正则表达式按词切分 | 无界（随语料增长） | 较高（约 $3\sim 5$） | 每个 Token 对应人类自然词汇，语义明确 | <strong>OOV 灾难</strong>：词表无上限，测试集遇到新词只能坍缩为 <code>&lt;UNK&gt;</code>，严重破坏生成与困惑度计算 |<br>| <strong>4. Byte-level BPE</strong> | UTF-8 字节 + 频次迭代合并 | <strong>可控超参</strong> (如 $32\text{K}\sim 200\text{K}$) | <strong>高且自适应</strong> (通常 $2.5\sim 4.5$) | 兼顾零 <code>&lt;UNK&gt;</code>、固定词表、高压缩率与自适应计算分配 | 需要独立预训练分词器，存在边界切分奇异性 |</p>
+<h4 id="方案一：基于-Unicode-字符的分词器（CharacterTokenizer）"><a href="#方案一：基于-Unicode-字符的分词器（CharacterTokenizer）" class="headerlink" title="方案一：基于 Unicode 字符的分词器（CharacterTokenizer）"></a>方案一：基于 Unicode 字符的分词器（<code>CharacterTokenizer</code>）</h4><p>Python 字符串天然是 Unicode 字符序列，可通过内置函数 <code>ord()</code> 获取整数码点（Code Point），如 <code>ord(&quot;a&quot;) == 97</code>，<code>ord(&quot;🌍&quot;) == 127757</code>，并通过 <code>chr()</code> 还原：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">CharacterTokenizer</span>(<span class="title class_ inherited__">Tokenizer</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;将字符串表示为 Unicode 码点序列&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">encode</span>(<span class="params">self, string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">int</span>]:</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">list</span>(<span class="built_in">map</span>(<span class="built_in">ord</span>, string))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">self, indices: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;&quot;</span>.join(<span class="built_in">map</span>(<span class="built_in">chr</span>, indices))</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>缺陷分析</strong>：Unicode 标准定义了约 15 万个字符（仅为了编码 <code>&quot;🌍&quot;</code>，词表上界就必须至少开到 <code>127758</code>）。这造成了极端的资源错配：极其罕见的字符独占宝贵的词表槽位，而高频出现的英文单词（如 <code>&quot;the&quot;</code>）却仍然拆成 3 个独立 Token，堪称**“大词表、低压缩率”的最差组合（Worst of both worlds）**。</li>
+</ul>
+<h4 id="方案二：基于-UTF-8-字节的分词器（ByteTokenizer）"><a href="#方案二：基于-UTF-8-字节的分词器（ByteTokenizer）" class="headerlink" title="方案二：基于 UTF-8 字节的分词器（ByteTokenizer）"></a>方案二：基于 UTF-8 字节的分词器（<code>ByteTokenizer</code>）</h4><p>利用 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/UTF-8">UTF-8 可变长字节编码</a>，任何 Unicode 字符都能编码为 1 到 4 个字节（每个字节为 <code>0</code> 到 <code>255</code> 之间的整数）：例如 <code>bytes(&quot;a&quot;, encoding=&quot;utf-8&quot;) == b&quot;a&quot;</code>（1 字节），而 <code>bytes(&quot;🌍&quot;, encoding=&quot;utf-8&quot;) == b&quot;\xf0\x9f\x8c\x8d&quot;</code>（4 字节）。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">ByteTokenizer</span>(<span class="title class_ inherited__">Tokenizer</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;将字符串表示为 UTF-8 字节流 (0 ~ 255)&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">encode</span>(<span class="params">self, string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">int</span>]:</span><br><span class="line">        string_bytes = string.encode(<span class="string">&quot;utf-8&quot;</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">list</span>(<span class="built_in">map</span>(<span class="built_in">int</span>, string_bytes))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">self, indices: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">        string_bytes = <span class="built_in">bytes</span>(indices)</span><br><span class="line">        <span class="keyword">return</span> string_bytes.decode(<span class="string">&quot;utf-8&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>缺陷分析</strong>：词表被完美锁定在 256，彻底消灭了未登录词问题。但它的压缩率恒等于 <strong>1.0</strong>。由于 Transformer 自注意力机制的计算复杂度关于序列长度 $T$ 呈二次方增长 $O(T^2)$，将序列拉长 4 倍会导致注意力计算量暴增 16 倍，且有限的 Context Window 能容纳的信息量大幅缩水。</li>
+</ul>
+<h4 id="方案三：基于正则切词的分词器（WordTokenizer）"><a href="#方案三：基于正则切词的分词器（WordTokenizer）" class="headerlink" title="方案三：基于正则切词的分词器（WordTokenizer）"></a>方案三：基于正则切词的分词器（<code>WordTokenizer</code>）</h4><p>传统 NLP 常用正则表达式（如 <code>regex.findall(r&quot;\w+|.&quot;, string)</code>）将连续字母数字聚合成词块：</p>
+<ul>
+<li>对于句子 <code>&quot;I&#39;ll say supercalifragilisticexpialidocious!&quot;</code>，它能将长单词保持为一个整体，压缩率很高。</li>
+<li><strong>缺陷分析</strong>：第一，生僻词（如 <code>supercalifragilisticexpialidocious</code>）在训练集中出现极少，模型根本学不好它的 Embedding；第二，词表大小随语料库无限膨胀；第三，推理时遇到拼写错误或新造词只能替换为 <code>&lt;UNK&gt;</code>（Unknown Token），不仅丢失全部字面信息，还会导致不同模型的 Perplexity 无法公平比较。</li>
+</ul>
+<hr>
+<h3 id="4-4-Byte-Pair-Encoding-BPE-算法深度解析与完整代码实现"><a href="#4-4-Byte-Pair-Encoding-BPE-算法深度解析与完整代码实现" class="headerlink" title="4.4 Byte-Pair Encoding (BPE) 算法深度解析与完整代码实现"></a>4.4 Byte-Pair Encoding (BPE) 算法深度解析与完整代码实现</h3><h4 id="4-4-1-历史渊源与核心直觉"><a href="#4-4-1-历史渊源与核心直觉" class="headerlink" title="4.4.1 历史渊源与核心直觉"></a>4.4.1 历史渊源与核心直觉</h4><ul>
+<li><strong>历史演进</strong>：BPE 算法最早由 <a target="_blank" rel="noopener" href="http://www.pennelynn.com/Documents/CUJ/HTML/94HTML/19940045.HTM">Philip Gage (1994)</a> 作为一种通用无损数据压缩算法提出；<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1508.07909">Sennrich et al. (2016)</a> 首次将其引入神经机器翻译（NMT）以解决罕见词切分；随后 <a target="_blank" rel="noopener" href="https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf">Radford et al. (2019) 在 GPT-2 中</a> 将其改造为直接作用在 <strong>UTF-8 字节流</strong> 上的 Byte-level BPE，从此成为现代 LLM 的事实标准。</li>
+<li><strong>核心直觉（自适应计算 Adaptive Computation）</strong>：在原始语料上<strong>训练</strong>分词器——将高频共现的字节序列（如常见词 <code>&quot; the&quot;</code>、常见词根 <code>&quot;ing&quot;</code>）合并为<strong>单个 Token</strong>，而将罕见序列拆解为<strong>多个细粒度子词或原始字节</strong>。这样既缩短了序列总长度，又让模型将更多的计算容量（Modeling Capacity）动态分配给信息密度更高、更罕见的文本片段。</li>
+</ul>
+<h4 id="4-4-2-BPE-训练与编解码完整源码（源自-lecture-01-py）"><a href="#4-4-2-BPE-训练与编解码完整源码（源自-lecture-01-py）" class="headerlink" title="4.4.2 BPE 训练与编解码完整源码（源自 lecture_01.py）"></a>4.4.2 BPE 训练与编解码完整源码（源自 <code>lecture_01.py</code>）</h4><p>BPE 算法从基础的 256 个单字节词表（索引 <code>0..255</code>）出发，循环执行 $K$ 次合并（<code>num_merges</code>）：每次统计当前序列中所有相邻 Token 对 $(t_i, t_{i+1})$ 的出现频次，找出频次最高的配对，为其分配一个新的整数索引 $256 + k$，更新词表与合并规则字典，并将原序列中所有该配对原地替换为新索引。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> dataclasses <span class="keyword">import</span> dataclass</span><br><span class="line"><span class="keyword">from</span> collections <span class="keyword">import</span> defaultdict</span><br><span class="line"></span><br><span class="line"><span class="meta">@dataclass(<span class="params">frozen=<span class="literal">True</span></span>)</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">BPETokenizerParams</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;定义一个 BPE 分词器所需的全部参数状态&quot;&quot;&quot;</span></span><br><span class="line">    vocab: <span class="built_in">dict</span>[<span class="built_in">int</span>, <span class="built_in">bytes</span>]                 <span class="comment"># token_id -&gt; 对应的字节串</span></span><br><span class="line">    merges: <span class="built_in">dict</span>[<span class="built_in">tuple</span>[<span class="built_in">int</span>, <span class="built_in">int</span>], <span class="built_in">int</span>]      <span class="comment"># (token_id_1, token_id_2) -&gt; 合并后的新 token_id</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">count_adjacent_pairs</span>(<span class="params">indices: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">dict</span>[<span class="built_in">tuple</span>[<span class="built_in">int</span>, <span class="built_in">int</span>], <span class="built_in">int</span>]:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;统计整数序列中所有相邻 Token 对的出现频次&quot;&quot;&quot;</span></span><br><span class="line">    counts = defaultdict(<span class="built_in">int</span>)</span><br><span class="line">    <span class="keyword">for</span> index1, index2 <span class="keyword">in</span> <span class="built_in">zip</span>(indices, indices[<span class="number">1</span>:]):</span><br><span class="line">        counts[(index1, index2)] += <span class="number">1</span></span><br><span class="line">    <span class="keyword">return</span> counts</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">merge</span>(<span class="params">indices: <span class="built_in">list</span>[<span class="built_in">int</span>], pair: <span class="built_in">tuple</span>[<span class="built_in">int</span>, <span class="built_in">int</span>], new_index: <span class="built_in">int</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">int</span>]:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;扫描序列 indices，将所有不重叠的相邻配对 pair 替换为 new_index&quot;&quot;&quot;</span></span><br><span class="line">    new_indices = []</span><br><span class="line">    i = <span class="number">0</span></span><br><span class="line">    <span class="keyword">while</span> i &lt; <span class="built_in">len</span>(indices):</span><br><span class="line">        <span class="keyword">if</span> i + <span class="number">1</span> &lt; <span class="built_in">len</span>(indices) <span class="keyword">and</span> indices[i] == pair[<span class="number">0</span>] <span class="keyword">and</span> indices[i + <span class="number">1</span>] == pair[<span class="number">1</span>]:</span><br><span class="line">            new_indices.append(new_index)</span><br><span class="line">            i += <span class="number">2</span>  <span class="comment"># 成功合并，跳过两个元素</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            new_indices.append(indices[i])</span><br><span class="line">            i += <span class="number">1</span></span><br><span class="line">    <span class="keyword">return</span> new_indices</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">train_bpe</span>(<span class="params">string: <span class="built_in">str</span>, num_merges: <span class="built_in">int</span></span>) -&gt; BPETokenizerParams:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;在给定文本上训练 Byte-level BPE 分词器&quot;&quot;&quot;</span></span><br><span class="line">    <span class="comment"># 1. 初始状态：将字符串编码为 UTF-8 字节序列 (0 ~ 255)</span></span><br><span class="line">    indices = <span class="built_in">list</span>(<span class="built_in">map</span>(<span class="built_in">int</span>, string.encode(<span class="string">&quot;utf-8&quot;</span>)))</span><br><span class="line">    merges: <span class="built_in">dict</span>[<span class="built_in">tuple</span>[<span class="built_in">int</span>, <span class="built_in">int</span>], <span class="built_in">int</span>] = &#123;&#125;</span><br><span class="line">    vocab: <span class="built_in">dict</span>[<span class="built_in">int</span>, <span class="built_in">bytes</span>] = &#123;x: <span class="built_in">bytes</span>([x]) <span class="keyword">for</span> x <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">256</span>)&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 迭代合并最高频的相邻 Token 对</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(num_merges):</span><br><span class="line">        counts = count_adjacent_pairs(indices)</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> counts:</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line">        <span class="comment"># 找出出现次数最多的相邻对</span></span><br><span class="line">        pair = <span class="built_in">max</span>(counts, key=counts.get)</span><br><span class="line">        new_index = <span class="number">256</span> + i</span><br><span class="line">        <span class="comment"># 记录合并规则并扩展词表字节映射</span></span><br><span class="line">        merges[pair] = new_index</span><br><span class="line">        vocab[new_index] = vocab[pair[<span class="number">0</span>]] + vocab[pair[<span class="number">1</span>]]</span><br><span class="line">        <span class="comment"># 更新序列</span></span><br><span class="line">        indices = merge(indices, pair, new_index)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> BPETokenizerParams(vocab=vocab, merges=merges)</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">BPETokenizer</span>(<span class="title class_ inherited__">Tokenizer</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;基于训练好的词表与合并规则执行编解码的 BPE 分词器&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, params: BPETokenizerParams</span>):</span><br><span class="line">        <span class="variable language_">self</span>.params = params</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">encode</span>(<span class="params">self, string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">int</span>]:</span><br><span class="line">        indices = <span class="built_in">list</span>(<span class="built_in">map</span>(<span class="built_in">int</span>, string.encode(<span class="string">&quot;utf-8&quot;</span>)))</span><br><span class="line">        <span class="comment"># 注意：按训练时的合并先后顺序依次应用规则（课堂教学版，时间复杂度较高）</span></span><br><span class="line">        <span class="keyword">for</span> pair, new_index <span class="keyword">in</span> <span class="variable language_">self</span>.params.merges.items():</span><br><span class="line">            indices = merge(indices, pair, new_index)</span><br><span class="line">        <span class="keyword">return</span> indices</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">self, indices: <span class="built_in">list</span>[<span class="built_in">int</span>]</span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">        bytes_list = <span class="built_in">list</span>(<span class="built_in">map</span>(<span class="variable language_">self</span>.params.vocab.get, indices))</span><br><span class="line">        <span class="comment"># 注意：实际生产中需考虑无效 UTF-8 字节序列的容错处理 (errors=&quot;replace&quot;)</span></span><br><span class="line">        <span class="keyword">return</span> <span class="string">b&quot;&quot;</span>.join(bytes_list).decode(<span class="string">&quot;utf-8&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-4-3-课堂算例逐步状态追踪：-the-cat-in-the-hat-num-merges-3"><a href="#4-4-3-课堂算例逐步状态追踪：-the-cat-in-the-hat-num-merges-3" class="headerlink" title="4.4.3 课堂算例逐步状态追踪：&quot;the cat in the hat&quot; (num_merges=3)"></a>4.4.3 课堂算例逐步状态追踪：<code>&quot;the cat in the hat&quot;</code> (<code>num_merges=3</code>)</h4><p>我们在语料 <code>&quot;the cat in the hat&quot;</code>（共 18 个 ASCII 字节）上完整追踪 <code>train_bpe</code> 的 3 步迭代状态变化：</p>
+<ul>
+<li><strong>初始状态（Step 0）</strong>：<ul>
+<li>关键 ASCII 字节对照：<code>t=116</code>, <code>h=104</code>, <code>e=101</code>, <code>&#39; &#39;=32</code>, <code>c=99</code>, <code>a=97</code>, <code>i=105</code>, <code>n=110</code>。</li>
+<li>初始序列（长 18）：<code>[116, 104, 101, 32, 99, 97, 116, 32, 105, 110, 32, 116, 104, 101, 32, 104, 97, 116]</code></li>
+</ul>
+</li>
+<li><strong>第 1 次合并（Iteration $i&#x3D;0$）</strong>：<ul>
+<li>统计相邻频次：<code>counts</code> 中 <code>(116, 104)</code>（即 <code>&quot;th&quot;</code>）、<code>(104, 101)</code>（<code>&quot;he&quot;</code>）、<code>(101, 32)</code>（<code>&quot;e &quot;</code>）、<code>(97, 116)</code>（<code>&quot;at&quot;</code>）、<code>(32, 116)</code>（<code>&quot; t&quot;</code>）均出现了 <strong>2 次</strong>。</li>
+<li>选取第一个最高频配对 <code>pair = (116, 104)</code>，分配新索引 <strong><code>256</code></strong> $\rightarrow$ <code>vocab[256] = b&quot;th&quot;</code>。</li>
+<li>替换后序列（长 16）：<code>[256, 101, 32, 99, 97, 116, 32, 105, 110, 32, 256, 101, 32, 104, 97, 116]</code></li>
+</ul>
+</li>
+<li><strong>第 2 次合并（Iteration $i&#x3D;1$）</strong>：<ul>
+<li>统计相邻频次：<code>(256, 101)</code>（即 <code>&quot;the&quot;</code>）出现了 <strong>2 次</strong>。</li>
+<li>合并 <code>pair = (256, 101)</code>，分配新索引 <strong><code>257</code></strong> $\rightarrow$ <code>vocab[257] = b&quot;the&quot;</code>。</li>
+<li>替换后序列（长 14）：<code>[257, 32, 99, 97, 116, 32, 105, 110, 32, 257, 32, 104, 97, 116]</code></li>
+</ul>
+</li>
+<li><strong>第 3 次合并（Iteration $i&#x3D;2$）</strong>：<ul>
+<li>统计相邻频次：<code>(257, 32)</code>（即 <code>&quot;the &quot;</code>）出现了 <strong>2 次</strong>。</li>
+<li>合并 <code>pair = (257, 32)</code>，分配新索引 <strong><code>258</code></strong> $\rightarrow$ <code>vocab[258] = b&quot;the &quot;</code>。</li>
+<li>替换后序列（长 12）：<code>[258, 99, 97, 116, 32, 105, 110, 32, 258, 104, 97, 116]</code></li>
+</ul>
+</li>
+<li><strong>最终结果与新文本泛化</strong>：<ul>
+<li>训练后序列从 18 个 Token 缩短为 12 个 Token，压缩率提升至 $18 &#x2F; 12 &#x3D; \mathbf{1.5}$。</li>
+<li>当用该分词器编码新句子 <code>&quot;the quick brown fox&quot;</code> 时，前缀 <code>&quot;the &quot;</code> 会直接经过 <code>256 -&gt; 257 -&gt; 258</code> 合并为单个 Token <code>258</code>，其余未见过的单词则安全回退为基础字节序列，完美实现 Round-trip 解码。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="4-5-从玩具代码到工业级实现：Assignment-1-的四大工程挑战"><a href="#4-5-从玩具代码到工业级实现：Assignment-1-的四大工程挑战" class="headerlink" title="4.5 从玩具代码到工业级实现：Assignment 1 的四大工程挑战"></a>4.5 从玩具代码到工业级实现：Assignment 1 的四大工程挑战</h3><p>Percy 特别指出，上述课堂代码虽然逻辑完整，但在大规模语料上<strong>运行极慢</strong>。在 <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment1-basics">Assignment 1</a> 中，你需要实现一个工业级性能的 BPE 分词器，重点解决以下四个核心工程问题：</p>
+<ol>
+<li><p><strong>引入正则预分词（Pre-tokenization via Regex）</strong>：</p>
+<ul>
+<li>如果直接在整篇文档的原始字节流上运行 BPE，跨词边界的常见组合（例如标点符号与前一个词如 <code>&quot;dog.&quot;</code> vs <code>&quot;dog!&quot;</code>）会被错误合并在一起，且扫描整篇长文档效率极低。</li>
+<li>GPT-2 引入了经典的基于 Unicode 类别的正则表达式，先将长文本粗切分为互不跨越边界的预分词块（Chunks）：<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PAT = <span class="string">r&quot;&quot;&quot;&#x27;(?:[sdmt]|ll|ve|re)| ?\p&#123;L&#125;+| ?\p&#123;N&#125;+| ?[^\s\p&#123;L&#125;\p&#123;N&#125;]+|\s+(?!\S)|\s+&quot;&quot;&quot;</span></span><br></pre></td></tr></table></figure></li>
+<li><strong>工程红利</strong>：BPE 合并被严格限制在每个独立的 Chunk 内部进行！这意味着在训练时，我们可以先统计整个语料库中每个唯一 Chunk（Word Frequency Table）出现的总次数，而无需在数亿字节的原始数组上反复遍历修改。</li>
+</ul>
+</li>
+<li><p><strong>训练阶段的增量索引优化（Incremental Pair Counting &amp; Priority Queue）</strong>：</p>
+<ul>
+<li>朴素实现每次合并都要全量重算 <code>count_adjacent_pairs</code>，时间复杂度高达 $O(M \cdot N)$（$M$ 为合并次数，$N$ 为语料长度）。</li>
+<li><strong>优化方案</strong>：维护一个 <code>pair -&gt; 所在词块位置集合</code> 的倒排索引（Inverted Index）以及最大堆（Max-Heap &#x2F; Priority Queue）。每次合并最高频配对 $(A, B) \rightarrow C$ 时，只需局部更新包含 $(A, B)$ 的那些词块中受影响的左右相邻对计数（例如原来的 $(X, A)$ 计数减一、新增 $(X, C)$ 计数加一），将单步合并复杂度降至与该配对出现频次成正比。</li>
+</ul>
+</li>
+<li><p><strong>编码（<code>encode</code>）阶段的时间复杂度优化</strong>：</p>
+<ul>
+<li>课堂版 <code>encode</code> 遍历了 <code>self.params.merges</code> 中的所有 $M$ 条规则（当词表为 100K 时需循环 10 万次），复杂度为 $O(M \cdot L)$。</li>
+<li><strong>优化方案</strong>：对于长度为 $L$ 的待编码预分词块，只有当前序列中实际存在的相邻对才可能被合并。每次只需在当前相邻对中查找在 <code>merges</code> 字典里具有**最小合并序号（Rank 最小，即训练时最早被合并）**的配对并优先执行合并，从而将编码复杂度降低至 $O(L \log L)$ 或 $O(L^2)$（因为单个单词块 $L$ 极短，速度提升数个数量级）。</li>
+</ul>
+</li>
+<li><p><strong>特殊控制符（Special Tokens）的原子保护与 UTF-8 边界安全</strong>：</p>
+<ul>
+<li>诸如 <code>&lt;|endoftext|&gt;</code>、<code>&lt;|im_start|&gt;</code> 等特殊 Token 必须在预分词阶段前被优先精确识别并作为不可分割的原子整体保留，绝不能被正则拆碎或与周边字节发生 BPE 合并。</li>
+<li>在 <code>decode</code> 阶段，由于单个 Token 可能只包含多字节 UTF-8 字符的一部分（当模型生成截断或随机采样时），必须先将所有 Token 的 <code>bytes</code> 拼接为完整字节流 <code>b&quot;&quot;.join(...)</code>，再统一调用 <code>.decode(&quot;utf-8&quot;, errors=&quot;replace&quot;)</code> 以防止抛出 <code>UnicodeDecodeError</code>。</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3 id="4-6-总结与前沿展望：我们未来能彻底抛弃-Tokenizer-吗？"><a href="#4-6-总结与前沿展望：我们未来能彻底抛弃-Tokenizer-吗？" class="headerlink" title="4.6 总结与前沿展望：我们未来能彻底抛弃 Tokenizer 吗？"></a>4.6 总结与前沿展望：我们未来能彻底抛弃 Tokenizer 吗？</h3><p>在讲座结尾，Percy 总结道：虽然他每年都希望“明年不用再讲 Tokenization 了”，但截至 2026 年，几乎所有前沿基座模型依然依赖 BPE 分词器。哪怕未来出现了真正能扩展到 Frontier 规模的端到端无分词器架构（如动态分层分块的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2412.09871">BLT</a> 或 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.00001">H-Net</a>），任何替代方案在数学与系统本质上仍必须满足以下<strong>两条不可违背的核心准则</strong>：</p>
+<ol>
+<li><strong>序列抽象化（Sequence Abstraction）</strong>：骨干网络（如 Transformer）不能永远停留在信噪比极低的原始原子粒度（无论是文本字节、视频像素还是 DNA 碱基对）上做全局密集交互，必须先将其提升（Lift）为更高层级的语义块（Chunks&#x2F;Patches）。</li>
+<li><strong>可变长自适应计算（Variable-Length Adaptive Computation）</strong>：不同位置的字节包含的信息量（熵）天差地别。系统必须具备动态分配算力的能力——在高度可预测的常规片段上大步快走（压缩为极少数隐藏状态），而在高信息量、罕见或逻辑关键的片段上投入密集的计算容量。</li>
+</ol>
+<hr>
+<h2 id="5-课后思考与自测练习（Review-Self-Check）"><a href="#5-课后思考与自测练习（Review-Self-Check）" class="headerlink" title="5. 课后思考与自测练习（Review &amp; Self-Check）"></a>5. 课后思考与自测练习（Review &amp; Self-Check）</h2><ol>
+<li><p><strong>系统算力估算</strong>：假设你要复现一个 8B 参数的稠密 Transformer 模型，按照 Chinchilla 算力最优法则（$D &#x3D; 20N$），你需要准备多少 Token 的训练数据？整个预训练过程大约需要多少 FLOPs？如果在单张峰值算力为 2.25 PFLOP&#x2F;s（假设 MFU 模型算力利用率为 50%）的 NVIDIA B200 GPU 上训练，需要运行多少小时？</p>
+<ul>
+<li><em>参考推导</em>：$D &#x3D; 20 \times 8 \times 10^9 &#x3D; 1.6 \times 10^{11}$ (160B Tokens)。总算力 $C \approx 6ND &#x3D; 6 \times (8 \times 10^9) \times (1.6 \times 10^{11}) &#x3D; 7.68 \times 10^{21}\text{ FLOPs}$。单卡有效算力为 $2.25 \times 10^{15} \times 0.5 &#x3D; 1.125 \times 10^{15}\text{ FLOP&#x2F;s}$，所需时间 $t &#x3D; \frac{7.68 \times 10^{21}}{1.125 \times 10^{15}} \approx 6.83 \times 10^6\text{ 秒} \approx \mathbf{1896\text{ 小时}}$（约 79 天；若用 8 卡 DGX B200 则仅需约 10 天）。</li>
+</ul>
+</li>
+<li><p><strong>BPE 编码行为分析</strong>：在 <code>BPETokenizer.encode()</code> 中，如果我们在新句子上不按照训练时记录的 <code>merges</code> 先后顺序合并，而是每次统计当前待编码新句子自身的最高频相邻字节对进行合并，会发生什么严重后果？</p>
+<ul>
+<li><em>参考解析</em>：会导致<strong>训练与推理词表彻底不一致</strong>！同一串字节在不同上下文句子中会因为局部频次不同而被合并成不同的子词序列，或者产生训练词表 <code>vocab</code> 中根本不存在的配对，导致模型完全无法识别 Token ID。</li>
+</ul>
+</li>
+<li><p><strong>动手实践建议</strong>：克隆 <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment1-basics">Assignment 1 仓库</a>，阅读 <code>cs336_assignment1_basics.pdf</code> 中关于 BPE 训练（Problem <code>train_bpe</code>）的平局打破规则（Tie-breaking rule：当两个字节对频次相同时，按字典序 Lexicographically 较大者优先合并），尝试在本地通过 <code>uv run pytest -k test_train_bpe</code> 单元测试。</p>
+</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/10/25/cs336_lecture_01_notes/">https://kanosa0101.github.io/2026/10/25/cs336_lecture_01_notes/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B/">大语言模型</a><a class="post-meta__tags" href="/tags/CS336/">CS336</a><a class="post-meta__tags" href="/tags/Tokenization/">Tokenization</a><a class="post-meta__tags" href="/tags/BPE/">BPE</a><a class="post-meta__tags" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/">分布式系统</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2025/11/23/hello-world/" title="Hello World"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Hello World</div></div><div class="info-2"><div class="info-item-1">Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any problems when using Hexo, you can find the answer in troubleshooting or you can ask me on GitHub. Quick StartCreate a new post1$ hexo new &quot;My New Post&quot;  More info: Writing Run server1$ hexo server  More info: Server Generate static files1$ hexo generate  More info: Generating Deploy to remote sites1$ hexo deploy  More info: Deployment </div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">2</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">5</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Stanford-CS336-Spring-2026-Lecture-1-%E6%B7%B1%E5%BA%A6%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9AOverview-Tokenization"><span class="toc-number">1.</span> <span class="toc-text">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E5%BC%80%E8%AE%BE-CS336%EF%BC%9A%E4%BB%8E%E2%80%9C%E8%B0%83%E7%94%A8-API%E2%80%9D%E5%9B%9E%E5%BD%92%E5%BA%95%E5%B1%82%E6%9E%84%E5%BB%BA"><span class="toc-number">1.1.</span> <span class="toc-text">1. 为什么要开设 CS336：从“调用 API”回归底层构建</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E6%8A%BD%E8%B1%A1%E5%B1%82%E4%B8%8A%E7%A7%BB%E5%B8%A6%E6%9D%A5%E7%9A%84%E2%80%9C%E6%8A%80%E6%9C%AF%E6%96%AD%E5%B1%82%E2%80%9D%E4%B8%8E%E6%8A%BD%E8%B1%A1%E6%B3%84%E6%BC%8F"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 抽象层上移带来的“技术断层”与抽象泄漏</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%B7%A5%E4%B8%9A%E5%8C%96%E5%9B%B0%E5%A2%83%E4%B8%8E%E5%B0%8F%E8%A7%84%E6%A8%A1%E5%AE%9E%E9%AA%8C%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 语言模型工业化困境与小规模实验的局限性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E4%BB%80%E4%B9%88%E7%9F%A5%E8%AF%86%E5%8F%AF%E4%BB%A5%E7%9C%9F%E6%AD%A3%E8%BF%81%E7%A7%BB%E5%88%B0%E5%89%8D%E6%B2%BF%E8%A7%84%E6%A8%A1%EF%BC%9F"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.3 什么知识可以真正迁移到前沿规模？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-%E9%87%8D%E6%96%B0%E5%AE%A1%E8%A7%86%E3%80%8A%E8%8B%A6%E6%B6%A9%E7%9A%84%E6%95%99%E8%AE%AD%E3%80%8B%EF%BC%88The-Bitter-Lesson%EF%BC%89%E4%B8%8E%E6%95%88%E7%8E%87%E5%85%AC%E5%BC%8F"><span class="toc-number">1.1.4.</span> <span class="toc-text">1.4 重新审视《苦涩的教训》（The Bitter Lesson）与效率公式</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E6%BC%94%E8%BF%9B%E5%85%A8%E6%99%AF%E4%B8%8E%E5%BC%80%E6%BA%90%E7%94%9F%E6%80%81%EF%BC%88Landscape-Ecosystem%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">2. 语言模型演进全景与开源生态（Landscape &amp; Ecosystem）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%9B%9B%E9%98%B6%E6%AE%B5%E6%8A%80%E6%9C%AF%E6%BC%94%E8%BF%9B%E8%84%89%E7%BB%9C"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 四阶段技术演进脉络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-2026-%E5%B9%B4%E7%9A%84%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%BD%A2%E6%80%81%EF%BC%9A%E4%BB%8E%E5%AF%B9%E8%AF%9D%E5%88%B0%E8%87%AA%E4%B8%BB%E6%99%BA%E8%83%BD%E4%BD%93%EF%BC%88Agents%EF%BC%89"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 2026 年的语言模型形态：从对话到自主智能体（Agents）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-CS336-%E5%85%A8%E8%AF%BE%E7%A8%8B%E4%BA%94%E5%A4%A7%E6%A0%B8%E5%BF%83%E6%A8%A1%E5%9D%97%E5%85%A8%E8%A7%88%EF%BC%88Course-Syllabus-Deep-Dive%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">3. CS336 全课程五大核心模块全览（Course Syllabus Deep-Dive）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%A8%A1%E5%9D%97%E4%B8%80%EF%BC%9A%E5%9F%BA%E7%A1%80%E6%9E%84%E5%BB%BA%EF%BC%88Basics-%E2%80%94%E2%80%94-%E5%AF%B9%E5%BA%94-Assignment-1%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 模块一：基础构建（Basics —— 对应 Assignment 1）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%A8%A1%E5%9D%97%E4%BA%8C%EF%BC%9A%E7%B3%BB%E7%BB%9F%E4%BC%98%E5%8C%96%EF%BC%88Systems-%E2%80%94%E2%80%94-%E5%AF%B9%E5%BA%94-Assignment-2%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 模块二：系统优化（Systems —— 对应 Assignment 2）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%A8%A1%E5%9D%97%E4%B8%89%EF%BC%9A%E6%89%A9%E5%B1%95%E5%AE%9A%E5%BE%8B%EF%BC%88Scaling-Laws-%E2%80%94%E2%80%94-%E5%AF%B9%E5%BA%94-Assignment-3%EF%BC%89"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 模块三：扩展定律（Scaling Laws —— 对应 Assignment 3）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E6%A8%A1%E5%9D%97%E5%9B%9B%EF%BC%9A%E8%AF%84%E6%B5%8B%E4%B8%8E%E6%95%B0%E6%8D%AE%E5%B7%A5%E7%A8%8B%EF%BC%88Data-%E2%80%94%E2%80%94-%E5%AF%B9%E5%BA%94-Assignment-4%EF%BC%89"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 模块四：评测与数据工程（Data —— 对应 Assignment 4）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E6%A8%A1%E5%9D%97%E4%BA%94%EF%BC%9A%E5%AF%B9%E9%BD%90%E4%B8%8E%E5%BC%BA%E5%8C%96%E5%AD%A6%E4%B9%A0%E6%8E%A8%E7%90%86%EF%BC%88Alignment-Reasoning-RL-%E2%80%94%E2%80%94-%E5%AF%B9%E5%BA%94-Assignment-5%EF%BC%89"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 模块五：对齐与强化学习推理（Alignment &amp; Reasoning RL —— 对应 Assignment 5）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%93%E9%A2%98%EF%BC%9ATokenization%EF%BC%88%E5%88%86%E8%AF%8D%E5%99%A8%E5%8E%9F%E7%90%86%E4%B8%8E%E4%BB%8E%E9%9B%B6%E5%AE%9E%E7%8E%B0%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">4. 核心技术专题：Tokenization（分词器原理与从零实现）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%BD%A2%E5%BC%8F%E5%8C%96%E5%AE%9A%E4%B9%89%E3%80%81%E6%8A%BD%E8%B1%A1%E6%8E%A5%E5%8F%A3%E4%B8%8E%E8%AF%84%E4%BB%B7%E6%8C%87%E6%A0%87"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 形式化定义、抽象接口与评价指标</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%B7%A5%E4%B8%9A%E7%95%8C%E5%88%86%E8%AF%8D%E5%99%A8%E7%9A%84%E7%9B%B4%E8%A7%82%E7%8E%B0%E8%B1%A1%EF%BC%88%E4%BB%A5-OpenAI-tiktoken-%E4%B8%BA%E4%BE%8B%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 工业界分词器的直观现象（以 OpenAI tiktoken 为例）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E5%9B%9B%E7%A7%8D%E5%88%86%E8%AF%8D%E6%96%B9%E6%A1%88%E7%9A%84%E5%85%A8%E7%BB%B4%E5%BA%A6%E5%AF%B9%E6%AF%94%E4%B8%8E%E6%BC%94%E8%BF%9B%E6%8E%A8%E5%AF%BC"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 四种分词方案的全维度对比与演进推导</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%B9%E6%A1%88%E4%B8%80%EF%BC%9A%E5%9F%BA%E4%BA%8E-Unicode-%E5%AD%97%E7%AC%A6%E7%9A%84%E5%88%86%E8%AF%8D%E5%99%A8%EF%BC%88CharacterTokenizer%EF%BC%89"><span class="toc-number">1.4.3.1.</span> <span class="toc-text">方案一：基于 Unicode 字符的分词器（CharacterTokenizer）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%B9%E6%A1%88%E4%BA%8C%EF%BC%9A%E5%9F%BA%E4%BA%8E-UTF-8-%E5%AD%97%E8%8A%82%E7%9A%84%E5%88%86%E8%AF%8D%E5%99%A8%EF%BC%88ByteTokenizer%EF%BC%89"><span class="toc-number">1.4.3.2.</span> <span class="toc-text">方案二：基于 UTF-8 字节的分词器（ByteTokenizer）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%B9%E6%A1%88%E4%B8%89%EF%BC%9A%E5%9F%BA%E4%BA%8E%E6%AD%A3%E5%88%99%E5%88%87%E8%AF%8D%E7%9A%84%E5%88%86%E8%AF%8D%E5%99%A8%EF%BC%88WordTokenizer%EF%BC%89"><span class="toc-number">1.4.3.3.</span> <span class="toc-text">方案三：基于正则切词的分词器（WordTokenizer）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-Byte-Pair-Encoding-BPE-%E7%AE%97%E6%B3%95%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90%E4%B8%8E%E5%AE%8C%E6%95%B4%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 Byte-Pair Encoding (BPE) 算法深度解析与完整代码实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#4-4-1-%E5%8E%86%E5%8F%B2%E6%B8%8A%E6%BA%90%E4%B8%8E%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89"><span class="toc-number">1.4.4.1.</span> <span class="toc-text">4.4.1 历史渊源与核心直觉</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-4-2-BPE-%E8%AE%AD%E7%BB%83%E4%B8%8E%E7%BC%96%E8%A7%A3%E7%A0%81%E5%AE%8C%E6%95%B4%E6%BA%90%E7%A0%81%EF%BC%88%E6%BA%90%E8%87%AA-lecture-01-py%EF%BC%89"><span class="toc-number">1.4.4.2.</span> <span class="toc-text">4.4.2 BPE 训练与编解码完整源码（源自 lecture_01.py）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-4-3-%E8%AF%BE%E5%A0%82%E7%AE%97%E4%BE%8B%E9%80%90%E6%AD%A5%E7%8A%B6%E6%80%81%E8%BF%BD%E8%B8%AA%EF%BC%9A-the-cat-in-the-hat-num-merges-3"><span class="toc-number">1.4.4.3.</span> <span class="toc-text">4.4.3 课堂算例逐步状态追踪：&quot;the cat in the hat&quot; (num_merges&#x3D;3)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E4%BB%8E%E7%8E%A9%E5%85%B7%E4%BB%A3%E7%A0%81%E5%88%B0%E5%B7%A5%E4%B8%9A%E7%BA%A7%E5%AE%9E%E7%8E%B0%EF%BC%9AAssignment-1-%E7%9A%84%E5%9B%9B%E5%A4%A7%E5%B7%A5%E7%A8%8B%E6%8C%91%E6%88%98"><span class="toc-number">1.4.5.</span> <span class="toc-text">4.5 从玩具代码到工业级实现：Assignment 1 的四大工程挑战</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-%E6%80%BB%E7%BB%93%E4%B8%8E%E5%89%8D%E6%B2%BF%E5%B1%95%E6%9C%9B%EF%BC%9A%E6%88%91%E4%BB%AC%E6%9C%AA%E6%9D%A5%E8%83%BD%E5%BD%BB%E5%BA%95%E6%8A%9B%E5%BC%83-Tokenizer-%E5%90%97%EF%BC%9F"><span class="toc-number">1.4.6.</span> <span class="toc-text">4.6 总结与前沿展望：我们未来能彻底抛弃 Tokenizer 吗？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E8%AF%BE%E5%90%8E%E6%80%9D%E8%80%83%E4%B8%8E%E8%87%AA%E6%B5%8B%E7%BB%83%E4%B9%A0%EF%BC%88Review-Self-Check%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">5. 课后思考与自测练习（Review &amp; Self-Check）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/25/cs336_lecture_01_notes/" title="Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization</a><time datetime="2026-10-25T02:20:00.000Z" title="发表于 2026-10-25 10:20:00">2026-10-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/11/23/hello-world/" title="Hello World">Hello World</a><time datetime="2025-11-23T10:10:44.000Z" title="发表于 2025-11-23 18:10:44">2025-11-23</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"></div><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>
