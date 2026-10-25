@@ -11,6 +11,7 @@ tags:
   - BPE
   - 分布式系统
 description: Stanford CS336 语言模型从零构建第一讲深度笔记：系统剖析抽象层上移与泄漏、大模型效率黄金法则、五大核心模块演进，以及字节级 BPE 分词器的形式化定义、算法推导与从零代码实现。
+mathjax: true
 ---
 
 # Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview & Tokenization
@@ -470,7 +471,15 @@ Percy 特别指出，上述课堂代码虽然逻辑完整，但在大规模语�
 ## 5. 课后思考与自测练习（Review & Self-Check）
 
 1. **系统算力估算**：假设你要复现一个 8B 参数的稠密 Transformer 模型，按照 Chinchilla 算力最优法则（$D = 20N$），你需要准备多少 Token 的训练数据？整个预训练过程大约需要多少 FLOPs？如果在单张峰值算力为 2.25 PFLOP/s（假设 MFU 模型算力利用率为 50%）的 NVIDIA B200 GPU 上训练，需要运行多少小时？
-   * *参考推导*：$D = 20 \times 8 \times 10^9 = 1.6 \times 10^{11}$ (160B Tokens)。总算力 $C \approx 6ND = 6 \times (8 \times 10^9) \times (1.6 \times 10^{11}) = 7.68 \times 10^{21}\text{ FLOPs}$。单卡有效算力为 $2.25 \times 10^{15} \times 0.5 = 1.125 \times 10^{15}\text{ FLOP/s}$，所需时间 $t = \frac{7.68 \times 10^{21}}{1.125 \times 10^{15}} \approx 6.83 \times 10^6\text{ 秒} \approx \mathbf{1896\text{ 小时}}$（约 79 天；若用 8 卡 DGX B200 则仅需约 10 天）。
+   * *参考推导*：
+     * **数据预算**：$D = 20 \times 8 \times 10^9 = 1.6 \times 10^{11}$（即 160B Tokens）。
+     * **总浮点运算量 (FLOPs)**：
+       $$C \approx 6ND = 6 \times (8 \times 10^9) \times (1.6 \times 10^{11}) = 7.68 \times 10^{21}\text{ FLOPs}$$
+     * **单卡有效算力**：
+       $$\text{Effective Throughput} = 2.25 \times 10^{15} \times 0.5 = 1.125 \times 10^{15}\text{ FLOP/s}$$
+     * **所需训练时间**：
+       $$t = \frac{7.68 \times 10^{21}}{1.125 \times 10^{15}} \approx 6.83 \times 10^6\text{ s} \approx 1896\text{ 小时}$$
+       （单卡约需 79 天；若使用包含 8 张 B200 的 DGX 节点并行训练，则仅需约 **10 天**）。
 
 2. **BPE 编码行为分析**：在 `BPETokenizer.encode()` 中，如果我们在新句子上不按照训练时记录的 `merges` 先后顺序合并，而是每次统计当前待编码新句子自身的最高频相邻字节对进行合并，会发生什么严重后果？
    * *参考解析*：会导致**训练与推理词表彻底不一致**！同一串字节在不同上下文句子中会因为局部频次不同而被合并成不同的子词序列，或者产生训练词表 `vocab` 中根本不存在的配对，导致模型完全无法识别 Token ID。
