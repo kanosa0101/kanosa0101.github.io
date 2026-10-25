@@ -41,7 +41,16 @@ async function prepareArticle({ root, input, category, expectedHash }) {
   meta.title = String(supplied.title || body.match(/^#\s+(.+)$/m)?.[1] || previous.title || filename.slice(0, -3));
   meta.date = dateText(supplied.date || previous.date) || localDate();
   if (Number.isNaN(Date.parse(meta.date))) throw new Error('文章发布日期无效，请检查 date 字段');
-  meta.categories = category ? [category] : (supplied.categories || previous.categories || ['经验分享']);
+  if (category) {
+    meta.categories = Array.isArray(category)
+      ? category
+      : String(category).split(/[/,，、>]/).map(s => s.trim()).filter(Boolean);
+  } else {
+    const rawCat = supplied.categories || previous.categories || ['经验分享'];
+    meta.categories = Array.isArray(rawCat)
+      ? rawCat
+      : String(rawCat).split(/[/,，、>]/).map(s => s.trim()).filter(Boolean);
+  }
   const rootSetting = String(supplied['typora-root-url'] || '');
   if (/^\\\\/.test(rootSetting) || /^file:\/\/[^/]/i.test(rootSetting)) throw new Error('请先把网络共享图片复制到本机目录后发布');
   const imageRoot = rootSetting ? (/^file:/i.test(rootSetting) ? fileURLToPath(rootSetting) : path.resolve(path.dirname(input), rootSetting)) : null;
