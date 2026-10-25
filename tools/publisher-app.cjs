@@ -38,7 +38,7 @@ async function getBlogCategories() {
   return Array.from(categories);
 }
 
-// Open native Windows file dialog
+// Open native Windows file dialog (using Base64 for 100% reliable Unicode/Chinese path handling)
 function openFileDialog() {
   return new Promise((resolve) => {
     const psScript = `
@@ -47,11 +47,22 @@ function openFileDialog() {
       $d.Filter = 'Markdown 文章 (*.md)|*.md'
       $d.Title = '选择要发布的 Markdown 文章原稿'
       $d.InitialDirectory = 'C:\\Users\\14376\\Desktop\\笔记'
-      if ($d.ShowDialog() -eq 'OK') { [Console]::WriteLine($d.FileName) }
+      if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($d.FileName)
+        [Console]::WriteLine([Convert]::ToBase64String($bytes))
+      }
     `;
     execFile('powershell', ['-NoProfile', '-STA', '-Command', psScript], { windowsHide: true }, (err, stdout) => {
-      if (err || !stdout.trim()) resolve(null);
-      else resolve(stdout.trim());
+      if (err || !stdout.trim()) {
+        resolve(null);
+      } else {
+        try {
+          const decoded = Buffer.from(stdout.trim(), 'base64').toString('utf8');
+          resolve(decoded);
+        } catch (_) {
+          resolve(null);
+        }
+      }
     });
   });
 }
@@ -59,24 +70,28 @@ function openFileDialog() {
 // Open file with default app
 function openFile(filePath) {
   if (filePath && fsSync.existsSync(filePath)) {
-    spawn('powershell', ['-NoProfile', '-Command', `Start-Process -FilePath '${filePath.replace(/'/g, "''")}'`], {
-      windowsHide: true,
-      detached: true,
-      stdio: 'ignore'
-    }).unref();
+    execFile('cmd.exe', ['/c', 'start', '""', filePath], {
+      windowsHide: true
+    });
   }
 }
 
 // Open URL with default browser
 function openUrl(url) {
-  spawn('powershell', ['-NoProfile', '-Command', `Start-Process '${url.replace(/'/g, "''")}'`], {
-    windowsHide: true,
-    detached: true,
-    stdio: 'ignore'
-  }).unref();
+  execFile('cmd.exe', ['/c', 'start', '""', url], {
+    windowsHide: true
+  });
 }
 
-let initialArticle = process.argv[2] ? path.resolve(process.argv[2]) : null;
+let initialArticle = null;
+if (process.argv[2] && process.argv[2].trim()) {
+  try {
+    const candidate = path.resolve(process.argv[2].trim());
+    if (candidate.toLowerCase().endsWith('.md') && fsSync.existsSync(candidate)) {
+      initialArticle = candidate;
+    }
+  } catch (_) {}
+}
 let lastHeartbeat = Date.now();
 let isPublishing = false;
 
@@ -558,7 +573,13 @@ const HTML_CONTENT = `<!DOCTYPE html>
         <h3 id="fileZoneTitle" style="font-size: 15px; font-weight: 700;">点击浏览或将 .md 文件拖拽到此处</h3>
         <p id="fileZoneSub" style="font-size: 12px; color: var(--slate-400);">支持任意文件夹下的 Typora / Markdown 原稿，自动整理本地图片</p>
         <div class="file-path-display" id="filePathDisplay" style="display:none;"></div>
-        <button class="btn-browse" id="btnBrowse" type="button">选择文章…</button>
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+          <button class="btn-browse" id="btnBrowse" type="button">选择文章…</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; width: 100%; max-width: 640px; margin-top: 10px;" onclick="event.stopPropagation()">
+          <input type="text" class="custom-cat-input" id="manualPathInput" placeholder="或直接在此粘贴完整路径（支持中英文路径，按回车解析）" style="font-family: Consolas, monospace; font-size: 12px;" />
+          <button class="btn-header" id="btnLoadManualPath" type="button" style="white-space: nowrap; padding: 7px 14px;">解析路径</button>
+        </div>
       </div>
     </div>
 
@@ -763,6 +784,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
     // Inspect file
     async function inspectFile(filePath, showLogs = true) {
       currentPath = filePath;
+      if (el('manualPathInput')) el('manualPathInput').value = filePath;
       el('filePathDisplay').style.display = 'block';
       el('filePathDisplay').textContent = filePath;
       el('fileZoneTitle').textContent = filePath.split(/[\\\\/]/).pop();
@@ -823,6 +845,43 @@ const HTML_CONTENT = `<!DOCTYPE html>
       body.textContent += '\\n' + text;
       body.scrollTop = body.scrollHeight;
     }
+
+    // Manual path loading
+    function handleManualPath() {
+      const val = el('manualPathInput').value.trim().replace(/^["']|["']$/g, '');
+      if (!val) {
+        showToast('请输入有效的 .md 文件路径', 'info');
+        return;
+      }
+      inspectFile(val);
+    }
+
+    el('btnLoadManualPath').onclick = (e) => {
+      e.stopPropagation();
+      handleManualPath();
+    };
+
+    el('manualPathInput').onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleManualPath();
+      }
+    };
+
+    // Paste event support (Ctrl+V)
+    window.addEventListener('paste', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const text = (e.clipboardData || window.clipboardData)?.getData('text');
+      if (text && text.trim()) {
+        const clean = text.trim().replace(/^["']|["']$/g, '');
+        if (clean.toLowerCase().endsWith('.md')) {
+          el('manualPathInput').value = clean;
+          inspectFile(clean);
+          showToast('已从剪贴板载入文章路径', 'success');
+        }
+      }
+    });
 
     // Browse Button
     el('btnBrowse').onclick = async (e) => {

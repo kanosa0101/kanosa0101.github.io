@@ -8,6 +8,8 @@ If Not fso.FileExists(nodeExe) Then
 End If
 cmd = """" & nodeExe & """ """ & appScript & """"
 If WScript.Arguments.Count > 0 Then
-  cmd = cmd & " """ & WScript.Arguments(0) & """"
+  If Len(Trim(WScript.Arguments(0))) > 0 Then
+    cmd = cmd & " """ & WScript.Arguments(0) & """"
+  End If
 End If
 WshShell.Run cmd, 0, False
