@@ -46,13 +46,13 @@ mathjax: true
 
 * **第一步：计算总浮点运算量（Total FLOPs）**
   根据预训练黄金近似公式 $C \approx 6ND$（将在第 5 节严格推导）：
-  $$\text{total\_flops} = 6 \times (70 \times 10^9) \times (15 \times 10^{12}) = 6.3 \times 10^{24}\text{ FLOPs}$$
+  $$\text{total\\_flops} = 6 \times (70 \times 10^9) \times (15 \times 10^{12}) = 6.3 \times 10^{24}\text{ FLOPs}$$
 * **第二步：查阅硬件单卡有效峰值算力（H100 BF16 Dense）**
   [NVIDIA H100 官方参数表](https://www.nvidia.com/en-us/data-center/h100/) 标注的 BF16 Tensor Core 算力为 `1979 TFLOP/s`，但要注意规格表小字标注该数值包含了 **2:4 结构化稀疏（Sparsity）**！对于常规稠密矩阵乘法（Dense MatMul），实际硬件理论峰值必须减半：
-  $$\text{h100\_flop\_per\_sec} = \frac{1979 \times 10^{12}}{2} = 989.5 \times 10^{12}\text{ FLOP/s}$$
+  $$\text{h100\\_flop\\_per\\_sec} = \frac{1979 \times 10^{12}}{2} = 989.5 \times 10^{12}\text{ FLOP/s}$$
 * **第三步：引入模型算力利用率（MFU, Model FLOPs Utilization）**
   由于显存搬运、跨卡通信与非矩阵乘法算子的开销，实际训练能达到的 **MFU 通常在 $0.5$（50%）左右**。因此 1024 张卡每天能提供的有效算力为：
-  $$\text{flops\_per\_day} = 989.5 \times 10^{12} \times 0.5 \times 1024 \times (60 \times 60 \times 24) \approx 4.378 \times 10^{22}\text{ FLOPs/day}$$
+  $$\text{flops\\_per\\_day} = 989.5 \times 10^{12} \times 0.5 \times 1024 \times (60 \times 60 \times 24) \approx 4.378 \times 10^{22}\text{ FLOPs/day}$$
 * **第四步：得出训练天数**
   $$\text{days} = \frac{6.3 \times 10^{24}}{4.378 \times 10^{22}} \approx 143.9\text{ 天}$$
 
@@ -72,9 +72,9 @@ days = total_flops / flops_per_day  # ~143.9 days
   1. **参数权重（Parameters）**：使用 `bf16` 存储，占 **2 Bytes**；
   2. **梯度（Gradients）**：使用 `bf16` 存储，占 **2 Bytes**；
   3. **AdamW 优化器状态（Optimizer States）**：为了数值稳定性，一阶动量 $m$ 和二阶动量 $v$ 必须使用 `fp32` 存储，占 **$4 + 4 = 8\text{ Bytes}$**（若额外保存一份 `fp32` Master Weights 则还需 $+4$ Bytes，课堂基准按 $2+2+4+4$ 计算）。
-  $$\text{bytes\_per\_parameter} = 2 + 2 + (4 + 4) = 12\text{ Bytes/param}$$
+  $$\text{bytes\\_per\\_parameter} = 2 + 2 + (4 + 4) = 12\text{ Bytes/param}$$
 * **第二步：计算 8 卡总显存可容纳的参数上限**
-  $$\text{num\_parameters} = \frac{80 \times 10^9\text{ Bytes} \times 8}{12\text{ Bytes/param}} \approx 5.33 \times 10^{10}\text{ (53.3B 参数)}$$
+  $$\text{num\\_parameters} = \frac{80 \times 10^9\text{ Bytes} \times 8}{12\text{ Bytes/param}} \approx 5.33 \times 10^{10}\text{ (53.3B 参数)}$$
 * **重要前提与局限（Caveats）**：这个 53.3B 只是一个**理论绝对上界**，因为它还没有计入动态的**激活值显存（Activations Memory）**——激活值大小取决于批大小（Batch Size）与序列长度（Sequence Length），在长上下文或大 Batch 下甚至会反超静态模型状态。
 
 ## 2. 张量内存记账与浮点表示体系（Tensor Memory & Floating-Point Formats）
@@ -86,7 +86,7 @@ days = total_flops / flops_per_day  # ~143.9 days
 * 张量的阶（Rank / Arity）即其维度数量：向量为 Rank 1，矩阵为 Rank 2；在 Transformer 注意力层中，我们最常打交道的是 **Rank 4 张量**：`(B, S, H, D)`，分别对应 `Batch Size`、`Sequence Length`、`Number of Heads` 和 `Hidden Dimension per Head`。
 
 张量占用的字节数遵循极其简单的铁律：
-$$\text{Memory Usage (Bytes)} = \texttt{x.numel()} \times \texttt{x.element\_size()}$$
+$$\text{Memory Usage (Bytes)} = \texttt{x.numel()} \times \texttt{x.element\\_size()}$$
 
 ```python
 import torch
@@ -251,7 +251,7 @@ x = rearrange(x, "... heads hidden2 -> ... (heads hidden2)")           # 形状�
 * **`FLOP/s`（或全大写 `FLOPS`，Floating-Point Operations Per Second）**：衡量硬件加速器的**计算速度/吞吐率（功率）**。例如：
   * 单张 NVIDIA H100 的稠密 BF16 峰值算力为 **$989.5\text{ TFLOP/s}$**（即 $1979 \times 10^{12} / 2\text{ FLOP/s}$）。
   * 如果租用一台 8 卡 H100 节点满负荷运行 2 周（14 天），它能提供的理论极限总算力为：
-    $$\text{total\_flops} = 8 \times (14 \times 86400\text{ s}) \times (989.5 \times 10^{12}\text{ FLOP/s}) \approx 9.58 \times 10^{21}\text{ FLOPs}$$
+    $$\text{total\\_flops} = 8 \times (14 \times 86400\text{ s}) \times (989.5 \times 10^{12}\text{ FLOP/s}) \approx 9.58 \times 10^{21}\text{ FLOPs}$$
 
 ### 4.2 矩阵乘法（MatMul）与逐元素算子的 FLOPs 推导
 
@@ -299,9 +299,9 @@ def benchmark(func, num_trials: int = 5) -> float:
 
 ### 4.4 模型算力利用率（MFU, Model FLOPs Utilization）
 
-测出实际墙钟时间 $\text{actual\_time}$ 后，我们可以计算实际每秒完成的浮点运算数，并与硬件规格表承诺的峰值算力对比，从而定义 **MFU**：
+测出实际墙钟时间 $\text{actual\\_time}$ 后，我们可以计算实际每秒完成的浮点运算数，并与硬件规格表承诺的峰值算力对比，从而定义 **MFU**：
 
-$$\text{actual\_flop\_per\_sec} = \frac{\text{actual\_num\_flops}}{\text{actual\_time}}, \qquad \text{MFU} = \frac{\text{actual\_flop\_per\_sec}}{\text{promised\_flop\_per\_sec}}$$
+$$\text{actual\\_flop\\_per\\_sec} = \frac{\text{actual\\_num\\_flops}}{\text{actual\\_time}}, \qquad \text{MFU} = \frac{\text{actual\\_flop\\_per\\_sec}}{\text{promised\\_flop\\_per\\_sec}}$$
 
 * **经验法则**：对于单个巨大的矩阵乘法，MFU 最高可达 $0.7 \sim 0.8$；对于包含通信与归一化层的完整大模型训练，**$\text{MFU} \ge 0.5$（50% 以上）就已经是非常优秀的工程实现**；如果 $\text{MFU} \le 0.1$，说明代码中存在严重的访存或同步瓶颈。
 
@@ -318,19 +318,19 @@ $$\text{actual\_flop\_per\_sec} = \frac{\text{actual\_num\_flops}}{\text{actual\
 * **计算速度（Accelerator Speed）**：$\text{FLOP/s}_{\text{peak}} = 989.5 \times 10^{12}\text{ FLOP/s}$
 * **显存带宽（Memory Bandwidth）**：$\text{Bytes/s}_{\text{peak}} = 3.35 \times 10^{12}\text{ Bytes/s}$ (3.35 TB/s)
 
-假设硬件能够**完美重叠（Overlap）**数据搬运时间（$\text{communication\_time} = \frac{\text{bytes}}{\text{h100\_bytes\_per\_sec}}$）与计算时间（$\text{computation\_time} = \frac{\text{flops}}{\text{h100\_flop\_per\_sec}}$），则总耗时由两者中的较慢者决定：
+假设硬件能够**完美重叠（Overlap）**数据搬运时间（$\text{communication\\_time} = \frac{\text{bytes}}{\text{h100\\_bytes\\_per\\_sec}}$）与计算时间（$\text{computation\\_time} = \frac{\text{flops}}{\text{h100\\_flop\\_per\\_sec}}$），则总耗时由两者中的较慢者决定：
 
-$$\text{total\_time} = \max(\text{communication\_time}, \text{computation\_time})$$
+$$\text{total\\_time} = \max(\text{communication\\_time}, \text{computation\\_time})$$
 
-* 当 $\text{communication\_time} > \text{computation\_time}$ 时，称为 **访存受限（Memory-bound）**——计算核心大部分时间在空转等待数据从 HBM 传过来；
-* 当 $\text{computation\_time} > \text{communication\_time}$ 时，称为 **计算受限（Compute-bound）**——数据供应充足，计算核心满负荷运转。
+* 当 $\text{communication\\_time} > \text{computation\\_time}$ 时，称为 **访存受限（Memory-bound）**——计算核心大部分时间在空转等待数据从 HBM 传过来；
+* 当 $\text{computation\\_time} > \text{communication\\_time}$ 时，称为 **计算受限（Compute-bound）**——数据供应充足，计算核心满负荷运转。
 
 ### 5.2 算术强度（Arithmetic Intensity）与硬件拐点
 
-将不等式 $\frac{\text{flops}}{\text{h100\_flop\_per\_sec}} \gtrless \frac{\text{bytes}}{\text{h100\_bytes\_per\_sec}}$ 移项整理，可以将软件负载特征与硬件特征解耦为两个比值：
+将不等式 $\frac{\text{flops}}{\text{h100\\_flop\\_per\\_sec}} \gtrless \frac{\text{bytes}}{\text{h100\\_bytes\\_per\\_sec}}$ 移项整理，可以将软件负载特征与硬件特征解耦为两个比值：
 
 1. **加速器强度（Accelerator Intensity / Ridge Point）**：硬件每搬运 1 字节数据，能够完成多少次浮点运算？
-   $$I_{\text{H100 (bf16)}} = \frac{\text{h100\_flop\_per\_sec}}{\text{h100\_bytes\_per\_sec}} = \frac{989.5 \times 10^{12}}{3.35 \times 10^{12}} \approx 295.4\text{ FLOPs/Byte}$$
+   $$I_{\text{H100 (bf16)}} = \frac{\text{h100\\_flop\\_per\\_sec}}{\text{h100\\_bytes\\_per\\_sec}} = \frac{989.5 \times 10^{12}}{3.35 \times 10^{12}} \approx 295.4\text{ FLOPs/Byte}$$
    （记住 **300 FLOPs/Byte** 这个黄金分界线！）
 2. **算法算术强度（Arithmetic Intensity）**：特定算子每读写 1 字节 HBM 数据，实际执行了多少次浮点运算？
    $$I_{\text{alg}} = \frac{\text{FLOPs}}{\text{Bytes Transferred}}$$
@@ -396,7 +396,7 @@ $$h_1 = x W_1, \qquad h_2 = h_1 W_2, \qquad \text{loss} = \text{mean}(h_2)^2$$
   h2 = einsum(h1, w2, "batch in, in out -> batch out")
   ```
   前向计算 $h_2$ 是一次矩阵乘法，消耗：
-  $$\text{num\_forward\_flops} = 2 B D^2$$
+  $$\text{num\\_forward\\_flops} = 2 B D^2$$
 * **反向传播（Backward Pass）**：
   假设上游已经传回了损失函数关于 $h_2$ 的梯度 `h2.grad`（即 $\frac{\partial \text{loss}}{\partial h_2} \in \mathbb{R}^{B \times D_{\text{out}}}$）。根据多元微积分链式法则，为了更新当前层权重并将梯度继续向底层传递，反向传播必须计算**两个矩阵乘法**：
   1. **对输入的梯度（Backward Message to Previous Layer，`h1.grad`）**：用于继续向第 1 层反向传播：
@@ -417,7 +417,7 @@ $$h_1 = x W_1, \qquad h_2 = h_1 W_2, \qquad \text{loss} = \text{mean}(h_2)^2$$
      该步同样消耗 **$2 B D^2$ FLOPs**。
 
 * **汇总全网所有层（得出黄金公式 $6ND$）**：
-  $$\text{num\_backward\_flops} = 2 B D^2 + 2 B D^2 = 4 B D^2 = 2 \times \text{num\_forward\_flops}$$
+  $$\text{num\\_backward\\_flops} = 2 B D^2 + 2 B D^2 = 4 B D^2 = 2 \times \text{num\\_forward\\_flops}$$
   推广到任意包含 $N$ 个参数、输入 $B$ 个数据点（或 Token 数 $D_{\text{tokens}}$）的多层感知机或短上下文 Transformer：
   * **前向传播（Forward Pass）**：$2 \times (\text{\# data points}) \times (\text{\# parameters})\text{ FLOPs}$
   * **反向传播（Backward Pass）**：$4 \times (\text{\# data points}) \times (\text{\# parameters})\text{ FLOPs}$
@@ -498,9 +498,9 @@ class AdaGrad(torch.optim.Optimizer):
    * 对于 **Adam / AdamW**：需同时存一阶动量 $m$ 和二阶动量 $v$，占 **$8 N\text{ Bytes}$**（8 Bytes/param；若框架额外维护 FP32 Master Weights 则再加 $4N$）。
    * *系统洞察*：优化器状态占用了巨量静态显存（限制了单卡能装下的最大模型尺寸），但由于它只在每个 Training Step 结束时的 `optimizer.step()` 中被读写一次，**它对整体训练计算速度（MFU）几乎不构成带宽瓶颈**。
 4. **激活值显存（Activation Memory）**：前向传播中每层产生的中间激活都必须保留到反向传播算完 `w.grad` 后才能释放。每层激活形状为 $(B, D)$，`bf16` 占 2 Bytes（若算上线性层后与 ReLU 后的两份则为 $2 \times 2BDL$，基准记账按每层主体激活计）：
-   $$\text{activation\_memory} \propto 2 B D L\text{ Bytes}$$
+   $$\text{activation\\_memory} \propto 2 B D L\text{ Bytes}$$
 
-$$\text{total\_memory} = \underbrace{2N}_{\text{Params}} + \underbrace{2N}_{\text{Grads}} + \underbrace{4N \text{ (AdaGrad) or } 8N \text{ (Adam)}}_{\text{Optimizer States}} + \underbrace{2 B D L}_{\text{Activations}}$$
+$$\text{total\\_memory} = \underbrace{2N}\_{\text{Params}} + \underbrace{2N}\_{\text{Grads}} + \underbrace{4N \text{ (AdaGrad) or } 8N \text{ (Adam)}}\_{\text{Optimizer States}} + \underbrace{2 B D L}\_{\text{Activations}}$$
 
 ## 7. 显存优化两大核心利器：梯度累积与激活检查点
 
@@ -512,8 +512,8 @@ $$\text{total\_memory} = \underbrace{2N}_{\text{Params}} + \underbrace{2N}_{\tex
 * **执行流程**：
   1. 每次只前向和反向传播一个大小为 `micro_batch_size` 的微批次；
   2. 反向传播计算出的梯度直接累加到 `p.grad` 上（**中间绝不调用 `zero_grad()`**），而前向产生的微批次激活值在每次 `backward()` 结束瞬间立即被自动释放！
-  3. 每满 $K = \text{batch\_size} / \text{micro\_batch\_size}$ 步，才真正调用一次 `optimizer.step()` 更新权重，随后调用 `optimizer.zero_grad(set_to_none=True)` 清空累积梯度。
-* **收益**：在数学上与一次性跑大 Batch 完全等价（注意 Loss 需除以累积步数 $K$），但**峰值激活显存直接下降为原来的 $\frac{\text{micro\_batch\_size}}{\text{batch\_size}}$**！
+  3. 每满 $K = \text{batch\\_size} / \text{micro\\_batch\\_size}$ 步，才真正调用一次 `optimizer.step()` 更新权重，随后调用 `optimizer.zero_grad(set_to_none=True)` 清空累积梯度。
+* **收益**：在数学上与一次性跑大 Batch 完全等价（注意 Loss 需除以累积步数 $K$），但**峰值激活显存直接下降为原来的 $\frac{\text{micro\\_batch\\_size}}{\text{batch\\_size}}$**！
 
 ### 7.2 激活检查点 / 重计算（Activation Checkpointing / Rematerialization）：用算力换显存
 
