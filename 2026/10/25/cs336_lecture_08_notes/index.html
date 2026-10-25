@@ -1,0 +1,655 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8） | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="深入剖析 Stanford CS336 Lecture 8，全景解析 4D&#x2F;5D 混合并行系统设计：超算互连网络哲学（Fat-Tree vs 3D Torus）、静态显存 16B 账单与 ZeRO 1&#x2F;2&#x2F;3 &#x2F; FSDP 零冗余分片、1F1B 与零气泡流水线调度、Megatron-SP 序列并行以及 Llama 3 405B &#x2F; DeepSeek-V3 工业级万卡混合并行实战架构。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8）">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/10/25/cs336_lecture_08_notes/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="深入剖析 Stanford CS336 Lecture 8，全景解析 4D&#x2F;5D 混合并行系统设计：超算互连网络哲学（Fat-Tree vs 3D Torus）、静态显存 16B 账单与 ZeRO 1&#x2F;2&#x2F;3 &#x2F; FSDP 零冗余分片、1F1B 与零气泡流水线调度、Megatron-SP 序列并行以及 Llama 3 405B &#x2F; DeepSeek-V3 工业级万卡混合并行实战架构。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-10-25T08:24:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T08:32:11.857Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="CS336">
+<meta property="article:tag" content="FSDP">
+<meta property="article:tag" content="ZeRO">
+<meta property="article:tag" content="专家并行">
+<meta property="article:tag" content="分布式训练">
+<meta property="article:tag" content="大模型">
+<meta property="article:tag" content="序列并行">
+<meta property="article:tag" content="流水线并行">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8）",
+  "url": "https://kanosa0101.github.io/2026/10/25/cs336_lecture_08_notes/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-10-25T08:24:00.000Z",
+  "dateModified": "2026-10-25T08:32:11.857Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/10/25/cs336_lecture_08_notes/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8）',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">9</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">37</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8）</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8）</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-25T08:24:00.000Z" title="发表于 2026-10-25 16:24:00">2026-10-25</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-25T08:32:11.857Z" title="更新于 2026-10-25 16:32:11">2026-10-25</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/">笔记</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/CS336/">CS336</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="CS336-Lecture-8-深度精读笔记：大规模分布式并行训练进阶（ZeRO-FSDP、零气泡流水线、序列-专家并行与-4D-混合并行实战）"><a href="#CS336-Lecture-8-深度精读笔记：大规模分布式并行训练进阶（ZeRO-FSDP、零气泡流水线、序列-专家并行与-4D-混合并行实战）" class="headerlink" title="CS336 Lecture 8 深度精读笔记：大规模分布式并行训练进阶（ZeRO&#x2F;FSDP、零气泡流水线、序列&#x2F;专家并行与 4D 混合并行实战）"></a>CS336 Lecture 8 深度精读笔记：大规模分布式并行训练进阶（ZeRO&#x2F;FSDP、零气泡流水线、序列&#x2F;专家并行与 4D 混合并行实战）</h1><p><strong>课程信息</strong>：<a target="_blank" rel="noopener" href="https://cs336.stanford.edu/">Stanford CS336: Language Modeling from Scratch (Spring 2026)</a><br><strong>主讲人</strong>：Tatsunori Hashimoto (Tatsu)<br><strong>课程视频与讲义</strong>：<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=6-cXp-aOmdg">Lecture 8 YouTube 视频</a> | <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/lectures/blob/main/lecture_08.pdf">官方幻灯片 (<code>lecture_08.pdf</code>)</a> | <a target="_blank" rel="noopener" href="https://jax-ml.github.io/scaling-book/">配套参考：Google《How to Scale Your Model》</a><br><strong>关联作业</strong>：Assignment 2 — Systems &amp; Parallelism（实现 DDP 梯度分桶重叠、实现 ZeRO-1 优化器分片 &#x2F; FSDP、推导多维并行最佳拓扑配置）</p>
+<h2 id="1-课程全景导读：当整个数据中心成为“基本计算单元”"><a href="#1-课程全景导读：当整个数据中心成为“基本计算单元”" class="headerlink" title="1. 课程全景导读：当整个数据中心成为“基本计算单元”"></a>1. 课程全景导读：当整个数据中心成为“基本计算单元”</h2><p>在 <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=SzpOcwdIL0Y">Lecture 7（分布式通信原语与 PyTorch 实战）</a> 中，Percy Liang 带领我们从代码层面认识了 <code>All-Reduce</code>、<code>All-Gather</code>、<code>Reduce-Scatter</code> 等集合通信原语，并手写了最基础的数据并行（DDP）、张量并行（TP）与流水线并行（PP）。</p>
+<p>在本讲（<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=6-cXp-aOmdg">Lecture 8</a>）中，Tatsu Hashimoto 将视角拉升至<strong>万卡级超算集群的架构设计</strong>：当我们要训练像 <strong>Llama 3 405B</strong>、<strong>DeepSeek-V3 671B</strong> 或 <strong>Qwen 3</strong> 这样的前沿大模型时，为什么单一的并行策略必然撞墙？我们如何像搭乐高积木一样，将 <strong>4D 甚至 5D 并行策略（DP&#x2F;ZeRO + TP + SP + PP + EP + CP）</strong> 精密耦合在一起，实现<strong>显存容量的线性扩展（Linear Memory Scaling）<strong>与</strong>有效算力的线性扩展（Linear Compute Scaling）</strong>？</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">+===================================================================================================+</span><br><span class="line">|                      CS336 Lecture 8: 大规模分布式训练 5D 混合并行技术全景图                         |</span><br><span class="line">+===================================================================================================+</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  [Part I: 硬件网络哲学演进]                                                                         |</span><br><span class="line">|   • GPU 胖树拓扑 (Fat-Tree All-to-All) vs. TPU 三维环面网格 (3D Toroidal Mesh)                      |</span><br><span class="line">|   • 2026 趋同演化: Google TPU v8 (Virgo 网络) 转向 All-to-All 以适应 MoE; 华为 CloudMatrix 384 光互连 |</span><br><span class="line">|                                                |                                                  |</span><br><span class="line">|                                                v                                                  |</span><br><span class="line">|  [Part II: 数据并行与零冗余分片 (ZeRO-1 / ZeRO-2 / ZeRO-3 &amp; FSDP)]                                  |</span><br><span class="line">|   • 16 Bytes/param 静态显存账单拆解 (参数 2B + 梯度 2B + FP32 主权重与 Adam 状态 12B)                |</span><br><span class="line">|   • 利用 All-Reduce = Reduce-Scatter + All-Gather 免费消除冗余，结合多流预取 (Prefetch) 隐藏通信     |</span><br><span class="line">|                                                |                                                  |</span><br><span class="line">|                                                v                                                  |</span><br><span class="line">|  [Part III: 模型并行与激活显存压榨 (PP, TP, SP, EP, CP)]                                             |</span><br><span class="line">|   • 流水线并行 (PP): 气泡率公式 (p-1)/(m+p-1)、1F1B 调度、将反传拆为 B 和 W 的零气泡流水线 (Zero-Bubble)|</span><br><span class="line">|   • 张量与序列并行 (TP+SP): Megatron 列并行+行并行配对，用 SP 消除 10sbh 残余激活，逼近 34sbh/t 下界   |</span><br><span class="line">|   • 专家与上下文并行 (EP &amp; CP): DeepEP 极低延迟 All-to-All 路由；Ring Attention 超长序列环状传递      |</span><br><span class="line">|                                                |                                                  |</span><br><span class="line">|                                                v                                                  |</span><br><span class="line">|  [Part IV: 4D/5D 并行组合黄金法则与前沿模型实战案例 (Llama 3 405B, DeepSeek-V3, Qwen 3, Gemma 2)]     |</span><br><span class="line">+===================================================================================================+</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-Part-I：超算互连网络哲学与-2026-硬件趋同演化"><a href="#2-Part-I：超算互连网络哲学与-2026-硬件趋同演化" class="headerlink" title="2. Part I：超算互连网络哲学与 2026 硬件趋同演化"></a>2. Part I：超算互连网络哲学与 2026 硬件趋同演化</h2><p>在进入具体并行算法之前，Tatsu 首先揭示了底层硬件网络拓扑如何深刻塑造了不同大厂（OpenAI&#x2F;Meta&#x2F;DeepSeek vs. Google vs. 华为）的并行策略选择。</p>
+<h3 id="2-1-GPU-胖树架构（Fat-Tree）vs-TPU-三维环面网格（3D-Toroidal-Mesh）"><a href="#2-1-GPU-胖树架构（Fat-Tree）vs-TPU-三维环面网格（3D-Toroidal-Mesh）" class="headerlink" title="2.1 GPU 胖树架构（Fat-Tree）vs. TPU 三维环面网格（3D Toroidal Mesh）"></a>2.1 GPU 胖树架构（Fat-Tree）vs. TPU 三维环面网格（3D Toroidal Mesh）</h3><table>
+<thead>
+<tr>
+<th align="left">维度</th>
+<th align="left">NVIDIA GPU 集群网络（Fat-Tree 胖树 &#x2F; All-to-All）</th>
+<th align="left">Google 传统 TPU 集群网络（3D Toroidal Mesh 环面网格）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>物理连接拓扑</strong></td>
+<td align="left"><strong>分层交换机树（Hierarchical Switch Tree）</strong>：节点内 8 卡（或 NVL72 的 72 卡、Pod 内最高 256 卡）通过 NVSwitch 全互连；跨机柜通过 Leaf Switch（叶交换机）与 Spine Switch（脊交换机）构建胖树</td>
+<td align="left"><strong>三维近邻环网（3D Torus）</strong>：没有中心大交换机，每颗 TPU 芯片<strong>只通过高速 ICI（Inter-Chip Interconnect）直连上下左右前后的 6 个直接邻居</strong>，网格边缘首尾相连成环</td>
+</tr>
+<tr>
+<td align="left"><strong>核心优势</strong></td>
+<td align="left"><strong>任意点对点路由极度灵活</strong>：非常适合通信模式高度随机、动态变化的负载（如 <strong>MoE 模型的跨卡 <code>All-to-All</code> 动态 Token 路由</strong>）</td>
+<td align="left"><strong>扩展成本极低、单链路极宽</strong>：无论集群扩到多大，每个节点的邻居数恒定；在规则的环状集合通信（<code>All-Reduce</code>、<code>All-Gather</code>、<strong>大跨度张量并行 TP</strong> 与 <strong>Ring Attention</strong>）上效率极高</td>
+</tr>
+<tr>
+<td align="left"><strong>核心劣势</strong></td>
+<td align="left">随着集群规模扩大，顶层 Spine 交换机与光模块成本、功耗和布线复杂度呈超线性增长，跨层跳数增加</td>
+<td align="left">当遇到非近邻的随机通信（如大范围 MoE <code>All-to-All</code>）时，数据包必须经过多次邻居转发（Multi-hop），容易引发拥塞</td>
+</tr>
+</tbody></table>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[GPU 胖树拓扑 (Fat-Tree: 灵活支持任意 All-to-All)]       [TPU 三维环面网格 (3D Torus: 极致优化近邻环状流水)]</span><br><span class="line">          [ Spine Switches (顶层脊交换机) ]                    ╭───────────────────────╮</span><br><span class="line">             /            |            \                      ▼                       │</span><br><span class="line">    [Leaf Switch 0]  [Leaf Switch 1]  [Leaf Switch 2]       [TPU] ◄═══► [TPU] ◄═══► [TPU]</span><br><span class="line">       /   |   \        /   |   \        /   |   \            ▲           ▲           ▲</span><br><span class="line">    [NVSwitch 8卡]   [NVSwitch 8卡]   [NVSwitch 8卡]          ║           ║           ║</span><br><span class="line">                                                            [TPU] ◄═══► [TPU] ◄═══► [TPU]</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-2026-前沿硬件的两大标志性事件：趋同演化与力大砖飞"><a href="#2-2-2026-前沿硬件的两大标志性事件：趋同演化与力大砖飞" class="headerlink" title="2.2 2026 前沿硬件的两大标志性事件：趋同演化与力大砖飞"></a>2.2 2026 前沿硬件的两大标志性事件：趋同演化与力大砖飞</h3><ol>
+<li><strong>Google TPU v8（及 Ironwood）向胖树 All-to-All 拓扑的“趋同演化”</strong>：<br>Tatsu 在课堂上分享了当天早上的最新行业动态：过去 Google 工程师总是自豪地宣称 TPU 的 Toroidal Mesh 比 GPU 交换机更优雅（因为稠密模型的 TP 和 Ring Attention 只需要和邻居通信）。然而在最新发布的 <strong>TPU v8（训练芯片）与 Ironwood（推理芯片）</strong> 中，Google 在跨机柜层级引入了名为 <strong>Virgo Network</strong> 的交换机胖树拓扑，大幅转向 <strong>All-to-All 连接</strong>！<ul>
+<li><strong>根本原因</strong>：2025–2026 年的前沿大模型几乎全军转向了 <strong>MoE（混合专家）架构</strong>。无论是在训练还是低延迟推理服务中，Token 动态路由到不同专家产生的全集群 <code>All-to-All</code> 流量成为了绝对瓶颈，迫使硬件架构向工作负载妥协，与 GPU 走向了<strong>趋同演化（Convergent Evolution）</strong>。</li>
+</ul>
+</li>
+<li><strong>华为昇腾 CloudMatrix 384（Ascend 910C）的“全光互连力大砖飞”权衡</strong>：<br>回想在 Lecture 5 中有人问“既然 SRAM 快，为什么不全用 SRAM 造芯片（Groq）？”在网络层面也有一个镜像问题：<strong>“既然全互连好，为什么不用超高速光纤交换机把几百颗芯片全部暴力直连起来？”</strong><br>这正是**华为 Ascend 910C（CloudMatrix 384 超节点）**的设计哲学：单颗昇腾 910 芯片的矩阵算力（MatMul FLOPs）和单卡显存带宽明显弱于 NVIDIA H200；但华为通过一整排庞大的光交换机柜，将 <strong>384 颗芯片</strong> 组合成一个超大规模的全互连高速域！<ul>
+<li><strong>工程权衡教训</strong>：这种设计通过暴力拉高互连规模和芯片数量，成功弥补了单芯片制程与算力的劣势；但代价是<strong>整机功耗高达同算力级别 NVIDIA 系统的 4 倍左右</strong>（大量功耗花在了光电转换与长距离高速 I&#x2F;O 上）。这生动展示了系统工程中“单芯片效率 vs. 互连规模 vs. 能源功耗”的铁三角权衡。</li>
+</ul>
+</li>
+</ol>
+<h2 id="3-Part-II：数据并行演进-——-从朴素-DDP-到-ZeRO-Stage-1-2-3-FSDP"><a href="#3-Part-II：数据并行演进-——-从朴素-DDP-到-ZeRO-Stage-1-2-3-FSDP" class="headerlink" title="3. Part II：数据并行演进 —— 从朴素 DDP 到 ZeRO Stage 1, 2, 3 (FSDP)"></a>3. Part II：数据并行演进 —— 从朴素 DDP 到 ZeRO Stage 1, 2, 3 (FSDP)</h2><p>我们的第一个并行维度是<strong>数据并行（Data Parallelism）</strong>：将全局批次 $B$ 切分到 $N_d$ 张 GPU 上，每张卡处理 $B &#x2F; N_d$ 个样本：<br>$$w_{t+1} &#x3D; w_t - \eta \frac{1}{B} \sum_{i&#x3D;1}^B \nabla \mathcal{L}(w_t, x_i)$$<br>朴素 DDP 在算力扩展上非常完美，每步只需通信 $2\Psi$（$\Psi$ 为模型参数量，即一次 <code>All-Reduce</code>），但它在显存扩展上得分为 <strong>0</strong>——每张卡都完整复制了所有模型状态。</p>
+<h3 id="3-1-静态显存危机的精确解剖：为什么每个参数要吃掉-16-Bytes？"><a href="#3-1-静态显存危机的精确解剖：为什么每个参数要吃掉-16-Bytes？" class="headerlink" title="3.1 静态显存危机的精确解剖：为什么每个参数要吃掉 16 Bytes？"></a>3.1 静态显存危机的精确解剖：为什么每个参数要吃掉 16 Bytes？</h3><p>在混合精度（<code>bf16</code>&#x2F;<code>fp16</code>）配合 <strong>AdamW</strong> 优化器训练参数量为 $\Psi$ 的大模型时，让我们像 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1910.02054">ZeRO 原论文 (Rajbhandari et al., 2019)</a> 那样，算清每张 GPU 被迫存储的“五份权重级张量（合计 <strong>16 Bytes &#x2F; parameter</strong>）”：</p>
+<ol>
+<li><strong>模型参数（Model Parameters, <code>bf16</code>&#x2F;<code>fp16</code>）</strong>：占 <strong>$2\Psi\text{ Bytes}$</strong>（前向与反向计算直接使用的半精度权重）。</li>
+<li><strong>参数梯度（Gradients, <code>bf16</code>&#x2F;<code>fp16</code>）</strong>：占 <strong>$2\Psi\text{ Bytes}$</strong>（反向传播算出的半精度梯度）。</li>
+<li><strong>AdamW 优化器状态（Optimizer States，合占 $12\Psi\text{ Bytes}$，即总静态显存的 75%！）</strong>：<ul>
+<li><strong>FP32 主权重拷贝（Master Weights, <code>fp32</code>）</strong>：占 <strong>$4\Psi\text{ Bytes}$</strong>（用于在单步微小更新 $\theta \leftarrow \theta - \eta \cdot \Delta\theta$ 时防止半精度尾数截断吃掉更新量）；</li>
+<li><strong>一阶动量估计（First Moment $m_t$, <code>fp32</code>）</strong>：占 <strong>$4\Psi\text{ Bytes}$</strong>（历史梯度的指数移动平均）；</li>
+<li><strong>二阶动量估计（Second Moment $v_t$, <code>fp32</code>）</strong>：占 <strong>$4\Psi\text{ Bytes}$</strong>（历史梯度平方的指数移动平均）。</li>
+</ul>
+</li>
+</ol>
+<p>$$\text{Total Static Memory per GPU (Naive DDP)} &#x3D; \underbrace{2\Psi}<em>{\text{Params}} + \underbrace{2\Psi}</em>{\text{Grads}} + \underbrace{(4 + 4 + 4)\Psi}_{\text{AdamW States } (K&#x3D;12)} &#x3D; \mathbf{16\Psi\text{ Bytes}}$$</p>
+<p><strong>触目惊心的算例</strong>：假设我们要在 $N_d &#x3D; 64$ 张 GPU 上训练一个仅 <strong>$\Psi &#x3D; 7.5\text{B}$（75 亿参数）</strong> 的模型：</p>
+<ul>
+<li>在朴素 DDP 下，每张卡需要 $16 \times 7.5 \times 10^9 &#x3D; \mathbf{120\text{ GB}}$ 的静态显存！这意味着连一张 80GB 的 A100&#x2F;H100 都装不下 7.5B 模型（哪怕还没算激活值）！</li>
+</ul>
+<h3 id="3-2-ZeRO（Zero-Redundancy-Optimizer）三级分片演进全解"><a href="#3-2-ZeRO（Zero-Redundancy-Optimizer）三级分片演进全解" class="headerlink" title="3.2 ZeRO（Zero Redundancy Optimizer）三级分片演进全解"></a>3.2 ZeRO（Zero Redundancy Optimizer）三级分片演进全解</h3><p>既然 64 张卡上存了 64 份完全一模一样的优化器状态、梯度和参数，我们能否将它们**分片（Shard）**到不同 GPU 上，消除冗余？</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">+===================================================================================================+</span><br><span class="line">|             朴素 DDP vs. ZeRO Stage 1 / 2 / 3 单卡静态显存占用对比 (以 7.5B 模型, 64 卡为例)         |</span><br><span class="line">+===================================================================================================+</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  [Baseline DDP]  : [ Params (2Ψ) ] [ Grads (2Ψ) ] [======= Optimizer States (12Ψ) =======]        |</span><br><span class="line">|                    单卡显存: 4Ψ + 12Ψ = 16Ψ = 120.0 GB (全量冗余复制)                              |</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  [ZeRO Stage 1]  : [ Params (2Ψ) ] [ Grads (2Ψ) ] [ Opt (12Ψ / N_d) ]                             |</span><br><span class="line">|  (仅分片优化器)     单卡显存: 4Ψ + 12Ψ/64 = 31.4 GB (省去 ~4x 显存，且通信开销 0 增加!)             |</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  [ZeRO Stage 2]  : [ Params (2Ψ) ] [G(2Ψ/N_d)] [ Opt (12Ψ / N_d) ]                                |</span><br><span class="line">|  (分片优化器+梯度)  单卡显存: 2Ψ + 14Ψ/64 = 16.6 GB (省去 ~8x 显存，且通信开销 0 增加!)             |</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  [ZeRO Stage 3]  : [P(2Ψ/N_d)] [G(2Ψ/N_d)] [ Opt (12Ψ / N_d) ]                                    |</span><br><span class="line">|  (即 PyTorch FSDP) 单卡显存: 16Ψ/64 = 1.875 GB ≈ 1.9 GB (显存完美线性缩减 64 倍，通信量仅 1.5x!)   |</span><br><span class="line">+===================================================================================================+</span><br></pre></td></tr></table></figure>
+
+<h4 id="（1）ZeRO-Stage-1（Optimizer-State-Sharding，Pos-——-完全免费的午餐！）"><a href="#（1）ZeRO-Stage-1（Optimizer-State-Sharding，Pos-——-完全免费的午餐！）" class="headerlink" title="（1）ZeRO Stage 1（Optimizer State Sharding，Pos —— 完全免费的午餐！）"></a>（1）ZeRO Stage 1（Optimizer State Sharding，<code>Pos</code> —— 完全免费的午餐！）</h4><ul>
+<li><strong>核心思想</strong>：每张 GPU 依然保存完整的参数（$2\Psi$）和完整的梯度（$2\Psi$），因此每张卡可以毫无障碍地独立跑完前向传播与反向传播；但<strong>将占大头的 $12\Psi$ 优化器状态切分为 $N_d$ 份，第 $r$ 号 GPU 只保存第 $r$ 份参数的优化器状态，并只负责更新这 $1&#x2F;N_d$ 份参数</strong>！</li>
+<li><strong>四步执行流水线与通信账单</strong>：<ol>
+<li><strong>局部前反向</strong>：每张卡在自己的局部数据微批次上算出完整参数的局部梯度（此时无需任何跨卡通信）。</li>
+<li><strong>梯度 <code>Reduce-Scatter</code>（通信量 $&#x3D; \Psi$）</strong>：调用一次 <code>Reduce-Scatter</code>，将所有卡算出的关于第 $r$ 份参数的梯度求和并汇总到第 $r$ 号 GPU 上（其余非自己负责的梯度分片直接丢弃）。</li>
+<li><strong>分片参数更新（零通信，计算量降为 $1&#x2F;N_d$）</strong>：第 $r$ 号 GPU 利用自己持有的第 $r$ 份优化器状态（$m^{(r)}, v^{(r)}$）和刚收到的汇总梯度 $g^{(r)}$，独立完成第 $r$ 份参数 $w^{(r)}$ 的 AdamW 更新。</li>
+<li><strong>参数 <code>All-Gather</code>（通信量 $&#x3D; \Psi$）</strong>：所有 GPU 执行一次 <code>All-Gather</code>，将各自更新好的 $1&#x2F;N_d$ 参数分片广播给所有其他 GPU，使每张卡恢复完整的最新参数以迎接下一个 Step。</li>
+</ol>
+</li>
+<li><strong>为什么说 ZeRO-1 是“彻头彻尾的免费午餐”？</strong><br>请看总通信量：Step 2 的 <code>Reduce-Scatter</code>（$\Psi$）+ Step 4 的 <code>All-Gather</code>（$\Psi$）$&#x3D; \mathbf{2\Psi}$！根据我们在 Lecture 7 证明的恒等式 $\text{All-Reduce} \equiv \text{Reduce-Scatter} + \text{All-Gather}$，<strong>ZeRO-1 的通信字节数与朴素 DDP 的单次 <code>All-Reduce</code>（$2\Psi$）分毫不差</strong>，却白白将单卡静态显存从 $120\text{ GB}$ 砍到了 $31.4\text{ GB}$！</li>
+</ul>
+<h4 id="（2）ZeRO-Stage-2（Gradient-Optimizer-State-Sharding，Pos-g-——-依然免费！）"><a href="#（2）ZeRO-Stage-2（Gradient-Optimizer-State-Sharding，Pos-g-——-依然免费！）" class="headerlink" title="（2）ZeRO Stage 2（Gradient + Optimizer State Sharding，Pos+g —— 依然免费！）"></a>（2）ZeRO Stage 2（Gradient + Optimizer State Sharding，<code>Pos+g</code> —— 依然免费！）</h4><ul>
+<li><strong>核心直觉</strong>：既然在 ZeRO-1 中，第 $r$ 号 GPU 在更新参数时只需要用到第 $r$ 份梯度，那我们为什么要傻傻地等整张网络的完整梯度全部算出来存满显存后，再去调 <code>Reduce-Scatter</code> 呢？</li>
+<li><strong>边反传、边归约、边释放（Incremental Reduce &amp; Immediate Free）</strong>：<br>在反向传播从第 $L$ 层往第 1 层回溯的过程中：一旦算完某一层（或某一个分片 Bucket）的局部梯度，<strong>立即对该层梯度发起 <code>Reduce</code>（或 <code>Reduce-Scatter</code>）将其发送给负责更新该层的目标 GPU</strong>；一旦发送完毕，所有不负责更新该分片的 GPU <strong>当场释放（Free）该层梯度的显存</strong>！</li>
+<li><strong>收益与代价</strong>：任何时刻显存中都不再驻留完整的 $2\Psi$ 梯度，单卡显存进一步降至 $2\Psi + \frac{14\Psi}{N_d}$（$16.6\text{ GB}$），而<strong>总通信量依然严格保持在 $\Psi + \Psi &#x3D; \mathbf{2\Psi}$</strong>！</li>
+</ul>
+<h4 id="（3）ZeRO-Stage-3-PyTorch-FSDP（Parameter-Gradient-Optimizer-Sharding，Pos-g-p）"><a href="#（3）ZeRO-Stage-3-PyTorch-FSDP（Parameter-Gradient-Optimizer-Sharding，Pos-g-p）" class="headerlink" title="（3）ZeRO Stage 3 &#x2F; PyTorch FSDP（Parameter + Gradient + Optimizer Sharding，Pos+g+p）"></a>（3）ZeRO Stage 3 &#x2F; PyTorch FSDP（Parameter + Gradient + Optimizer Sharding，<code>Pos+g+p</code>）</h4><ul>
+<li><strong>终极推演</strong>：如果模型大到连单份半精度参数 $2\Psi$（例如 100B 模型的参数就有 $200\text{ GB}$）都塞不进单卡显存怎么办？那就连<strong>模型参数 $2\Psi$ 也一起按 $N_d$ 切分</strong>！平时每张卡只存 $1&#x2F;N_d$ 的参数分片，只有在算到某一层时，才**按需即时收集（On-Demand <code>All-Gather</code>）**该层的完整参数，算完立刻扔掉！这就是 DeepSpeed <strong>ZeRO-3</strong> 以及 PyTorch 原生 <strong><code>FullyShardedDataParallel</code> (FSDP)</strong> 的核心机制。</li>
+<li><strong>FSDP 单步生命周期与 $3\Psi$ 通信账单</strong>：<ol>
+<li><strong>前向传播逐层循环（Forward Pass）</strong>：<br>对第 $l &#x3D; 1 \dots L$ 层：发起 <strong><code>All-Gather</code></strong> 收集第 $l$ 层的完整权重 $W_l$ $\rightarrow$ 计算第 $l$ 层前向激活 $a_l &#x3D; f(a_{l-1}, W_l)$ $\rightarrow$ <strong>立即释放（Free）不属于本卡的第 $l$ 层权重分片</strong>！<em>（前向累计通信量 $&#x3D; \mathbf{1\Psi}$）</em></li>
+<li><strong>反向传播逐层循环（Backward Pass）</strong>：<br>对第 $l &#x3D; L \dots 1$ 层：由于前向算完就把权重扔了，反向传播算梯度时必须<strong>再次发起 <code>All-Gather</code></strong> 收集第 $l$ 层的完整权重 $W_l$ $\rightarrow$ 计算梯度 $\nabla a_{l-1}$ 与局部权重梯度 $\nabla W_l$ $\rightarrow$ 立即发起 <strong><code>Reduce-Scatter</code></strong> 将 $\nabla W_l$ 归约到所属卡上 $\rightarrow$ <strong>立即释放第 $l$ 层权重与非本卡梯度</strong>！<em>（反向累计通信量 $&#x3D; 1\Psi\text{ (All-Gather)} + 1\Psi\text{ (Reduce-Scatter)} &#x3D; \mathbf{2\Psi}$）</em></li>
+<li><strong>优化器更新</strong>：每张卡各自用分片梯度和分片优化器状态更新自己的 $1&#x2F;N_d$ 参数分片（无需再做末尾 <code>All-Gather</code>，因为下一步前向开始时会自动逐层 <code>All-Gather</code>）。</li>
+</ol>
+</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">+---------------------------------------------------------------------------------------------------+</span><br><span class="line">|                   PyTorch FSDP (ZeRO-3) 多流异步预取与通信-计算重叠时间线 (Overlap)                  |</span><br><span class="line">+---------------------------------------------------------------------------------------------------+</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  CPU Stream   : [Launch AG0][Launch Fwd0][Launch AG1][Launch Fwd1][Launch AG2][Launch Fwd2]...     |</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  GPU Comm 流  : [ All-Gather L0 ] [ All-Gather L1 ] [ All-Gather L2 ]   &lt;-- 提前预取下一层权重!    |</span><br><span class="line">|                                 \                 \                 \                             |</span><br><span class="line">|                                  v                 v                 v                            |</span><br><span class="line">|  GPU Comp 流  :                  [  Forward L0   ] [  Forward L1   ] [  Forward L2   ]            |</span><br><span class="line">|                                                  ^                 ^                              |</span><br><span class="line">|                                               算完 L0 立即 Free L0 非本卡权重分片!                  |</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  * 核心条件：只要单层计算耗时 T_comp(Forward L_i) &gt;= 单层权重通信耗时 T_comm(All-Gather L_&#123;i+1&#125;)，   |</span><br><span class="line">|    多出来的 1.5x (3Ψ vs 2Ψ) 通信开销就会被完美隐藏在计算流之下!                                     |</span><br><span class="line">+---------------------------------------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+
+<h4 id="数据并行四阶段全景总结表"><a href="#数据并行四阶段全景总结表" class="headerlink" title="数据并行四阶段全景总结表"></a>数据并行四阶段全景总结表</h4><table>
+<thead>
+<tr>
+<th align="left">阶段方案</th>
+<th align="left">单卡静态显存公式 ($\Psi$ 为参数量, $N_d$ 为卡数)</th>
+<th align="left">7.5B 模型 @ 64 卡单卡显存</th>
+<th align="left">每步总通信量</th>
+<th align="left">核心通信原语构成</th>
+<th align="left">工程评价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Naive DDP</strong></td>
+<td align="left">$16\Psi$</td>
+<td align="left"><code>120.0 GB</code> (OOM)</td>
+<td align="left"><strong>$2\Psi$</strong></td>
+<td align="left">$1 \times \text{All-Reduce}$</td>
+<td align="left">实现最简，但静态显存完全不随卡数缩减</td>
+</tr>
+<tr>
+<td align="left"><strong>ZeRO-1</strong></td>
+<td align="left">$4\Psi + \frac{12\Psi}{N_d}$</td>
+<td align="left"><code>31.4 GB</code></td>
+<td align="left"><strong>$2\Psi$</strong></td>
+<td align="left">$1 \times \text{Reduce-Scatter} + 1 \times \text{All-Gather}$</td>
+<td align="left"><strong>零通信代价</strong>砍掉 75% 静态显存（Assignment 2 必写）</td>
+</tr>
+<tr>
+<td align="left"><strong>ZeRO-2</strong></td>
+<td align="left">$2\Psi + \frac{14\Psi}{N_d}$</td>
+<td align="left"><code>16.6 GB</code></td>
+<td align="left"><strong>$2\Psi$</strong></td>
+<td align="left">逐层 $\text{Reduce-Scatter} + 1 \times \text{All-Gather}$</td>
+<td align="left"><strong>零通信代价</strong>进一步释放梯度显存</td>
+</tr>
+<tr>
+<td align="left"><strong>ZeRO-3 &#x2F; FSDP</strong></td>
+<td align="left">$\frac{16\Psi}{N_d}$</td>
+<td align="left"><strong><code>1.9 GB</code></strong></td>
+<td align="left"><strong>$3\Psi$</strong> ($1.5\times$)</td>
+<td align="left">$2 \times \text{All-Gather} + 1 \times \text{Reduce-Scatter}$</td>
+<td align="left">静态显存完美线性扩展；靠异步预取（Prefetch）隐藏额外 $\Psi$ 通信</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-为什么有了优雅的-FSDP-还不够？（逼出模型并行的两大死穴）"><a href="#3-3-为什么有了优雅的-FSDP-还不够？（逼出模型并行的两大死穴）" class="headerlink" title="3.3 为什么有了优雅的 FSDP 还不够？（逼出模型并行的两大死穴）"></a>3.3 为什么有了优雅的 FSDP 还不够？（逼出模型并行的两大死穴）</h3><p>Tatsu 坦言：“我很希望这节课到此就可以下课了，因为 FSDP 既干净又优雅；但遗憾的是，在大规模下 FSDP 有两个无法克服的死穴”：</p>
+<ol>
+<li><strong>死穴一：数据并行会耗尽“全局批大小（Global Batch Size）”资源</strong>：<br>每张数据并行卡至少要分到 1 个样本（$B_{\text{global}} \ge N_d$）。根据 <strong>Critical Batch Size（临界批大小）</strong> 定律，当全局 Batch Size 超过某个阈值后，继续增大 Batch Size 对梯度的信噪比提升出现严重的边际递减（算力被浪费在冗余样本上，无法转化为更少的训练步数）。</li>
+<li><strong>死穴二：FSDP 丝毫不能减少“激活值显存（Activation Memory）”</strong>：<br>在 FSDP 计算第 $l$ 层的瞬间，它必须把第 $l$ 层的完整权重 <code>All-Gather</code> 到本卡并算出完整的层激活。当模型很宽或上下文序列很长时，动态激活显存会远超静态参数显存！</li>
+</ol>
+<h2 id="4-Part-III：模型并行与激活并行深潜（PP-TP-SP-EP-CP）"><a href="#4-Part-III：模型并行与激活并行深潜（PP-TP-SP-EP-CP）" class="headerlink" title="4. Part III：模型并行与激活并行深潜（PP, TP, SP, EP &amp; CP）"></a>4. Part III：模型并行与激活并行深潜（PP, TP, SP, EP &amp; CP）</h2><p>为了在不消耗全局 Batch Size 的前提下继续切分模型并削减激活显存，我们进入<strong>模型并行（Model Parallelism）</strong>。</p>
+<blockquote>
+<p><strong>FSDP 与模型并行的核心概念分野</strong>：</p>
+<ul>
+<li>在 <strong>FSDP</strong> 中，每张卡都在跑完整的层计算，<strong>在网络上飞来飞去的是模型参数（Parameters &amp; Gradients）</strong>；</li>
+<li>在 <strong>Model Parallelism（PP &#x2F; TP &#x2F; EP）</strong> 中，模型参数固定驻留在各自所属的 GPU 上不动，<strong>在网络上飞来飞去的是层间&#x2F;层内的激活值（Activations）</strong>！</li>
+</ul>
+</blockquote>
+<hr>
+<h3 id="4-1-流水线并行（Pipeline-Parallelism-PP）与“零气泡（Zero-Bubble）”革命"><a href="#4-1-流水线并行（Pipeline-Parallelism-PP）与“零气泡（Zero-Bubble）”革命" class="headerlink" title="4.1 流水线并行（Pipeline Parallelism, PP）与“零气泡（Zero-Bubble）”革命"></a>4.1 流水线并行（Pipeline Parallelism, PP）与“零气泡（Zero-Bubble）”革命</h3><h4 id="（1）微批次流水线的气泡率公式（Bubble-Fraction）與通信优势"><a href="#（1）微批次流水线的气泡率公式（Bubble-Fraction）與通信优势" class="headerlink" title="（1）微批次流水线的气泡率公式（Bubble Fraction）與通信优势"></a>（1）微批次流水线的气泡率公式（Bubble Fraction）與通信优势</h4><p>在流水线并行中，我们将 $L$ 层网络按深度切分为 $p$ 个舞台（Stages，对应 $p$ 张 GPU），并将一个批次切分为 $m$ 个微批次（Micro-batches）：</p>
+<ul>
+<li><strong>气泡率（Bubble Time Ratio）</strong>：在经典的 GPipe（先跑完所有 $m$ 个微批次的前向，再跑所有 $m$ 个微批次的反向）或 1F1B 调度下，首尾阶段等待流水线填满与排空的空闲时间占比为：<br>$$\text{Bubble Fraction} &#x3D; \frac{p - 1}{m + p - 1} &#x3D; \mathcal{O}\left(\frac{p}{m}\right)$$<br><strong>结论</strong>：要想把气泡率压向 0，微批次数量 $m$ 必须远大于流水线级数 $p$（即 $m \gg p$），这意味着<strong>流水线并行同样要消耗宝贵的 Batch Size 资源</strong>！</li>
+<li><strong>为什么流水线并行虽然代码极难写，却在多机训练中不可替代？</strong><br>因为它的<strong>通信属性极其优异</strong>：它不需要像 FSDP 那样广播整个权重矩阵（$d_{\text{model}}^2$），也不需要像 TP 那样每层做全卡 <code>All-Reduce</code>，它<strong>只在相邻两个 Stage 的交界处通过点对点（Point-to-Point <code>send</code>&#x2F;<code>recv</code>）传输一次激活张量（大小仅为 $b \times s \times h$）</strong>！因此，在多机集群中，<strong>总是把流水线并行部署在最慢的跨节点&#x2F;跨机柜&#x2F;跨数据中心慢速网络链路上</strong>。</li>
+</ul>
+<h4 id="（2）从-1F1B-到“零气泡流水线（Zero-Bubble-Pipelining）”的精妙拆解"><a href="#（2）从-1F1B-到“零气泡流水线（Zero-Bubble-Pipelining）”的精妙拆解" class="headerlink" title="（2）从 1F1B 到“零气泡流水线（Zero-Bubble Pipelining）”的精妙拆解"></a>（2）从 1F1B 到“零气泡流水线（Zero-Bubble Pipelining）”的精妙拆解</h4><p>如何进一步消灭那 $\frac{p-1}{m+p-1}$ 的流水线气泡？<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2401.10241">Qi et al. (2024) (Sea AI Lab)</a> 与 <strong>DeepSeek-V3（DualPipe）</strong> 提出了一个令 Tatsu 拍案叫绝的洞察——<strong>切开反向传播算子（Splitting Backward into $B$ and $W$）</strong>：</p>
+<p>回顾我们在 <a target="_blank" rel="noopener" href="https://cs336.stanford.edu/lectures/?trace=lecture_02">Lecture 2</a> 推导过的线性层 $Y &#x3D; X W$ 的反向传播：当收到上游传来的 $\nabla Y$ 时，反向传播实际上干了<strong>两件完全独立的事</strong>（各占一半 FLOPs）：</p>
+<ol>
+<li><strong>计算对输入激活的梯度 $B$（$\nabla X &#x3D; \nabla Y \cdot W^\top$）</strong>：<br><strong>位于流水线的关键路径（Critical Path）上！</strong> 因为上游的 Stage $p-1$ 正处于干等状态，必须等收到这个 $\nabla X$ 才能开始它那里的反向传播！</li>
+<li><strong>计算对当前层权重的梯度 $W$（$\nabla W &#x3D; X^\top \cdot \nabla Y$）</strong>：<br><strong>是计算图上的叶子节点（Leaf Node）！</strong> 上游 Stage 根本不需要 $\nabla W$，当前卡只需要在整个大 Step 结束调 <code>optimizer.step()</code> 之前把 $\nabla W$ 算出来即可，<strong>在时间轴上完全可以随时推迟执行（Deferrable）</strong>！</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">+---------------------------------------------------------------------------------------------------+</span><br><span class="line">|               传统 1F1B 流水线 vs. Zero-Bubble (零气泡) 流水线调度对比 (将反传拆为 B 和 W)           |</span><br><span class="line">+---------------------------------------------------------------------------------------------------+</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  [传统 1F1B 调度: 每次反传把 (B+W) 绑在一起执行，上游 Stage 被迫多等一倍时间，产生大量空闲 Bubble]    |</span><br><span class="line">|   Stage 0: [F0][F1][F2][F3]          [B0+W0]      [B1+W1]      [B2+W2]      [B3+W3]               |</span><br><span class="line">|   Stage 1:     [F0][F1][F2][F3]  [B0+W0]      [B1+W1]      [B2+W2]      [B3+W3]                   |</span><br><span class="line">|   Stage 2:         [F0][F1][F2][B0+W0][F3][B1+W1]  [B2+W2]  [B3+W3]                               |</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  [Zero-Bubble 调度: 优先极速算完关键路径 B 立即发给上游，把叶子任务 W 塞进原本空闲的气泡空隙中!]      |</span><br><span class="line">|   Stage 0: [F0][F1][F2][F3][B0][W0][B1][W1][B2][W2][B3][W3]  --&gt; 气泡几乎被 W 完全填平，逼近 0 气泡! |</span><br><span class="line">|   Stage 1:     [F0][F1][F2][B0][F3][B1][W0][B2][W1][B3][W2][W3]                                   |</span><br><span class="line">|   Stage 2:         [F0][B0][F1][B1][F2][B2][F3][B3][W0][W1][W2][W3]                               |</span><br><span class="line">+---------------------------------------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+<p><em>工程代价</em>：要实现 Zero-Bubble 或 DeepSeek 的 DualPipe，不能直接调 PyTorch 默认的 <code>loss.backward()</code>，必须手动接管自动求导图，用优先级队列分别调度 <code>F</code>、<code>B</code> 和 <code>W</code> 算子并精确管理显存释放时机。</p>
+<hr>
+<h3 id="4-2-张量并行（Tensor-Parallelism-TP）：Megatron-LM-的列并行与行并行配对"><a href="#4-2-张量并行（Tensor-Parallelism-TP）：Megatron-LM-的列并行与行并行配对" class="headerlink" title="4.2 张量并行（Tensor Parallelism, TP）：Megatron-LM 的列并行与行并行配对"></a>4.2 张量并行（Tensor Parallelism, TP）：Megatron-LM 的列并行与行并行配对</h3><p>在 Lecture 7 中，Percy 演示的朴素 TP 对每一层都做按列切分并在每层末尾做 <code>All-Gather</code>。而在真实的 Transformer 中，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1909.08053">Megatron-LM (Shoeybi et al., 2019)</a> 通过将**第一个矩阵按列切分（Column-Parallel）<strong>与</strong>第二个矩阵按行切分（Row-Parallel）**巧妙配对，<strong>省去了中间层的通信</strong>！</p>
+<h4 id="（1）MLP-层的列并行-行并行配对机制"><a href="#（1）MLP-层的列并行-行并行配对机制" class="headerlink" title="（1）MLP 层的列并行 + 行并行配对机制"></a>（1）MLP 层的列并行 + 行并行配对机制</h4><p>考虑 Transformer 的两层 MLP：$Z &#x3D; \text{GeLU}(X A) B$（对于 SwiGLU 同理，将门控双分支均按列切分）：</p>
+<ol>
+<li><strong>第一层升维矩阵 $A$ 按列切分（Column-Parallel）</strong>：$A &#x3D; [A_1 \mid A_2]$。<ul>
+<li>输入 $X$ 经过算子 $f$（前向为 <strong>Identity 恒等直通</strong>，无需通信），在两张卡上分别算出 $Y_1 &#x3D; \text{GeLU}(X A_1)$ 和 $Y_2 &#x3D; \text{GeLU}(X A_2)$。因为 GeLU 是逐元素运算，所以 $[Y_1 \mid Y_2] &#x3D; \text{GeLU}(X [A_1 \mid A_2])$！</li>
+</ul>
+</li>
+<li><strong>第二层降维矩阵 $B$ 按行切分（Row-Parallel）</strong>：$B &#x3D; \begin{bmatrix} B_1 \ B_2 \end{bmatrix}$。<ul>
+<li><strong>关键洞察</strong>：根据分块矩阵乘法规则，列分块乘以行分块等于外积之和：<br>$$Z &#x3D; \begin{bmatrix} Y_1 &amp; Y_2 \end{bmatrix} \begin{bmatrix} B_1 \ B_2 \end{bmatrix} &#x3D; Y_1 B_1 + Y_2 B_2$$</li>
+<li>因此，GPU 1 和 GPU 2 <strong>根本不需要在中间通信同步 $Y_1, Y_2$</strong>！它们可以直接拿自己手头的 $Y_i$ 乘上行分片 $B_i$ 得到完整维度的部分和 $Z_i &#x3D; Y_i B_i \in \mathbb{R}^{b \times s \times h}$，最后经过算子 $g$（前向执行 <strong>1 次 <code>All-Reduce</code> 求和</strong> $Z &#x3D; Z_1 + Z_2$）即可得到最终 MLP 输出！</li>
+</ul>
+</li>
+<li><strong>前反向算子对偶性（Conjugate Duality between $f$ and $g$）</strong>：<ul>
+<li><strong>算子 $f$（模块入口）</strong>：前向是 <strong>Identity（零通信）</strong>，反向传播时是 <strong><code>All-Reduce</code>（将两分支回传给输入 $X$ 的梯度相加）</strong>；</li>
+<li><strong>算子 $g$（模块出口）</strong>：前向是 <strong><code>All-Reduce</code>（将两分支输出的部分和相加）</strong>，反向传播时是 <strong>Identity（上游梯度直接原样复制进两分支）</strong>！</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">+---------------------------------------------------------------------------------------------------+</span><br><span class="line">|                   Megatron-LM 张量并行 (TP) 在 MLP 与 Attention 中的切分与算子对偶                  |</span><br><span class="line">+---------------------------------------------------------------------------------------------------+</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|                   ┌──► [ A_1 (按列切) ] ──► GeLU ──► Y_1 ──► [ B_1 (按行切) ] ──► Z_1 ──┐          |</span><br><span class="line">|  输入 X ──► ( f ) ─┤                   (中间零通信!)                                     ├─► ( g ) ──► 输出 Z</span><br><span class="line">|                   └──► [ A_2 (按列切) ] ──► GeLU ──► Y_2 ──► [ B_2 (按行切) ] ──► Z_2 ──┘          |</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  • 算子 ( f ): 前向 = Identity (不通信)        |  反向 = All-Reduce (汇总输入 X 的两路梯度)         |</span><br><span class="line">|  • 算子 ( g ): 前向 = All-Reduce (汇总 Z1+Z2)  |  反向 = Identity (不通信)                         |</span><br><span class="line">|  • Attention 层同理: W_Q, W_K, W_V 按 Attention Heads 列切分 (中间 Softmax 独立无通信)，W_O 按行切分!|</span><br><span class="line">+---------------------------------------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>TP 的通信代价与硬件铁律（<code>TP &lt;= 8</code>）</strong>：<br>每个 Transformer 层包含 1 个 Attention 块和 1 个 MLP 块，因此每层前向需要 <strong>2 次 <code>All-Reduce</code></strong>，反向也需要 <strong>2 次 <code>All-Reduce</code></strong>（单层通信量高达 $8 b s h$ 个元素，且处于计算关键路径上无法像 FSDP 那样跨层预取）。因此，在 GPU 集群上，<strong>张量并行度 $t$ 几乎永远不超过单节点的 8 张 NVLink 卡（<code>TP &lt;= 8</code>）</strong>——一旦跨节点走慢速网络，吞吐量会遭遇断崖式暴跌！</li>
+</ul>
+<hr>
+<h3 id="4-3-激活值显存精确记账与序列并行（Sequence-Parallelism-SP）"><a href="#4-3-激活值显存精确记账与序列并行（Sequence-Parallelism-SP）" class="headerlink" title="4.3 激活值显存精确记账与序列并行（Sequence Parallelism, SP）"></a>4.3 激活值显存精确记账与序列并行（Sequence Parallelism, SP）</h3><p>很多人以为“只要把参数切碎了，显存就够用了”。Tatsu 展示了真实的 PyTorch Profiler 显存时间线与 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2205.05198">Korthikanti et al. (2022)</a> 的统计图：<strong>在中等偏长的序列长度下，前向传播层层累积的动态激活值显存（Activation Memory，图中的巨大红色洪峰）会远远超过静态参数显存！</strong></p>
+<h4 id="（1）单层-Transformer-激活显存的精确数学公式（34-sbh-定律）"><a href="#（1）单层-Transformer-激活显存的精确数学公式（34-sbh-定律）" class="headerlink" title="（1）单层 Transformer 激活显存的精确数学公式（34 sbh 定律）"></a>（1）单层 Transformer 激活显存的精确数学公式（<code>34 sbh</code> 定律）</h4><p>设序列长度为 $s$，微批次大小为 $b$，隐藏维度为 $h$，注意力头数为 $a$，张量并行度为 $t$（采用 16-bit 混合精度，每元素 2 Bytes）。为了支持反向传播求导，单层 Transformer 必须缓存在显存中的激活字节数如下：</p>
+<ol>
+<li><strong>无并行基线（No Parallelism, $t &#x3D; 1$）</strong>：<br>$$\text{Activation Memory}_{\text{Baseline}} &#x3D; s b h \left(34 + 5 \frac{a s}{h}\right)\text{ Bytes}$$<ul>
+<li><strong>公式各项拆解</strong>：<ul>
+<li><strong><code>24 sbh</code></strong>：来自 MLP 内部的升维激活（SwiGLU&#x2F;GeLU 输入输出）与 Attention 的 $Q, K, V$ 投影激活；</li>
+<li><strong><code>10 sbh</code></strong>：来自两个 LayerNorm&#x2F;RMSNorm 的输入输出、残差连接主干输入以及 Dropout 掩码；</li>
+<li><strong><code>sbh (5 as / h) = 5 b a s^2</code></strong>：来自与序列长度呈二次方关系的 $s \times s$ 注意力得分矩阵、Softmax 输出（各占 $2 b a s^2$ Bytes）与 Dropout 掩码（占 $1 b a s^2$ Bytes）。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>仅开启张量并行（Tensor Parallelism Only）</strong>：<br>TP 切分了 MLP 和 Attention 的矩阵乘法（即切分了 <code>24 sbh</code> 和 <code>5 as/h</code> 项），但<strong>没有切分 LayerNorm、Dropout 和进入 Attention&#x2F;MLP 前的完整输入激活（即 <code>10 sbh</code> 项依然在每张 TP 卡上全量复制）</strong>！<br>$$\text{Activation Memory}_{\text{TP}} &#x3D; s b h \left(\mathbf{10} + \frac{24}{t} + 5 \frac{a s}{h t}\right)\text{ Bytes}$$<br>这意味着即便你把 $t \to \infty$，每层依然有顽固的 <strong>$10 sbh$</strong> 激活显存无法消除！</li>
+<li><strong>开启张量并行 + 序列并行（<code>TP + SP</code>）</strong>：<br>为了消灭那顽固的 $10 sbh$，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2205.05198">Korthikanti et al. (2022)</a> 提出了 <strong>Sequence Parallelism（序列并行，SP）</strong>：<ul>
+<li><strong>核心洞察</strong>：LayerNorm、RMSNorm、Dropout 和残差加法虽然不能沿隐藏维度 $h$ 切分，但它们<strong>沿着序列维度 $s$（或 Token 维度 $b \times s$）是完全逐位置独立的</strong>！</li>
+<li><strong>零额外通信代价替换</strong>：利用 $\text{All-Reduce} \equiv \text{Reduce-Scatter} + \text{All-Gather}$，我们将原本 TP 出口的算子 $g$（<code>All-Reduce</code>）替换为 <strong><code>Reduce-Scatter</code>（沿序列轴 $s$ 切分）</strong>，让后续的 LayerNorm 和残差连接在长度仅为 $s &#x2F; t$ 的序列分片上执行（显存降为 $\frac{10 sbh}{t}$！）；然后在进入下一个 TP 线性层前，将入口算子 $f$ 从 Identity 替换为 <strong><code>All-Gather</code>（沿序列轴拼回完整长度 $s$）</strong>！</li>
+<li><strong>通信量完全不变</strong>（1 次 <code>All-Reduce</code> 拆成了 1 次 <code>Reduce-Scatter</code> + 1 次 <code>All-Gather</code>），但那 <code>10 sbh</code> 的激活显存被成功除以了 $t$：<br>$$\text{Activation Memory}_{\text{TP+SP}} &#x3D; s b h \left(\frac{34}{t} + 5 \frac{a s}{h t}\right)\text{ Bytes}$$</li>
+</ul>
+</li>
+<li><strong>终极形态：<code>TP + SP</code> + 选择性激活重计算（FlashAttention Recomputation）</strong>：<br>如我们在 Lecture 5&#x2F;6 所学，使用 <strong>FlashAttention（或选择性重计算 Attention Softmax）</strong> 后，前向无需保存庞大的 $s \times s$ 注意力矩阵，二次方项 $5 \frac{as}{ht}$ 直接归零！我们得到了手算显存容量的<strong>黄金理论下界公式</strong>：<br>$$\text{Activation Memory}_{\text{TP+SP+Recompute}} &#x3D; \mathbf{\frac{34 , s b h}{t}\text{ Bytes}}$$</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">+---------------------------------------------------------------------------------------------------+</span><br><span class="line">|                     Megatron-LM 张量并行 (TP) + 序列并行 (SP) 协同工作流水线                        |</span><br><span class="line">+---------------------------------------------------------------------------------------------------+</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  [SP 区域: 沿序列维 s 切分, 形状 (b, s/t, h)]   [TP 区域: 沿隐藏维 h 切分, 形状 (b, s, h/t)]         |</span><br><span class="line">|                                                                                                   |</span><br><span class="line">|  残差输入 ──► [LayerNorm (仅存 s/t)] ──► ( g: 前向 All-Gather ) ──► [MLP / Attn (Col + Row TP)]     |</span><br><span class="line">|                                        (   反向 Reduce-Scatter)             │                     |</span><br><span class="line">|                                                                             ▼                     |</span><br><span class="line">|  下一层   ◄── [Dropout/残差 (仅存 s/t)] ◄── ( ḡ: 前向 Reduce-Scatter) ◄─────┘                     |</span><br><span class="line">|                                             (   反向 All-Gather    )                              |</span><br><span class="line">|  * 通信账单: 1 次 All-Gather + 1 次 Reduce-Scatter == 原本 TP 的 1 次 All-Reduce (零额外通信开销!) |</span><br><span class="line">+---------------------------------------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="4-4-专家并行（Expert-Parallelism-EP）与上下文并行（Context-Parallelism-CP）"><a href="#4-4-专家并行（Expert-Parallelism-EP）与上下文并行（Context-Parallelism-CP）" class="headerlink" title="4.4 专家并行（Expert Parallelism, EP）与上下文并行（Context Parallelism, CP）"></a>4.4 专家并行（Expert Parallelism, EP）与上下文并行（Context Parallelism, CP）</h3><h4 id="（1）专家并行（EP）：为什么-MoE-模型首选-EP-而非-TP？"><a href="#（1）专家并行（EP）：为什么-MoE-模型首选-EP-而非-TP？" class="headerlink" title="（1）专家并行（EP）：为什么 MoE 模型首选 EP 而非 TP？"></a>（1）专家并行（EP）：为什么 MoE 模型首选 EP 而非 TP？</h4><p>对于 Mixture of Experts（MoE）模型，我们可以将不同的专家子网络（Experts）放置在不同的 GPU 上。根据 <strong>NVIDIA Megatron 官方指南</strong>，在切分 MoE FFN 层时，<strong>几乎总是优先使用专家并行（EP）而非张量并行（TP）</strong>：</p>
+<ul>
+<li><strong>保持大矩阵尺寸与高算术强度</strong>：TP 会把每个专家原本就不大的权重矩阵切得更碎（细粒度专家下矩阵已经很小），导致单卡 GEMM 跌破 Roofline 拐点、GPU 利用率暴跌；而 EP 让每个被分配到本卡的专家保持完整的矩阵尺寸！</li>
+<li><strong>只传输稀疏激活 Token</strong>：TP 需要对稠密激活做全量 <code>All-Reduce</code>，而 EP 只需通过 <code>All-to-All</code> 将当前 Token 路由到被激活的 Top-$K$ 个专家上。</li>
+<li><strong>工业界极限优化（DeepSeek <code>DeepEP</code> 与 NVIDIA <code>HybridEP</code>）</strong>：<br>由于每层 MoE 都要执行跨卡甚至跨节点的 <code>All-to-All</code> 路由分发（Dispatch）与回收（Combine），且后续计算必须等待 Token 到达（极度延迟敏感 Latency-Sensitive），DeepSeek 专门开源了底层通信库 <strong><a target="_blank" rel="noopener" href="https://github.com/deepseek-ai/DeepEP">DeepEP</a></strong>（甚至挖掘出了未公开文档的底层 PTX 机器指令来加速网卡与 NVLink 转发），NVIDIA 也推出了对应的 <strong>HybridEP</strong>。</li>
+<li><strong>解耦 Attention 与 MoE 的并行策略（Decoupled Parallelism）</strong>：<br>由于 EP 只切分了 MoE FFN 层而<strong>完全没有切分 Attention 层</strong>，如果对全网使用高 TP 会把 MoE 矩阵切太碎，不用 TP 又会导致 Attention 层太大。因此现代训练框架采用<strong>异构解耦并行</strong>：让 Attention 层使用较高的 TP&#x2F;CP，而让 MoE 层使用高 EP（如 <code>EP=32</code> 或 <code>64</code>）配合极低的 TP（<code>TP=1</code> 或 <code>2</code>）！</li>
+</ul>
+<h4 id="（2）上下文并行（Context-Parallelism-CP-Ring-Attention）"><a href="#（2）上下文并行（Context-Parallelism-CP-Ring-Attention）" class="headerlink" title="（2）上下文并行（Context Parallelism, CP &#x2F; Ring Attention）"></a>（2）上下文并行（Context Parallelism, CP &#x2F; Ring Attention）</h4><p>请注意区分两个极易混淆的术语：</p>
+<ul>
+<li><strong>Sequence Parallelism (SP)</strong>：仅作为 TP 的挂件，切分的是 LayerNorm &#x2F; Dropout 的激活，在进入 Attention 层前已经通过 <code>All-Gather</code> 还原成了完整序列长度 $s$。</li>
+<li><strong>Context Parallelism (CP &#x2F; <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.01889">Ring Attention, Liu et al., 2023</a>)</strong>：针对百万级超长上下文（如 $s &#x3D; 128\text{K} \sim 1\text{M}$，此时单条序列的激活连单张卡都塞不下），<strong>把整条长序列从头到尾（包括在 Attention 层内部！）切分到多张卡上</strong>。在计算 Attention 时，各卡固定自己的 Query 块 $Q_i$，一边在本地计算分块 FlashAttention（利用 Online Softmax 动态更新统计量），一边像击鼓传花一样沿环状网络（Ring）把 Key&#x2F;Value 块 $(K_j, V_j)$ 传给下一个邻居，实现通信与注意力计算的完全重叠！</li>
+</ul>
+<h2 id="5-Part-IV：多维混合并行（3D-4D-5D-Parallelism）组合法则与前沿模型实战"><a href="#5-Part-IV：多维混合并行（3D-4D-5D-Parallelism）组合法则与前沿模型实战" class="headerlink" title="5. Part IV：多维混合并行（3D &#x2F; 4D &#x2F; 5D Parallelism）组合法则与前沿模型实战"></a>5. Part IV：多维混合并行（3D &#x2F; 4D &#x2F; 5D Parallelism）组合法则与前沿模型实战</h2><h3 id="5-1-六大并行策略全景优劣势对比表（Tatsu’s-Trade-off-Matrix）"><a href="#5-1-六大并行策略全景优劣势对比表（Tatsu’s-Trade-off-Matrix）" class="headerlink" title="5.1 六大并行策略全景优劣势对比表（Tatsu’s Trade-off Matrix）"></a>5.1 六大并行策略全景优劣势对比表（Tatsu’s Trade-off Matrix）</h3><p>没有任何一种并行策略是完美无缺的（表中<strong>加粗项</strong>即为 Tatsu 在幻灯片中标红的短板，正是为了弥补彼此的短板，我们才需要组合出 4D&#x2F;5D 并行）：</p>
+<table>
+<thead>
+<tr>
+<th align="left">并行策略</th>
+<th align="left">参数&#x2F;优化器显存缩减</th>
+<th align="left">激活显存 (Activation) 缩减</th>
+<th align="left">每层每卡通信开销</th>
+<th align="left">带宽与延迟敏感度</th>
+<th align="left">是否消耗全局 Batch Size？</th>
+<th align="left">工程实现复杂度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>DDP (朴素数据并行)</strong></td>
+<td align="left"><strong>无 ($1\times$，全量冗余)</strong></td>
+<td align="left"><strong>无 ($1\times$)</strong></td>
+<td align="left">低（每步 $2\Psi$，可重叠）</td>
+<td align="left">低（支持跨节点慢速网）</td>
+<td align="left"><strong>是（受限于临界批大小）</strong></td>
+<td align="left">极低</td>
+</tr>
+<tr>
+<td align="left"><strong>ZeRO-3 &#x2F; FSDP</strong></td>
+<td align="left"><strong>完美线性 ($\frac{1}{N_d}$)</strong></td>
+<td align="left"><strong>无 ($1\times$，单层需还原)</strong></td>
+<td align="left">中（每步 $3\Psi$，靠预取隐藏）</td>
+<td align="left">中（需足够批大小掩盖通信）</td>
+<td align="left"><strong>是（消耗全局 Batch Size）</strong></td>
+<td align="left">低（框架原生封装）</td>
+</tr>
+<tr>
+<td align="left"><strong>Pipeline Parallel (PP)</strong></td>
+<td align="left">完美线性 ($\frac{1}{p}$)</td>
+<td align="left">线性缩减 ($\approx \frac{1}{p}$)</td>
+<td align="left"><strong>极低（仅交界处 P2P 传 $bsh$）</strong></td>
+<td align="left"><strong>极低（最适合跨节点慢网）</strong></td>
+<td align="left"><strong>是（需大 $m$ 压低气泡率）</strong></td>
+<td align="left"><strong>极高（气泡调度复杂）</strong></td>
+</tr>
+<tr>
+<td align="left"><strong>Tensor + Seq Parallel (TP+SP)</strong></td>
+<td align="left">完美线性 ($\frac{1}{t}$)</td>
+<td align="left"><strong>完美线性 ($\frac{34sbh}{t}$)</strong></td>
+<td align="left"><strong>极高（每层 $8bsh$ 集合通信）</strong></td>
+<td align="left"><strong>极高（锁死在节点内 NVLink）</strong></td>
+<td align="left">否（不消耗 Batch Size！）</td>
+<td align="left">中（需改写模型层）</td>
+</tr>
+<tr>
+<td align="left"><strong>Expert Parallel (EP)</strong></td>
+<td align="left">线性缩减 FFN ($\frac{1}{e}$)</td>
+<td align="left">缩减 MoE 激活</td>
+<td align="left"><strong>高（每层动态 <code>All-to-All</code>）</strong></td>
+<td align="left"><strong>高（对延迟敏感，需负载均衡）</strong></td>
+<td align="left">间接相关（需足够 Token 均摊）</td>
+<td align="left"><strong>极高（需 DeepEP 级优化）</strong></td>
+</tr>
+<tr>
+<td align="left"><strong>Context Parallel (CP &#x2F; Ring)</strong></td>
+<td align="left">无（不切权重）</td>
+<td align="left"><strong>按序列长度线性缩减 ($\frac{1}{c}$)</strong></td>
+<td align="left">中（环状传递 KV 块，可重叠）</td>
+<td align="left">中高（需长序列计算掩盖通信）</td>
+<td align="left">否（专为单序列超长上下文设计）</td>
+<td align="left">高</td>
+</tr>
+</tbody></table>
+<h3 id="5-2-组合-4D-5D-并行的“两步走黄金处方”与-Megatron-官方五大铁律"><a href="#5-2-组合-4D-5D-并行的“两步走黄金处方”与-Megatron-官方五大铁律" class="headerlink" title="5.2 组合 4D&#x2F;5D 并行的“两步走黄金处方”与 Megatron 官方五大铁律"></a>5.2 组合 4D&#x2F;5D 并行的“两步走黄金处方”与 Megatron 官方五大铁律</h3><p>面对一个具体的模型规模和集群拓扑，应该如何确定 $(TP, CP, PP, EP, DP)$ 的数值？Tatsu 给出了极其清晰的<strong>两步走处方（Simple Prescription）</strong>：</p>
+<ol>
+<li><strong>第一步：先切分模型，直到模型 + 激活能塞进单卡显存（Until Your Model Fits in Memory）</strong>：<ul>
+<li><strong>优先在节点内（高速 NVLink 域）开满 <code>TP (+ SP)</code> 或 <code>EP</code></strong>：如果单机有 8 张 GPU，优先将 <code>TP</code>（稠密模型）或 <code>EP</code>（MoE 模型）设到 $\le 8$，这既能同时砍掉静态参数显存和动态激活显存，又不会消耗全局 Batch Size。</li>
+<li><strong>若单机 8 卡仍装不下，跨节点开启 <code>PP</code>（或 <code>ZeRO-3 / FSDP</code>）</strong>：根据跨节点网络带宽选择——如果跨节点带宽较窄或模型极大，使用 <strong>Pipeline Parallelism (<code>PP</code>)</strong> 跨节点切分深度；如果跨节点网络较快且 Batch 充足，也可直接叠加 <strong>FSDP (<code>ZeRO-3</code>)</strong>。</li>
+<li><strong>若处于超长上下文阶段（如 128K+）</strong>：开启 <strong>Context Parallelism (<code>CP</code>)</strong> 切分长序列激活。</li>
+</ul>
+</li>
+<li><strong>第二步：模型装下之后，把剩下的所有 GPU 全部投入数据并行（Until You Run Out of GPUs）</strong>：<ul>
+<li>用 <strong>Data Parallelism（配合 <code>ZeRO-1</code> 或 <code>ZeRO-2</code>）</strong> 吃满剩余的所有计算节点，实现吞吐量的线性扩展！</li>
+<li>如果此时单卡分到的微批次太小或者流水线气泡太大，开启 <strong>Gradient Accumulation（梯度累积）</strong> 与 <strong>Activation Recomputation（激活重计算：用多算一次前向换取更大的微批次，从而压缩流水线气泡、反过来提升整体硬件利用率 MFU！）</strong>。</li>
+</ul>
+</li>
+</ol>
+<p>这与 <strong>NVIDIA Megatron-LM &#x2F; Megatron-Bridge 官方并行指南</strong> 的五条黄金准则完全吻合：</p>
+<ol>
+<li><strong>Minimize Model Parallelism, Maximize Data Parallelism</strong>（模型并行只開到刚好能装下模型为止，其余算力全部给数据并行）；</li>
+<li><strong>Stay Within NVLink</strong>（将 TP 和常规 EP 严格限制在单机 8 卡或 NVL72 的高速 NVLink 域内）；</li>
+<li><strong>Use Pipeline Parallelism to Scale Multi-Node</strong>（跨多机扩展模型容量时使用流水线并行）；</li>
+<li><strong>Prefer Expert Parallelism over Tensor Parallelism for MoE</strong>（对于 MoE 层，优先使用 EP 而非 TP 以保持大矩阵算术强度）；</li>
+<li><strong>Use Context Parallelism for Long Sequences</strong>（长序列训练开启 Ring Attention 上下文并行）。</li>
+</ol>
+<h3 id="5-3-工业界旗舰大模型真实并行配置全览（2024–2026-Case-Studies）"><a href="#5-3-工业界旗舰大模型真实并行配置全览（2024–2026-Case-Studies）" class="headerlink" title="5.3 工业界旗舰大模型真实并行配置全览（2024–2026 Case Studies）"></a>5.3 工业界旗舰大模型真实并行配置全览（2024–2026 Case Studies）</h3><p>Tatsu 在课程最后盘点了从 7B 到 671B 的真实工业界训练配置（包括来自各技术报告及 NVIDIA <strong>Megatron-Bridge</strong> 仓库的实测推荐配置）：</p>
+<table>
+<thead>
+<tr>
+<th align="left">模型名称与参数规模</th>
+<th align="left">模型架构类型</th>
+<th align="left">硬件集群与规模</th>
+<th align="left">实际采用的并行策略组合 $(DP, PP, TP, EP, CP)$</th>
+<th align="left">架构师复盘与核心设计亮点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.00838">OLMo 7B (Dolma)</a></strong></td>
+<td align="left">7B 稠密 (Dense)</td>
+<td align="left">多节点 A100 &#x2F; H100</td>
+<td align="left"><strong>纯 <code>FSDP (ZeRO-3)</code></strong>（<code>TP=1, PP=1</code>）</td>
+<td align="left">对于 $\le 7\text{B}\sim 13\text{B}$ 的中小规模稠密模型，无需复杂的 TP&#x2F;PP，纯 FSDP 配合通信重叠即可实现极佳扩展</td>
+</tr>
+<tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2403.04652">Yi-34B</a> &#x2F; <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2401.02954">DeepSeek-V1 67B</a></strong></td>
+<td align="left">34B &#x2F; 67B 稠密</td>
+<td align="left">多节点 A100 &#x2F; H800</td>
+<td align="left"><strong><code>ZeRO-1 DP + TP + SP + PP</code></strong></td>
+<td align="left">教科书级的经典 3D 并行：单机内 <code>TP+SP</code>，跨机 <code>PP</code>（DeepSeek-V1 使用 8 级流水线），最外层 <code>ZeRO-1</code> 数据并行</td>
+</tr>
+<tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.21783">Llama 3 405B</a> (主预训练阶段, $S&#x3D;8\text{K}$)</strong></td>
+<td align="left">405B 巨型稠密</td>
+<td align="left"><strong>16,384 张 H100</strong> (RoCE &#x2F; IB)</td>
+<td align="left"><strong><code>TP=8, CP=1, PP=16, DP=128 (FSDP)</code></strong><br>($8 \times 1 \times 16 \times 128 &#x3D; 16,384$)</td>
+<td align="left">节点内跑满 <code>TP=8</code> (NVLink)，跨 16 个节点做 <code>PP=16</code>，外层 128 路 FSDP。（报告披露训练期间发生了 <strong>148 次 GPU 硬件故障</strong>，容错同样关键！）</td>
+</tr>
+<tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.21783">Llama 3 405B</a> (长文本扩展阶段, $S&#x3D;128\text{K}$)</strong></td>
+<td align="left">405B 巨型稠密</td>
+<td align="left"><strong>16,384 张 H100</strong></td>
+<td align="left"><strong><code>TP=8, CP=16, PP=16, DP=8 (FSDP)</code></strong><br>($8 \times 16 \times 16 \times 8 &#x3D; 16,384$)</td>
+<td align="left">当序列长度拉长 16 倍至 128K 时，激活显存暴增！团队立刻<strong>将上下文并行调高至 <code>CP=16</code>，同时将 <code>DP</code> 降至 <code>8</code></strong>，总卡数不变完美接力</td>
+</tr>
+<tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2408.00118">Google Gemma 2 (9B &#x2F; 27B)</a></strong></td>
+<td align="left">稠密模型</td>
+<td align="left">Google <strong>TPU v5p</strong> Pods</td>
+<td align="left"><strong><code>FSDP (ZeRO-3) + TP + SP</code></strong>（<strong><code>PP=1</code>，无流水线！</strong>）</td>
+<td align="left">充分体现 TPU <strong>3D Toroidal Mesh</strong> 优势：在大规模环网网格上直接拉高 TP 与 FSDP，彻底省去复杂的流水线并行与气泡问题</td>
+</tr>
+<tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2412.19437">DeepSeek-V3 (671B &#x2F; 37B 激活)</a></strong></td>
+<td align="left">细粒度 MoE + MLA</td>
+<td align="left">2,048 张 H800</td>
+<td align="left"><strong><code>PP=16 (DualPipe), EP=64 (跨 8 节点), ZeRO-1 DP</code></strong>（<strong><code>TP=1</code>，无张量并行！</strong>）</td>
+<td align="left">颠覆性设计：用 <strong>64 路跨节点专家并行 (<code>EP=64</code>)</strong> 彻底取代了 TP（避免矩阵切碎），并用双向流水线 <strong>DualPipe</strong> 将跨节点 EP 的 <code>All-to-All</code> 通信完美隐藏在计算之下</td>
+</tr>
+<tr>
+<td align="left"><strong>Mixtral 8x22B &#x2F; <a target="_blank" rel="noopener" href="https://github.com/NVIDIA/Megatron-LM">Qwen 3 MoE</a></strong></td>
+<td align="left">粗粒度 &#x2F; 细粒度 MoE</td>
+<td align="left">H100 &#x2F; B200 集群</td>
+<td align="left">• Mixtral 8x22B: <strong><code>EP=8, PP=4, TP=4</code></strong><br>• Qwen 3 MoE: <strong><code>EP=32, PP=8, TP=2</code></strong></td>
+<td align="left">现代 MoE 标准范式：对专家层使用大 <code>EP</code>（8 或 32），仅保留极小的 <code>TP</code>（2 或 4）用于切分 Attention 层权重与激活</td>
+</tr>
+</tbody></table>
+<h2 id="6-课后自测题与深度解析（直通-Assignment-2-综合设计题）"><a href="#6-课后自测题与深度解析（直通-Assignment-2-综合设计题）" class="headerlink" title="6. 课后自测题与深度解析（直通 Assignment 2 综合设计题）"></a>6. 课后自测题与深度解析（直通 Assignment 2 综合设计题）</h2><h3 id="练习-1：ZeRO-Stage-1-2-3-单卡静态显存与激活显存综合精算"><a href="#练习-1：ZeRO-Stage-1-2-3-单卡静态显存与激活显存综合精算" class="headerlink" title="练习 1：ZeRO Stage 1 &#x2F; 2 &#x2F; 3 单卡静态显存与激活显存综合精算"></a>练习 1：ZeRO Stage 1 &#x2F; 2 &#x2F; 3 单卡静态显存与激活显存综合精算</h3><p><strong>问题</strong>：假设我们要在 <strong>8 台 8 卡 NVIDIA H100 服务器（共 $N_{\text{total}} &#x3D; 64$ 张 GPU，每张卡 <code>80 GB</code> HBM）</strong> 上采用混合精度（<code>bf16</code> 参数与梯度，AdamW <code>fp32</code> 主权重与一二阶动量）训练一个 <strong>$\Psi &#x3D; 32\text{B}$（$3.2 \times 10^{10}$ 参数）</strong> 的稠密 Transformer 模型（层数 $L &#x3D; 64$，隐藏维 $h &#x3D; 6144$，序列长度 $s &#x3D; 4096$，单卡微批次 $b &#x3D; 2$）。</p>
+<ol>
+<li>如果仅使用纯数据并行（$N_d &#x3D; 64$），请分别计算在 <strong>Naive DDP</strong>、<strong>ZeRO-1</strong>、<strong>ZeRO-2</strong> 和 <strong>ZeRO-3 (FSDP)</strong> 下，每张 GPU 上的**静态模型状态显存（Params + Grads + Opt States）**是多少 GB？哪些方案仅靠静态状态就会直接 OOM？</li>
+<li>假设开启了 FlashAttention 重计算（消除了 $5\frac{as}{h}$ 二次项），在纯 FSDP（$t&#x3D;1$）下，64 层累积的<strong>激活值显存</strong>是多少 GB？加上 ZeRO-3 的静态显存（以及临时 <code>All-Gather</code> 单层权重的峰值缓冲），单张 80GB H100 能否装下？如果改为节点内 <code>TP+SP</code>（$t&#x3D;8$）配合跨节点 <code>ZeRO-1</code>（$N_d&#x3D;8$），单卡激活显存和静态显存分别变成多少 GB？</li>
+</ol>
+<p><strong>深度解析</strong>：</p>
+<ol>
+<li><strong>纯数据并行（$N_d &#x3D; 64$）下的静态显存对比（$\Psi &#x3D; 32 \times 10^9$）</strong>：<ul>
+<li><strong>Naive DDP</strong>：$16 \Psi &#x3D; 16 \times 32\text{ GB} &#x3D; \mathbf{512.0\text{ GB}}$（严重超出 80GB，直接 <strong>OOM</strong>！）。</li>
+<li><strong>ZeRO-1</strong>：$4 \Psi + \frac{12 \Psi}{64} &#x3D; 128\text{ GB} + 6\text{ GB} &#x3D; \mathbf{134.0\text{ GB}}$（仅参数+梯度就达 128GB，依然 <strong>OOM</strong>！）。</li>
+<li><strong>ZeRO-2</strong>：$2 \Psi + \frac{14 \Psi}{64} &#x3D; 64\text{ GB} + 7\text{ GB} &#x3D; \mathbf{71.0\text{ GB}}$（静态显存已占 71GB，加上激活值必 <strong>OOM</strong>！）。</li>
+<li><strong>ZeRO-3 (FSDP)</strong>：$\frac{16 \Psi}{64} &#x3D; \frac{512\text{ GB}}{64} &#x3D; \mathbf{8.0\text{ GB}}$（静态显存仅 8GB！）。</li>
+</ul>
+</li>
+<li><strong>动态激活显存与 <code>TP+SP</code> 组合优化计算</strong>：<ul>
+<li><strong>纯 FSDP（$t &#x3D; 1$）下的 64 层总激活显存</strong>：<br>由下界公式 $\text{Act}<em>{\text{layer}} &#x3D; \frac{34 s b h}{t}$，代入 $s &#x3D; 4096, b &#x3D; 2, h &#x3D; 6144, t &#x3D; 1$：<br>$$\text{Act}</em>{\text{layer}} &#x3D; 34 \times 4096 \times 2 \times 6144 &#x3D; 1,711,276,032\text{ Bytes} \approx \mathbf{1.711\text{ GB &#x2F; layer}}$$<br>全网 $L &#x3D; 64$ 层的总激活显存 $&#x3D; 64 \times 1.711\text{ GB} &#x3D; \mathbf{109.5\text{ GB}}$！因此哪怕用了 ZeRO-3 把静态显存压到 8GB，在 $b&#x3D;2$ 下光激活值就高達 <code>109.5 GB</code>，单张 80GB H100 依然会 <strong>OOM</strong>（除非对整个 Transformer Block 开启全量激活检查点，或者引入 <code>TP+SP</code>）！</li>
+<li><strong>开启节点内 <code>TP+SP</code>（$t &#x3D; 8$）+ 跨节点 <code>ZeRO-1</code>（$N_d &#x3D; 8$）</strong>：<ul>
+<li><strong>单卡激活显存</strong>：被 $t &#x3D; 8$ 完美均摊，$\text{Act}_{\text{total}} &#x3D; \frac{109.5\text{ GB}}{8} \approx \mathbf{13.69\text{ GB}}$！</li>
+<li><strong>单卡静态显存</strong>：因为参数和梯度已经被 $t &#x3D; 8$ 切分（每张 TP 卡只负责 $\Psi_{\text{TP}} &#x3D; \frac{32\text{B}}{8} &#x3D; 4\text{B}$ 参数），再在 $N_d &#x3D; 8$ 个节点间对优化器状态做 ZeRO-1 分片：<br>$$\text{Static}<em>{\text{TP8 + ZeRO1}} &#x3D; 4 \Psi</em>{\text{TP}} + \frac{12 \Psi_{\text{TP}}}{N_d} &#x3D; 4 \times 4\text{ GB} + \frac{12 \times 4\text{ GB}}{8} &#x3D; 16\text{ GB} + 6\text{ GB} &#x3D; \mathbf{22.0\text{ GB}}$$</li>
+<li><strong>总显存占用</strong>：$22.0\text{ GB (静态)} + 13.69\text{ GB (激活)} &#x3D; \mathbf{35.69\text{ GB} &lt; 80\text{ GB}}$！不仅轻松装入 80GB H100，还留出了充足的显存余量将微批次 $b$ 扩大一倍以进一步提升 MFU！</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h3 id="练习-2：流水线气泡率与-Zero-Bubble-原理问答"><a href="#练习-2：流水线气泡率与-Zero-Bubble-原理问答" class="headerlink" title="练习 2：流水线气泡率与 Zero-Bubble 原理问答"></a>练习 2：流水线气泡率与 Zero-Bubble 原理问答</h3><p><strong>问题</strong>：假设使用 $p &#x3D; 8$ 级流水线并行（Pipeline Parallelism）：</p>
+<ol>
+<li>如果你希望将标准 1F1B 调度的流水线气泡率（$\frac{p-1}{m+p-1}$）控制在 <strong>10% 以内</strong>，微批次数量 $m$ 至少需要设为多少？</li>
+<li>简述为什么 <strong>Zero-Bubble Pipelining</strong> 能够把反向传播拆分为 $B$ 和 $W$ 两个算子，以及为什么 $B$ 必须优先于 $W$ 执行。</li>
+</ol>
+<p><strong>深度解析</strong>：</p>
+<ol>
+<li>令 $\frac{8 - 1}{m + 8 - 1} \le 0.10 \implies \frac{7}{m + 7} \le 0.10 \implies m + 7 \ge 70 \implies \mathbf{m \ge 63}$。即每个流水线周期至少需要切分出 <strong>63 个微批次</strong>（通常会取 $m &#x3D; 64$），才能将流水线气泡浪费压到 10% 以下！</li>
+<li>在反向传播经过线性层 $Y &#x3D; X W$ 时，计算关于输入激活的梯度 $B$（$\nabla X &#x3D; \nabla Y W^\top$）与计算关于权重的梯度 $W$（$\nabla W &#x3D; X^\top \nabla Y$）在数据依赖上是解耦的：上游 Stage $p-1$ 的反向计算严格依赖于 $\nabla X$（因此 $B$ 处于跨卡依赖的关键路径上，必须立即优先算完并发走）；而 $\nabla W$ 只用于本卡最后一步的权重更新，没有任何其他算子依赖它，因此可以将 $W$ 延迟（Defer）到流水线等待上游或下游数据的空闲气泡槽位中执行，从而将气泡填满实现“零气泡”。</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/10/25/cs336_lecture_08_notes/">https://kanosa0101.github.io/2026/10/25/cs336_lecture_08_notes/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/CS336/">CS336</a><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a><a class="post-meta__tags" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%AD%E7%BB%83/">分布式训练</a><a class="post-meta__tags" href="/tags/%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%B9%B6%E8%A1%8C/">流水线并行</a><a class="post-meta__tags" href="/tags/ZeRO/">ZeRO</a><a class="post-meta__tags" href="/tags/FSDP/">FSDP</a><a class="post-meta__tags" href="/tags/%E5%BA%8F%E5%88%97%E5%B9%B6%E8%A1%8C/">序列并行</a><a class="post-meta__tags" href="/tags/%E4%B8%93%E5%AE%B6%E5%B9%B6%E8%A1%8C/">专家并行</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/10/25/cs336_lecture_07_notes/" title="Stanford CS336 深度精读：分布式并行训练基础与 PyTorch 原语实战（Lecture 7）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Stanford CS336 深度精读：分布式并行训练基础与 PyTorch 原语实战（Lecture 7）</div></div><div class="info-2"><div class="info-item-1">CS336 Lecture 7 深度精读笔记：分布式并行训练基础与 PyTorch 原语实战（Collective Operations, NCCL, DDP, TP &amp; PP）课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Percy Liang课程视频与代码讲义：Lecture 7 YouTube 视频 | Executable Lecture 源码 (lecture_07.py &#x2F; Trace)关联作业：Assignment 2 — Systems &amp; Parallelism（从零手写 Distributed Data Parallel (DDP)、通信与计算重叠、优化器状态分片 ZeRO-1）  课程编排说明（Spring 2026 vs. Spring 2025 课表顺序对调）：在 Spring 2026 学期中，课程组将两节并行课的顺序做了优化调整——Lecture 7（本讲，Percy Liang 主讲） 率先通过纯可执行代码 lecture_07.p...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/10/25/cs336_lecture_07_notes/" title="Stanford CS336 深度精读：分布式并行训练基础与 PyTorch 原语实战（Lecture 7）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 深度精读：分布式并行训练基础与 PyTorch 原语实战（Lecture 7）</div></div><div class="info-2"><div class="info-item-1">CS336 Lecture 7 深度精读笔记：分布式并行训练基础与 PyTorch 原语实战（Collective Operations, NCCL, DDP, TP &amp; PP）课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Percy Liang课程视频与代码讲义：Lecture 7 YouTube 视频 | Executable Lecture 源码 (lecture_07.py &#x2F; Trace)关联作业：Assignment 2 — Systems &amp; Parallelism（从零手写 Distributed Data Parallel (DDP)、通信与计算重叠、优化器状态分片 ZeRO-1）  课程编排说明（Spring 2026 vs. Spring 2025 课表顺序对调）：在 Spring 2026 学期中，课程组将两节并行课的顺序做了优化调整——Lecture 7（本讲，Percy Liang 主讲） 率先通过纯可执行代码 lecture_07.p...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_03_notes/" title="Stanford CS336 (Spring 2026) Lecture 3 深度课程笔记：Transformer Architectures &amp; Hyperparameters"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 3 深度课程笔记：Transformer Architectures &amp; Hyperparameters</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 3 深度课程笔记：Transformer Architectures &amp; Hyperparameters 课程主页：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教师：Tatsunori Hashimoto (Tatsu)配套资源：Lecture 3 视频 · 官方幻灯片 (lecture_03.pdf) · Assignment 1 指导手册与代码库   1. 引言：如何科学地理解现代 Transformer 架构演进？1.1 “Everything You Didn’t Want to Know About Architectures and Hyperparameters”Tatsu 将本讲副标题戏称为**“关于架构与超参数，那些你本不想知道的一切琐碎细节”。做统计学习理论出身的研究者往往希望世界像 VC 维（VC Dimension）一样简洁优雅，但现代大语言模型的架构设计本质上是一场多目标工程权衡（Complex...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_02_notes/" title="Stanford CS336 (Spring 2026) Lecture 2 深度课程笔记：PyTorch (einops) &amp; Resource Accounting"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 2 深度课程笔记：PyTorch (einops) &amp; Resource Accounting</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 2 深度课程笔记：PyTorch (einops) &amp; Resource Accounting 课程主页：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教师：Percy Liang配套资源：Lecture 2 视频 · 交互式执行轨迹 (lecture_02) · 课堂实录版轨迹 (lecture_02_recording) · 配套开源书《How to Scale Your Model》   1. 引言：为什么要做资源记账（Resource Accounting）？1.1 Marin 项目 $10^{23}$ FLOPs 预注册预测实证汇报在进入正题前，Percy 播报了上一讲提到的开源项目 Marin 的最新进展：团队在 $10^{23}$ FLOPs 规模上的训练刚刚跑完，通过在更小算力规模上绘制 IsoFLOP 曲线并拟合扩展定律（Scaling Law），最终真实训练收敛的验证集 Loss 与预注册（Pre-re...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_04_notes/" title="Stanford CS336 (Spring 2026) Lecture 4 深度课程笔记：Attention Alternatives &amp; Mixture of Experts"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 4 深度课程笔记：Attention Alternatives &amp; Mixture of Experts</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 4 深度课程笔记：Attention Alternatives &amp; Mixture of Experts 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 4 YouTube 视频 | 官方幻灯片 (lecture_04.pdf) | 课程主页  1. 引言：打破标准 Transformer 的两大扩展瓶颈在 Lecture 3 中，我们梳理了稠密 Transformer（Dense Transformer）的标准组件与超参数法则。然而，当我们将模型推向**百万级超长上下文（Million-Token Long Context）与万亿级参数容量（Trillion-Parameter Capacity）**时，标准 Transformer 撞上了两堵高墙：  序列长度的二次方墙（Sequence Length Bottleneck $...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_01_notes/" title="Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization 课程主页：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教师：Percy Liang &amp; Tatsunori Hashimoto（助教团队：Marcel Rød, Herman Brunborg, Steven Cao）配套资源：Lecture 1 视频 · 课件源码 (lecture_01.py) · 交互式执行轨迹 (Edtrace) · Assignment 1 代码仓库   1. 为什么要开设 CS336：从“调用 API”回归底层构建1.1 抽象层上移带来的“技术断层”与抽象泄漏在过去十年中，AI 研究者与底层技术栈的关系经历了显著的范式转移：    时代阶段 核心研究范式 代表性模型与操作 抽象层级特征    2016 年前后 从零实现与训练 (From Scratch) LSTM、早期 Seq2Seq 研究者自己编写模型结构、优化器与训...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_06_notes/" title="CS336 Lecture 6 深度精读笔记：Kernels &amp; Triton 编程实战（从硬件底层约束到二维 Tiled 算子融合）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">CS336 Lecture 6 深度精读笔记：Kernels &amp; Triton 编程实战（从硬件底层约束到二维 Tiled 算子融合）</div></div><div class="info-2"><div class="info-item-1">CS336 Lecture 6 深度精读笔记：Kernels &amp; Triton 编程实战（从硬件底层约束到二维 Tiled 算子融合）课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Percy Liang官方可执行讲义：Lecture 06 Interactive Trace (lecture_06.py)关联作业：Assignment 2 — Systems &amp; Parallelism（Profiling、Triton Fused RMSNorm、Triton FlashAttention-2） 1. 课程全景导读：为什么我们需要手写 GPU Kernel？在 Lecture 5（GPU 架构与性能工程） 中，我们确立了大模型系统优化的核心物理定律：现代 GPU 的算力增长远快于显存带宽增长（Memory Wall），导致除大型矩阵乘法（GEMM）外的大量算子（如激活函数 GeLU&#x2F;SwiGLU、归一化 LayerNorm&#x2F;RMSNorm、Softmax...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">9</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">37</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#CS336-Lecture-8-%E6%B7%B1%E5%BA%A6%E7%B2%BE%E8%AF%BB%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%A4%A7%E8%A7%84%E6%A8%A1%E5%88%86%E5%B8%83%E5%BC%8F%E5%B9%B6%E8%A1%8C%E8%AE%AD%E7%BB%83%E8%BF%9B%E9%98%B6%EF%BC%88ZeRO-FSDP%E3%80%81%E9%9B%B6%E6%B0%94%E6%B3%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E3%80%81%E5%BA%8F%E5%88%97-%E4%B8%93%E5%AE%B6%E5%B9%B6%E8%A1%8C%E4%B8%8E-4D-%E6%B7%B7%E5%90%88%E5%B9%B6%E8%A1%8C%E5%AE%9E%E6%88%98%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">CS336 Lecture 8 深度精读笔记：大规模分布式并行训练进阶（ZeRO&#x2F;FSDP、零气泡流水线、序列&#x2F;专家并行与 4D 混合并行实战）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E8%AF%BE%E7%A8%8B%E5%85%A8%E6%99%AF%E5%AF%BC%E8%AF%BB%EF%BC%9A%E5%BD%93%E6%95%B4%E4%B8%AA%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E6%88%90%E4%B8%BA%E2%80%9C%E5%9F%BA%E6%9C%AC%E8%AE%A1%E7%AE%97%E5%8D%95%E5%85%83%E2%80%9D"><span class="toc-number">1.1.</span> <span class="toc-text">1. 课程全景导读：当整个数据中心成为“基本计算单元”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Part-I%EF%BC%9A%E8%B6%85%E7%AE%97%E4%BA%92%E8%BF%9E%E7%BD%91%E7%BB%9C%E5%93%B2%E5%AD%A6%E4%B8%8E-2026-%E7%A1%AC%E4%BB%B6%E8%B6%8B%E5%90%8C%E6%BC%94%E5%8C%96"><span class="toc-number">1.2.</span> <span class="toc-text">2. Part I：超算互连网络哲学与 2026 硬件趋同演化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-GPU-%E8%83%96%E6%A0%91%E6%9E%B6%E6%9E%84%EF%BC%88Fat-Tree%EF%BC%89vs-TPU-%E4%B8%89%E7%BB%B4%E7%8E%AF%E9%9D%A2%E7%BD%91%E6%A0%BC%EF%BC%883D-Toroidal-Mesh%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 GPU 胖树架构（Fat-Tree）vs. TPU 三维环面网格（3D Toroidal Mesh）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-2026-%E5%89%8D%E6%B2%BF%E7%A1%AC%E4%BB%B6%E7%9A%84%E4%B8%A4%E5%A4%A7%E6%A0%87%E5%BF%97%E6%80%A7%E4%BA%8B%E4%BB%B6%EF%BC%9A%E8%B6%8B%E5%90%8C%E6%BC%94%E5%8C%96%E4%B8%8E%E5%8A%9B%E5%A4%A7%E7%A0%96%E9%A3%9E"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 2026 前沿硬件的两大标志性事件：趋同演化与力大砖飞</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Part-II%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C%E6%BC%94%E8%BF%9B-%E2%80%94%E2%80%94-%E4%BB%8E%E6%9C%B4%E7%B4%A0-DDP-%E5%88%B0-ZeRO-Stage-1-2-3-FSDP"><span class="toc-number">1.3.</span> <span class="toc-text">3. Part II：数据并行演进 —— 从朴素 DDP 到 ZeRO Stage 1, 2, 3 (FSDP)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E9%9D%99%E6%80%81%E6%98%BE%E5%AD%98%E5%8D%B1%E6%9C%BA%E7%9A%84%E7%B2%BE%E7%A1%AE%E8%A7%A3%E5%89%96%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%AF%8F%E4%B8%AA%E5%8F%82%E6%95%B0%E8%A6%81%E5%90%83%E6%8E%89-16-Bytes%EF%BC%9F"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 静态显存危机的精确解剖：为什么每个参数要吃掉 16 Bytes？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-ZeRO%EF%BC%88Zero-Redundancy-Optimizer%EF%BC%89%E4%B8%89%E7%BA%A7%E5%88%86%E7%89%87%E6%BC%94%E8%BF%9B%E5%85%A8%E8%A7%A3"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 ZeRO（Zero Redundancy Optimizer）三级分片演进全解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%881%EF%BC%89ZeRO-Stage-1%EF%BC%88Optimizer-State-Sharding%EF%BC%8CPos-%E2%80%94%E2%80%94-%E5%AE%8C%E5%85%A8%E5%85%8D%E8%B4%B9%E7%9A%84%E5%8D%88%E9%A4%90%EF%BC%81%EF%BC%89"><span class="toc-number">1.3.2.1.</span> <span class="toc-text">（1）ZeRO Stage 1（Optimizer State Sharding，Pos —— 完全免费的午餐！）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%882%EF%BC%89ZeRO-Stage-2%EF%BC%88Gradient-Optimizer-State-Sharding%EF%BC%8CPos-g-%E2%80%94%E2%80%94-%E4%BE%9D%E7%84%B6%E5%85%8D%E8%B4%B9%EF%BC%81%EF%BC%89"><span class="toc-number">1.3.2.2.</span> <span class="toc-text">（2）ZeRO Stage 2（Gradient + Optimizer State Sharding，Pos+g —— 依然免费！）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%883%EF%BC%89ZeRO-Stage-3-PyTorch-FSDP%EF%BC%88Parameter-Gradient-Optimizer-Sharding%EF%BC%8CPos-g-p%EF%BC%89"><span class="toc-number">1.3.2.3.</span> <span class="toc-text">（3）ZeRO Stage 3 &#x2F; PyTorch FSDP（Parameter + Gradient + Optimizer Sharding，Pos+g+p）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C%E5%9B%9B%E9%98%B6%E6%AE%B5%E5%85%A8%E6%99%AF%E6%80%BB%E7%BB%93%E8%A1%A8"><span class="toc-number">1.3.2.4.</span> <span class="toc-text">数据并行四阶段全景总结表</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%B8%BA%E4%BB%80%E4%B9%88%E6%9C%89%E4%BA%86%E4%BC%98%E9%9B%85%E7%9A%84-FSDP-%E8%BF%98%E4%B8%8D%E5%A4%9F%EF%BC%9F%EF%BC%88%E9%80%BC%E5%87%BA%E6%A8%A1%E5%9E%8B%E5%B9%B6%E8%A1%8C%E7%9A%84%E4%B8%A4%E5%A4%A7%E6%AD%BB%E7%A9%B4%EF%BC%89"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 为什么有了优雅的 FSDP 还不够？（逼出模型并行的两大死穴）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-Part-III%EF%BC%9A%E6%A8%A1%E5%9E%8B%E5%B9%B6%E8%A1%8C%E4%B8%8E%E6%BF%80%E6%B4%BB%E5%B9%B6%E8%A1%8C%E6%B7%B1%E6%BD%9C%EF%BC%88PP-TP-SP-EP-CP%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">4. Part III：模型并行与激活并行深潜（PP, TP, SP, EP &amp; CP）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%B9%B6%E8%A1%8C%EF%BC%88Pipeline-Parallelism-PP%EF%BC%89%E4%B8%8E%E2%80%9C%E9%9B%B6%E6%B0%94%E6%B3%A1%EF%BC%88Zero-Bubble%EF%BC%89%E2%80%9D%E9%9D%A9%E5%91%BD"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 流水线并行（Pipeline Parallelism, PP）与“零气泡（Zero-Bubble）”革命</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%881%EF%BC%89%E5%BE%AE%E6%89%B9%E6%AC%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E7%9A%84%E6%B0%94%E6%B3%A1%E7%8E%87%E5%85%AC%E5%BC%8F%EF%BC%88Bubble-Fraction%EF%BC%89%E8%88%87%E9%80%9A%E4%BF%A1%E4%BC%98%E5%8A%BF"><span class="toc-number">1.4.1.1.</span> <span class="toc-text">（1）微批次流水线的气泡率公式（Bubble Fraction）與通信优势</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%882%EF%BC%89%E4%BB%8E-1F1B-%E5%88%B0%E2%80%9C%E9%9B%B6%E6%B0%94%E6%B3%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%EF%BC%88Zero-Bubble-Pipelining%EF%BC%89%E2%80%9D%E7%9A%84%E7%B2%BE%E5%A6%99%E6%8B%86%E8%A7%A3"><span class="toc-number">1.4.1.2.</span> <span class="toc-text">（2）从 1F1B 到“零气泡流水线（Zero-Bubble Pipelining）”的精妙拆解</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C%EF%BC%88Tensor-Parallelism-TP%EF%BC%89%EF%BC%9AMegatron-LM-%E7%9A%84%E5%88%97%E5%B9%B6%E8%A1%8C%E4%B8%8E%E8%A1%8C%E5%B9%B6%E8%A1%8C%E9%85%8D%E5%AF%B9"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 张量并行（Tensor Parallelism, TP）：Megatron-LM 的列并行与行并行配对</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%881%EF%BC%89MLP-%E5%B1%82%E7%9A%84%E5%88%97%E5%B9%B6%E8%A1%8C-%E8%A1%8C%E5%B9%B6%E8%A1%8C%E9%85%8D%E5%AF%B9%E6%9C%BA%E5%88%B6"><span class="toc-number">1.4.2.1.</span> <span class="toc-text">（1）MLP 层的列并行 + 行并行配对机制</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E6%BF%80%E6%B4%BB%E5%80%BC%E6%98%BE%E5%AD%98%E7%B2%BE%E7%A1%AE%E8%AE%B0%E8%B4%A6%E4%B8%8E%E5%BA%8F%E5%88%97%E5%B9%B6%E8%A1%8C%EF%BC%88Sequence-Parallelism-SP%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 激活值显存精确记账与序列并行（Sequence Parallelism, SP）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%881%EF%BC%89%E5%8D%95%E5%B1%82-Transformer-%E6%BF%80%E6%B4%BB%E6%98%BE%E5%AD%98%E7%9A%84%E7%B2%BE%E7%A1%AE%E6%95%B0%E5%AD%A6%E5%85%AC%E5%BC%8F%EF%BC%8834-sbh-%E5%AE%9A%E5%BE%8B%EF%BC%89"><span class="toc-number">1.4.3.1.</span> <span class="toc-text">（1）单层 Transformer 激活显存的精确数学公式（34 sbh 定律）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E4%B8%93%E5%AE%B6%E5%B9%B6%E8%A1%8C%EF%BC%88Expert-Parallelism-EP%EF%BC%89%E4%B8%8E%E4%B8%8A%E4%B8%8B%E6%96%87%E5%B9%B6%E8%A1%8C%EF%BC%88Context-Parallelism-CP%EF%BC%89"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 专家并行（Expert Parallelism, EP）与上下文并行（Context Parallelism, CP）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%881%EF%BC%89%E4%B8%93%E5%AE%B6%E5%B9%B6%E8%A1%8C%EF%BC%88EP%EF%BC%89%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88-MoE-%E6%A8%A1%E5%9E%8B%E9%A6%96%E9%80%89-EP-%E8%80%8C%E9%9D%9E-TP%EF%BC%9F"><span class="toc-number">1.4.4.1.</span> <span class="toc-text">（1）专家并行（EP）：为什么 MoE 模型首选 EP 而非 TP？</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%882%EF%BC%89%E4%B8%8A%E4%B8%8B%E6%96%87%E5%B9%B6%E8%A1%8C%EF%BC%88Context-Parallelism-CP-Ring-Attention%EF%BC%89"><span class="toc-number">1.4.4.2.</span> <span class="toc-text">（2）上下文并行（Context Parallelism, CP &#x2F; Ring Attention）</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-Part-IV%EF%BC%9A%E5%A4%9A%E7%BB%B4%E6%B7%B7%E5%90%88%E5%B9%B6%E8%A1%8C%EF%BC%883D-4D-5D-Parallelism%EF%BC%89%E7%BB%84%E5%90%88%E6%B3%95%E5%88%99%E4%B8%8E%E5%89%8D%E6%B2%BF%E6%A8%A1%E5%9E%8B%E5%AE%9E%E6%88%98"><span class="toc-number">1.5.</span> <span class="toc-text">5. Part IV：多维混合并行（3D &#x2F; 4D &#x2F; 5D Parallelism）组合法则与前沿模型实战</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E5%85%AD%E5%A4%A7%E5%B9%B6%E8%A1%8C%E7%AD%96%E7%95%A5%E5%85%A8%E6%99%AF%E4%BC%98%E5%8A%A3%E5%8A%BF%E5%AF%B9%E6%AF%94%E8%A1%A8%EF%BC%88Tatsu%E2%80%99s-Trade-off-Matrix%EF%BC%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 六大并行策略全景优劣势对比表（Tatsu’s Trade-off Matrix）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E7%BB%84%E5%90%88-4D-5D-%E5%B9%B6%E8%A1%8C%E7%9A%84%E2%80%9C%E4%B8%A4%E6%AD%A5%E8%B5%B0%E9%BB%84%E9%87%91%E5%A4%84%E6%96%B9%E2%80%9D%E4%B8%8E-Megatron-%E5%AE%98%E6%96%B9%E4%BA%94%E5%A4%A7%E9%93%81%E5%BE%8B"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 组合 4D&#x2F;5D 并行的“两步走黄金处方”与 Megatron 官方五大铁律</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E5%B7%A5%E4%B8%9A%E7%95%8C%E6%97%97%E8%88%B0%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%9C%9F%E5%AE%9E%E5%B9%B6%E8%A1%8C%E9%85%8D%E7%BD%AE%E5%85%A8%E8%A7%88%EF%BC%882024%E2%80%932026-Case-Studies%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 工业界旗舰大模型真实并行配置全览（2024–2026 Case Studies）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E8%AF%BE%E5%90%8E%E8%87%AA%E6%B5%8B%E9%A2%98%E4%B8%8E%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90%EF%BC%88%E7%9B%B4%E9%80%9A-Assignment-2-%E7%BB%BC%E5%90%88%E8%AE%BE%E8%AE%A1%E9%A2%98%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">6. 课后自测题与深度解析（直通 Assignment 2 综合设计题）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%83%E4%B9%A0-1%EF%BC%9AZeRO-Stage-1-2-3-%E5%8D%95%E5%8D%A1%E9%9D%99%E6%80%81%E6%98%BE%E5%AD%98%E4%B8%8E%E6%BF%80%E6%B4%BB%E6%98%BE%E5%AD%98%E7%BB%BC%E5%90%88%E7%B2%BE%E7%AE%97"><span class="toc-number">1.6.1.</span> <span class="toc-text">练习 1：ZeRO Stage 1 &#x2F; 2 &#x2F; 3 单卡静态显存与激活显存综合精算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%83%E4%B9%A0-2%EF%BC%9A%E6%B5%81%E6%B0%B4%E7%BA%BF%E6%B0%94%E6%B3%A1%E7%8E%87%E4%B8%8E-Zero-Bubble-%E5%8E%9F%E7%90%86%E9%97%AE%E7%AD%94"><span class="toc-number">1.6.2.</span> <span class="toc-text">练习 2：流水线气泡率与 Zero-Bubble 原理问答</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/25/cs336_lecture_08_notes/" title="Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8）">Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8）</a><time datetime="2026-10-25T08:24:00.000Z" title="发表于 2026-10-25 16:24:00">2026-10-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/25/cs336_lecture_07_notes/" title="Stanford CS336 深度精读：分布式并行训练基础与 PyTorch 原语实战（Lecture 7）">Stanford CS336 深度精读：分布式并行训练基础与 PyTorch 原语实战（Lecture 7）</a><time datetime="2026-10-25T08:16:00.000Z" title="发表于 2026-10-25 16:16:00">2026-10-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/25/cs336_lecture_06_notes/" title="CS336 Lecture 6 深度精读笔记：Kernels &amp; Triton 编程实战（从硬件底层约束到二维 Tiled 算子融合）">CS336 Lecture 6 深度精读笔记：Kernels &amp; Triton 编程实战（从硬件底层约束到二维 Tiled 算子融合）</a><time datetime="2026-10-25T07:29:00.000Z" title="发表于 2026-10-25 15:29:00">2026-10-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/25/cs336_lecture_05_notes/" title="Stanford CS336 (Spring 2026) Lecture 5 深度课程笔记：GPUs, TPUs &amp; Hardware-Aware Optimization">Stanford CS336 (Spring 2026) Lecture 5 深度课程笔记：GPUs, TPUs &amp; Hardware-Aware Optimization</a><time datetime="2026-10-25T07:28:30.000Z" title="发表于 2026-10-25 15:28:30">2026-10-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/25/cs336_lecture_04_notes/" title="Stanford CS336 (Spring 2026) Lecture 4 深度课程笔记：Attention Alternatives &amp; Mixture of Experts">Stanford CS336 (Spring 2026) Lecture 4 深度课程笔记：Attention Alternatives &amp; Mixture of Experts</a><time datetime="2026-10-25T07:28:00.000Z" title="发表于 2026-10-25 15:28:00">2026-10-25</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>
