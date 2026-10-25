@@ -1,5 +1,5 @@
 ---
-title: CS336 Lecture 6 深度精读笔记：Kernels & Triton 编程实战（从硬件底层约束到二维 Tiled 算子融合）
+title: Stanford CS336 (Spring 2026) Lecture 6 深度课程笔记：Kernels & Triton
 date: '2026-10-25 15:29:00'
 categories:
   - 笔记
@@ -15,7 +15,7 @@ description: Stanford CS336 深度精读笔记第 6 讲：基于 Triton 的高�
 mathjax: true
 ---
 
-# CS336 Lecture 6 深度精读笔记：Kernels & Triton 编程实战（从硬件底层约束到二维 Tiled 算子融合）
+# Stanford CS336 (Spring 2026) Lecture 6 深度课程笔记：Kernels & Triton
 
 **课程信息**：[Stanford CS336: Language Modeling from Scratch (Spring 2026)](https://cs336.stanford.edu/)  
 **主讲人**：Percy Liang  

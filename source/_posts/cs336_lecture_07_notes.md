@@ -1,5 +1,5 @@
 ---
-title: Stanford CS336 深度精读：分布式并行训练基础与 PyTorch 原语实战（Lecture 7）
+title: Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL & DDP)
 date: 2026-10-25 16:16:00
 tags:
   - 大模型
@@ -16,7 +16,7 @@ description: 深入解析 Stanford CS336 Lecture 7，涵盖万卡集群存储与
 mathjax: true
 ---
 
-# CS336 Lecture 7 深度精读笔记：分布式并行训练基础与 PyTorch 原语实战（Collective Operations, NCCL, DDP, TP & PP）
+# Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL & DDP)
 
 **课程信息**：[Stanford CS336: Language Modeling from Scratch (Spring 2026)](https://cs336.stanford.edu/)  
 **主讲人**：Percy Liang  

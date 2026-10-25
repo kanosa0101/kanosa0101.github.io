@@ -1,5 +1,5 @@
 ---
-title: Stanford CS336 深度精读：大规模分布式并行训练进阶（Lecture 8）
+title: Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron & 3D Parallelism)
 date: 2026-10-25 16:24:00
 tags:
   - 大模型
@@ -16,7 +16,7 @@ description: 深入剖析 Stanford CS336 Lecture 8，全景解析 4D/5D 混合�
 mathjax: true
 ---
 
-# CS336 Lecture 8 深度精读笔记：大规模分布式并行训练进阶（ZeRO/FSDP、零气泡流水线、序列/专家并行与 4D 混合并行实战）
+# Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron & 3D Parallelism)
 
 **课程信息**：[Stanford CS336: Language Modeling from Scratch (Spring 2026)](https://cs336.stanford.edu/)  
 **主讲人**：Tatsunori Hashimoto (Tatsu)  
