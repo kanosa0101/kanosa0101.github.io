@@ -120,4 +120,84 @@ async function publishArticle({ root, input, category, expectedHash, onProgress 
   }
 }
 
-module.exports = { publishArticle };
+async function buildPreviewArticle({ root, input, category, onProgress = () => {} }) {
+  const cache = path.join(root, '.blog-publish');
+  await fs.mkdir(cache, { recursive: true });
+  onProgress({ stage: '检查原稿与图片' });
+  const article = await prepareArticle({ root, input, category });
+  const post = 'source/_posts/' + article.filename;
+
+  onProgress({ stage: `准备预览副本：${article.localImages} 处本地图片，${article.assets.length} 个去重文件` });
+  const build = path.join(cache, 'build');
+  await fs.mkdir(build, { recursive: true });
+  for (const directory of ['source', 'themes']) {
+    await fs.rm(path.join(build, directory), { recursive: true, force: true });
+    await fs.cp(path.join(root, directory), path.join(build, directory), {
+      recursive: true,
+      filter: file => !['.git', 'node_modules'].includes(path.basename(file))
+    });
+  }
+  for (const file of ['_config.yml', '_config.butterfly.yml', 'package.json']) {
+    await fs.copyFile(path.join(root, file), path.join(build, file));
+  }
+  await fs.mkdir(path.join(build, 'tools'), { recursive: true });
+  await fs.copyFile(path.join(root, 'tools/check-site.cjs'), path.join(build, 'tools/check-site.cjs'));
+  await fs.writeFile(path.join(build, post), article.content);
+  for (const asset of article.assets) {
+    await fs.mkdir(path.dirname(path.join(build, asset.relative)), { recursive: true });
+    await fs.writeFile(path.join(build, asset.relative), asset.bytes);
+  }
+  try {
+    await fs.symlink(path.join(root, 'node_modules'), path.join(build, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+  }
+
+  const run = (command, args, cwd = build) => new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd, windowsHide: true });
+    let output = '';
+    for (const stream of [child.stdout, child.stderr]) stream.on('data', data => {
+      output += data; onProgress({ log: String(data) });
+    });
+    child.on('error', reject);
+    child.on('close', code => code === 0 ? resolve(output) : reject(new Error(output.trim().slice(-2500) || `命令执行失败：${command}`)));
+  });
+
+  onProgress({ stage: '构建本地预览网页' });
+  const hexo = path.join(root, 'node_modules/hexo/bin/hexo');
+  await run(process.execPath, [hexo, 'clean']);
+  await run(process.execPath, [hexo, 'generate']);
+  await run(process.execPath, [path.join(build, 'tools/check-site.cjs')]);
+
+  // Locate the generated HTML page for this post
+  const publicDir = path.join(build, 'public');
+  const baseName = path.basename(article.filename, '.md');
+  let postUrl = '/';
+
+  const fsSync = require('node:fs');
+  function findPost(dir) {
+    for (const item of fsSync.readdirSync(dir)) {
+      const full = path.join(dir, item);
+      if (fsSync.statSync(full).isDirectory()) {
+        findPost(full);
+      } else if (item === 'index.html') {
+        const rel = path.relative(publicDir, full).replace(/\\/g, '/');
+        if (rel !== 'index.html' && (rel.includes(baseName) || rel.includes(encodeURIComponent(baseName)))) {
+          postUrl = '/' + rel.replace(/\/index\.html$/, '/');
+        }
+      }
+    }
+  }
+  findPost(publicDir);
+
+  onProgress({ stage: '本地预览生成完毕', done: true });
+  return {
+    article,
+    postUrl,
+    publicDir,
+    buildDir: build,
+    sourceHash: article.sourceHash
+  };
+}
+
+module.exports = { publishArticle, buildPreviewArticle };

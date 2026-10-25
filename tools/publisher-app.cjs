@@ -5,10 +5,72 @@ const path = require('node:path');
 const { spawn, execFile } = require('node:child_process');
 const yaml = require('js-yaml');
 const { prepareArticle } = require('./prepare-article.cjs');
-const { publishArticle } = require('./publish-site.cjs');
+const { publishArticle, buildPreviewArticle } = require('./publish-site.cjs');
 
 const root = path.resolve(__dirname, '..');
 const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+
+let previewServer = null;
+let previewPort = 0;
+let previewPublicDir = null;
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+  '.ico': 'image/x-icon',
+  '.xml': 'application/xml; charset=utf-8'
+};
+
+function ensurePreviewServer(publicDir) {
+  previewPublicDir = publicDir;
+  if (previewServer) return Promise.resolve(previewPort);
+
+  return new Promise((resolve) => {
+    previewServer = http.createServer((req, res) => {
+      if (!previewPublicDir) {
+        res.writeHead(404);
+        return res.end('Preview not ready');
+      }
+
+      let pathname = decodeURIComponent(req.url.split('?')[0]);
+      if (pathname.endsWith('/')) pathname += 'index.html';
+      let filePath = path.join(previewPublicDir, pathname);
+
+      if (fsSync.existsSync(filePath) && fsSync.statSync(filePath).isDirectory()) {
+        filePath = path.join(filePath, 'index.html');
+      }
+
+      if (!fsSync.existsSync(filePath) || fsSync.statSync(filePath).isDirectory()) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        return res.end('Not found: ' + pathname);
+      }
+
+      const ext = path.extname(filePath).toLowerCase();
+      res.writeHead(200, {
+        'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',
+        'Cache-Control': 'no-cache'
+      });
+      fsSync.createReadStream(filePath).pipe(res);
+    });
+
+    previewServer.listen(0, '127.0.0.1', () => {
+      previewPort = previewServer.address().port;
+      console.log('Static preview server active on port:', previewPort);
+      resolve(previewPort);
+    });
+  });
+}
 
 // Helper to scan all existing categories across the blog
 async function getBlogCategories() {
@@ -413,19 +475,45 @@ const HTML_CONTENT = `<!DOCTYPE html>
       flex-direction: column;
       gap: 14px;
     }
-    .btn-publish {
-      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    .btn-preview-action {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
       color: white;
       border: none;
-      padding: 14px 28px;
+      padding: 14px 20px;
       border-radius: var(--radius-md);
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+      transition: all 0.2s ease;
+    }
+    .btn-preview-action:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(59, 130, 246, 0.45);
+    }
+    .btn-preview-action:disabled {
+      background: var(--slate-300);
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .btn-publish {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
       transition: all 0.2s ease;
     }
@@ -438,6 +526,32 @@ const HTML_CONTENT = `<!DOCTYPE html>
       box-shadow: none;
       cursor: not-allowed;
       opacity: 0.7;
+    }
+
+    .btn-primary-preview {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.15s;
+    }
+    .btn-primary-preview:hover { opacity: 0.9; }
+
+    .preview-tips {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      color: #1e40af;
+      font-size: 12px;
+      padding: 10px 14px;
+      border-radius: 4px;
+      line-height: 1.6;
     }
 
     /* Stepper */
@@ -645,32 +759,73 @@ const HTML_CONTENT = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Preview Result & Verification Card -->
+    <div class="card" id="previewCard" style="display: none; border-color: #93c5fd; background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="badge-status" style="background: #2563eb; color: white; font-weight: 700;">🟢 本地预览已就绪</span>
+          <span style="font-size: 13px; font-weight: 600; color: var(--slate-700);" id="previewUrlText">-</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="btn-primary-preview" id="btnOpenBrowserPreview" type="button">👁️ 在浏览器中全屏查看 ↗</button>
+          <button class="btn-header" id="btnToggleIframe" type="button">📱 展开内嵌视窗</button>
+        </div>
+      </div>
+
+      <div class="preview-tips">
+        💡 <strong>核验建议</strong>：请在新打开的网页中仔细核对：
+        ① <strong>数学公式（MathJax）</strong>是否正常渲染（无公式报错）；
+        ② <strong>配图与插图</strong>是否已正确显示；
+        ③ <strong>文章排版与目录</strong>是否满意。原稿若需微调，可在 Typora 中修改后点击「重新生成预览」。
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px;">
+        <button class="btn-header" id="btnPreviewEditOriginal" type="button">📖 在 Typora 中修改原稿</button>
+        <button class="btn-header" id="btnRefreshPreview" type="button">🔄 修改后重新生成预览</button>
+      </div>
+
+      <div id="iframeWrap" style="display: none; margin-top: 14px;">
+        <div style="font-size: 12px; color: var(--slate-500); margin-bottom: 6px; font-weight: 600;">应用内快速预览视窗：</div>
+        <iframe id="previewFrame" style="width: 100%; height: 460px; border: 1px solid var(--slate-300); border-radius: var(--radius-sm); background: white;"></iframe>
+      </div>
+    </div>
+
     <!-- Publish Action & Stepper -->
     <div class="card action-panel">
       <div class="stepper">
         <div class="stepper-line"></div>
         <div class="step-item active" id="step1">
           <div class="step-dot">1</div>
-          <span>原稿检查</span>
+          <span>原稿体检</span>
         </div>
         <div class="step-item" id="step2">
           <div class="step-dot">2</div>
-          <span>页面生成</span>
+          <span>本地预览</span>
         </div>
         <div class="step-item" id="step3">
           <div class="step-dot">3</div>
-          <span>站点校验</span>
+          <span>效果核验</span>
         </div>
         <div class="step-item" id="step4">
           <div class="step-dot">4</div>
-          <span>推送上线</span>
+          <span>确认推送</span>
         </div>
       </div>
 
-      <button class="btn-publish" id="btnPublish" disabled>
-        <span id="publishIcon">🚀</span>
-        <span id="publishText">请先选择 Markdown 文章</span>
-      </button>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px;">
+        <button class="btn-preview-action" id="btnGeneratePreview" disabled>
+          <span id="previewActionIcon">🔍</span>
+          <span id="previewActionText">生成本地实时预览</span>
+        </button>
+        <button class="btn-publish" id="btnPublish" disabled>
+          <span id="publishIcon">🚀</span>
+          <span id="publishText">推送到线上博客</span>
+        </button>
+      </div>
+
+      <div style="font-size: 12px; color: var(--slate-500); text-align: center; margin-top: 2px;" id="workflowNotice">
+        ✨ 建议流程：先点击左侧【生成本地实时预览】核验 MathJax 与图片效果，确认满意后再点击右侧【推送到线上博客】
+      </div>
     </div>
 
     <!-- Terminal Drawer -->
@@ -690,6 +845,9 @@ const HTML_CONTENT = `<!DOCTYPE html>
     let inspectionData = null;
     let blogCategories = [];
     let selectedCategory = '';
+    let currentPreviewUrl = null;
+    let previewSourceHash = null;
+    let isBuildingPreview = false;
 
     const el = id => document.getElementById(id);
 
@@ -804,6 +962,11 @@ const HTML_CONTENT = `<!DOCTYPE html>
         if (data.error) throw new Error(data.error);
 
         inspectionData = data;
+        currentPreviewUrl = null;
+        previewSourceHash = null;
+        el('previewCard').style.display = 'none';
+        el('iframeWrap').style.display = 'none';
+
         el('summaryCard').style.display = 'block';
         el('articleTitle').textContent = data.title;
         el('articleDate').textContent = data.date;
@@ -815,17 +978,23 @@ const HTML_CONTENT = `<!DOCTYPE html>
 
         updateBreadcrumb();
 
-        el('btnPublish').disabled = false;
-        el('publishIcon').textContent = data.exists ? '🔄' : '🚀';
-        el('publishText').textContent = data.exists ? '更新并发布到博客' : '一键发布文章到博客';
+        el('btnGeneratePreview').disabled = false;
+        el('previewActionIcon').textContent = '🔍';
+        el('previewActionText').textContent = '生成本地实时预览';
+
+        el('btnPublish').disabled = true;
+        el('btnPublish').style.opacity = '0.5';
+        el('publishText').textContent = '需先预览核验效果';
+        el('workflowNotice').innerHTML = '✨ 建议流程：先点击左侧【生成本地实时预览】核验 MathJax 与图片效果，确认满意后再点击右侧【推送到线上博客】';
         updateStep(1);
 
         if (showLogs) {
-          appendLog('[通过] 文章检查无误，就绪可发布！');
+          appendLog('[通过] 文章检查无误，请点击【生成本地实时预览】！');
         }
       } catch (err) {
         showToast('文章解析失败：' + err.message, 'error');
         appendLog('[错误] ' + err.message);
+        el('btnGeneratePreview').disabled = true;
         el('btnPublish').disabled = true;
       }
     }
@@ -922,23 +1091,123 @@ const HTML_CONTENT = `<!DOCTYPE html>
       }
     };
 
+    // Run Local Preview
+    async function runPreview() {
+      if (!currentPath || !inspectionData || isBuildingPreview) return;
+      isBuildingPreview = true;
+      el('btnGeneratePreview').disabled = true;
+      el('previewActionIcon').textContent = '⏳';
+      el('previewActionText').textContent = '正在构建预览...';
+      el('logsBody').style.display = 'block';
+      el('logsToggleText').textContent = '收起日志 ▴';
+      appendLog('\\n================ 开始本地预览构建 ================');
+      updateStep(2);
+
+      try {
+        const res = await fetch('/api/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: currentPath,
+            category: selectedCategory || undefined
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        currentPreviewUrl = data.previewUrl;
+        previewSourceHash = data.sourceHash;
+
+        el('previewCard').style.display = 'block';
+        el('previewUrlText').textContent = data.previewUrl;
+        el('previewFrame').src = data.previewUrl;
+
+        updateStep(3);
+        appendLog('\\n[完成] 本地预览站点构建完成！');
+        appendLog('[预览网址] ' + data.previewUrl);
+
+        el('btnPublish').disabled = false;
+        el('btnPublish').style.opacity = '1';
+        el('publishText').textContent = inspectionData.exists ? '确认无误，更新覆盖线上博客' : '确认效果无误，推送到线上博客';
+        el('workflowNotice').innerHTML = '✅ <span style="color:#059669; font-weight:700;">本地预览已就绪！</span>请在浏览器中核对 MathJax 公式与图片；满意后点击右侧推送上线。';
+
+        // Automatically open the preview URL in default browser
+        fetch('/api/open-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: data.previewUrl })
+        });
+        showToast('🎉 本地预览已在浏览器中打开，请核验渲染效果！', 'success');
+      } catch (err) {
+        showToast('预览生成失败：' + err.message, 'error');
+        appendLog('\\n[预览失败] ' + err.message);
+      } finally {
+        isBuildingPreview = false;
+        el('btnGeneratePreview').disabled = false;
+        el('previewActionIcon').textContent = '🔍';
+        el('previewActionText').textContent = '重新生成预览';
+      }
+    }
+
+    el('btnGeneratePreview').onclick = runPreview;
+    el('btnRefreshPreview').onclick = runPreview;
+
+    el('btnOpenBrowserPreview').onclick = () => {
+      if (currentPreviewUrl) {
+        fetch('/api/open-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: currentPreviewUrl })
+        });
+      }
+    };
+
+    el('btnToggleIframe').onclick = () => {
+      const wrap = el('iframeWrap');
+      const isHidden = wrap.style.display === 'none';
+      wrap.style.display = isHidden ? 'block' : 'none';
+      el('btnToggleIframe').textContent = isHidden ? '📱 收起内嵌视窗' : '📱 展开内嵌视窗';
+    };
+
+    el('btnPreviewEditOriginal').onclick = () => {
+      if (currentPath) {
+        fetch('/api/open-original', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentPath })
+        });
+      }
+    };
+
     // Publish Action
     el('btnPublish').onclick = async () => {
       if (!currentPath || !inspectionData) return;
-      if (inspectionData.exists) {
-        if (!confirm('博客已存在同名文章：' + inspectionData.filename + '\\n\\n确认要更新覆盖线上版本吗？')) {
+
+      if (!currentPreviewUrl) {
+        if (!confirm('您尚未在本地预览渲染效果。\\n\\n强烈建议先点击左侧【生成本地实时预览】核对数学公式与图片排版。\\n\\n确认仍要直接推送吗？')) {
           return;
+        }
+      } else {
+        if (inspectionData.exists) {
+          if (!confirm('博客已存在同名文章：' + inspectionData.filename + '\\n\\n确认预览效果无误，更新覆盖线上版本吗？')) {
+            return;
+          }
+        } else {
+          if (!confirm('已在本地预览确认文章排版与公式正确，确认立即推送到线上博客（GitHub Pages）吗？')) {
+            return;
+          }
         }
       }
 
       el('btnPublish').disabled = true;
-      el('publishText').textContent = '正在发布中，请稍候...';
+      el('btnGeneratePreview').disabled = true;
+      el('publishText').textContent = '正在推送到云端...';
       el('logsBody').style.display = 'block';
       el('logsToggleText').textContent = '收起日志 ▴';
-      appendLog('\\n================ 开始发布任务 ================');
+      appendLog('\\n================ 开始推送到线上博客 ================');
 
       try {
-        updateStep(2);
+        updateStep(4);
         const res = await fetch('/api/publish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -963,13 +1232,15 @@ const HTML_CONTENT = `<!DOCTYPE html>
 
         updateStep(4);
         showToast('🎉 文章已成功推送到博客！GitHub Pages 正在构建上线', 'success');
-        el('publishText').textContent = '已成功推送！可再次点击更新';
-        el('btnPublish').disabled = false;
+        el('publishText').textContent = '已成功推送上线！';
+        el('workflowNotice').innerHTML = '🎉 <span style="color:#059669; font-weight:700;">发布成功！</span>GitHub Pages 正在部署更新，稍后即可在线访问。';
       } catch (err) {
         showToast('发布异常：' + err.message, 'error');
         appendLog('\\n[发布失败] ' + err.message);
-        el('publishText').textContent = '重试发布';
+        el('publishText').textContent = '重试推送';
+      } finally {
         el('btnPublish').disabled = false;
+        el('btnGeneratePreview').disabled = false;
       }
     };
 
@@ -1056,6 +1327,51 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'POST' && req.url === '/api/preview') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { path: filePath, category } = JSON.parse(body);
+        isPublishing = true;
+        const result = await buildPreviewArticle({
+          root,
+          input: filePath,
+          category
+        });
+        const port = await ensurePreviewServer(result.publicDir);
+        const previewUrl = `http://127.0.0.1:${port}${result.postUrl}`;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          ok: true,
+          postUrl: result.postUrl,
+          previewUrl,
+          sourceHash: result.sourceHash
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      } finally {
+        isPublishing = false;
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/open-preview') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { url } = JSON.parse(body);
+        if (url) openUrl(url);
+      } catch (_) {}
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    });
+    return;
+  }
+
   if (req.method === 'POST' && req.url === '/api/publish') {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -1134,6 +1450,9 @@ server.listen(0, '127.0.0.1', () => {
     // If no heartbeat for 5 seconds and not currently publishing, exit cleanly
     if (!isPublishing && Date.now() - lastHeartbeat > 5000) {
       clearInterval(checkTimer);
+      if (previewServer) {
+        try { previewServer.close(); } catch (_) {}
+      }
       server.close(() => process.exit(0));
     }
   }, 1500);
