@@ -1,0 +1,640 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2) | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="深入剖析 Stanford CS336 Lecture 14：数据工程深水区实战，涵盖文本启发式过滤、FastText 质量分类、MinHash LSH 局部敏感哈希海量去重数学原理、数据配比（Data Mixing）定律及后训练合成数据构造机制。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/10/26/cs336_lecture_14_notes/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="深入剖析 Stanford CS336 Lecture 14：数据工程深水区实战，涵盖文本启发式过滤、FastText 质量分类、MinHash LSH 局部敏感哈希海量去重数学原理、数据配比（Data Mixing）定律及后训练合成数据构造机制。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-10-26T06:31:00.000Z">
+<meta property="article:modified_time" content="2026-10-26T06:42:01.906Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="CS336">
+<meta property="article:tag" content="LSH去重">
+<meta property="article:tag" content="MinHash">
+<meta property="article:tag" content="合成数据">
+<meta property="article:tag" content="大模型">
+<meta property="article:tag" content="数据混合">
+<meta property="article:tag" content="数据清洗">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)",
+  "url": "https://kanosa0101.github.io/2026/10/26/cs336_lecture_14_notes/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-10-26T06:31:00.000Z",
+  "dateModified": "2026-10-26T06:42:01.906Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/10/26/cs336_lecture_14_notes/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">19</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">91</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-26T06:31:00.000Z" title="发表于 2026-10-26 14:31:00">2026-10-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-26T06:42:01.906Z" title="更新于 2026-10-26 14:42:01">2026-10-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/">笔记</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/CS336/">CS336</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Stanford-CS336-Spring-2026-Lecture-14-深度课程笔记：Data-Part-2"><a href="#Stanford-CS336-Spring-2026-Lecture-14-深度课程笔记：Data-Part-2" class="headerlink" title="Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)"></a>Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)</h1><blockquote>
+<p><strong>课程信息</strong>：<a target="_blank" rel="noopener" href="https://cs336.stanford.edu/">Stanford CS336: Language Modeling from Scratch (Spring 2026)</a><br><strong>主讲教授</strong>：Percy Liang<br><strong>本讲资源</strong>：<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=5sxHosTLPF8">Lecture 14 YouTube 视频</a> | <a target="_blank" rel="noopener" href="https://cs336.stanford.edu/lectures/?trace=lecture_14">交互式执行轨迹 (<code>lecture_14.py</code>)</a> | <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/lectures">源码仓库 (<code>stanford-cs336/lectures</code>)</a> | <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment4-data">Assignment 4 指导手册与代码库 (<code>assignment4-data</code>)</a></p>
+</blockquote>
+<h2 id="1-引言：从原始数据矿藏到高纯度训练燃料的全链路工程（main）"><a href="#1-引言：从原始数据矿藏到高纯度训练燃料的全链路工程（main）" class="headerlink" title="1. 引言：从原始数据矿藏到高纯度训练燃料的全链路工程（main）"></a>1. 引言：从原始数据矿藏到高纯度训练燃料的全链路工程（<code>main</code>）</h2><p>在上一讲（Lecture 13: Data Part 1）中，我们探讨了训练数据的宏观生态与演进历史：从在线实时服务（Live Services，如 GitHub、Wikipedia、互联网服务器）出发，通过网络爬虫（Crawling）或官方全量镜像（Dumps）获取原始数据，并剖析了服务条款（ToS）、版权法（许可证与合理使用 Fair Use）以及从 2018 年的 BERT 到 2025 年的 Nemotron-CC &#x2F; Common Pile 的 14 个标志性预训练数据集。</p>
+<p>在本讲（Lecture 14: Data Part 2）中，Percy 将视角从“宏观数据集盘点”切换到**“微观算法与数据清洗管线（Data Pipeline Mechanics）”**——这也是你在 <strong>Assignment 4</strong> 中需要亲手从零编写的核心算法栈。我们将沿着原始数据变为模型权重的完整生命周期，深入拆解五大核心工程环节：</p>
+<ol>
+<li><strong>数据格式转换（Transformation，<code>transformation</code>）</strong>：如何从嘈杂的 HTML DOM 树与截断的 PDF 文件（如 FinePDFs）中剥离广告导航模板，高保真地提取出线性化纯文本与表格&#x2F;公式结构？</li>
+<li><strong>模型化质量与安全过滤（Filtering，<code>filtering</code>）</strong>：如何用统一的“目标集 $T$ vs. 原始池 $R$”打分框架（KenLM 生成式困惑度、fastText 判别式线性分类器、大模型蒸馏随机森林），在百亿级网页上以极低算力完成语种识别、数学挖掘（OpenWebMath）、教科书级代码筛选（phi-1）与毒性过滤（Jigsaw）？过滤阈值与训练时长（Token Horizon）之间存在怎样的尺度耦合？</li>
+<li><strong>精确与近似模糊去重（Deduplication，<code>deduplication</code>）</strong>：面对 $O(N^2)$ 两两比对的计算高墙，如何利用 <strong>MurmurHash</strong>、<strong>Jaccard 相似度</strong>、<strong>MinHash（最小哈希）</strong> 与 <strong>LSH（局部敏感哈希的分段 AND-OR 锐化相变）</strong>，在线性时间 $O(N)$ 内清除全网重复文本？</li>
+<li><strong>跨领域数据配比（Data Mixing，<code>data_mixing</code>）</strong>：当手握数十个质量与体积悬殊的数据源时，如何跨越手工拍脑袋（Vibes），通过 <strong>UniMax（硬性 Epoch 上限截断）</strong>、<strong>回归代理模型（RegMix &#x2F; Olmix）</strong> 与 <strong>模拟多轮过采样（Simulated Epoching, Held et al., 2025）</strong> 科学求解最优混合分布？</li>
+<li><strong>后训练与合成数据工程（Post-training &amp; Synthetic Data，<code>post_training_data</code>）</strong>：从推理模型蒸馏配方（<strong>OpenThoughts</strong> 1000+ 次消融实验的深刻洞见）到软件工程智能体（SWE Agents）的三代数据扩展革命（<strong>SWE-smith</strong> 合成 Bug $\to$ <strong>SWE-Zero &#x2F; SWE-Hero</strong> 无执行反馈世界模型轨迹 $\to$ <strong>SWE-rebench &amp; 12M 轨迹扩展</strong>）。</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                       CS336 Lecture 14 全景架构：现代大模型数据工程五大流水线                   │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [Stage 1: 格式转换 (Transformation)]                                                           │</span><br><span class="line">│    • 原始形态: HTML (WARC) / PDF (Common Crawl) / 代码目录树                                    │</span><br><span class="line">│    • 核心工具: trafilatura / resiliparse / jusText │ FinePDFs (补抓截断 PDF + RolmOCR / Docling) │</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  [Stage 2: 模型化过滤 (Model-Based Filtering)] ──► 统一范式: 给定小目标集 T 与大原始池 R 训打分器│</span><br><span class="line">│    • 生成式打分: KenLM n-gram 语言模型算 p_T(x) (如 CCNet, OpenWebMath &lt; 15000 PPL)             │</span><br><span class="line">│    • 判别式打分: fastText 线性分类器算 p(T|x) (语种识别 / GPT-3 Pareto采样 / DCLM / Jigsaw毒性)  │</span><br><span class="line">│    • LLM 蒸馏打分: GPT-4 标注 100K 样本 ──► 训轻量分类器 (如 phi-1 随机森林 / FineWeb-Edu)      │</span><br><span class="line">│    • 尺度依赖定律: 短训期偏好严苛高质小池; 长训期若过度过滤会导致多 Epoch 过拟合反输给未过滤池! │</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  [Stage 3: 线性时间去重 (Linear-Time Deduplication)]                                            │</span><br><span class="line">│    • 精确去重 (Exact): MurmurHash (mmh3) + MapReduce 排序分组 (如 C4 三句话跨度去重)             │</span><br><span class="line">│    • 模糊去重 (Fuzzy): n-gram 集合 Jaccard(A,B) ──► MinHash (碰撞率=Jaccard) ──► LSH (b段×r行)   │</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  [Stage 4: 科学数据配比 (Data Mixing)]                                                          │</span><br><span class="line">│    • 防过拟合护栏: UniMax (限制单源最大重复轮数 C) &amp; Simulated Epoching (按比例下采样模拟饥饿)  │</span><br><span class="line">│    • 自动优化框架: RegMix &amp; Olmix (小模型跑 Dirichlet 随机配比 ──► 拟合回归模型 ──► 求解最优 p*)│</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  [Stage 5: 后训练与智能体合成数据 (Post-Training &amp; Agentic Synthetic Data)]                     │</span><br><span class="line">│    • 推理蒸馏: OpenThoughts (1.2M 样本, 每题采样16条, QwQ-32B 比 DeepSeek-R1 更适合当老师!)      │</span><br><span class="line">│    • 代码智能体: SWE-smith (50K 合成Bug) ──► SWE-Zero/Hero (300K 免Docker执行轨迹) ──► 12M 轨迹 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-第一站：数据格式转换（Transformation）——-从-HTML-与-PDF-到纯文本（transformation）"><a href="#2-第一站：数据格式转换（Transformation）——-从-HTML-与-PDF-到纯文本（transformation）" class="headerlink" title="2. 第一站：数据格式转换（Transformation）—— 从 HTML 与 PDF 到纯文本（transformation）"></a>2. 第一站：数据格式转换（Transformation）—— 从 HTML 与 PDF 到纯文本（<code>transformation</code>）</h2><p>Percy 再次强调：<strong>原始数据（Raw Data）绝不是现成的纯文本字符串！</strong> 当你打开 Common Crawl 的原始数据包时，里面装的是嵌套的 <strong>HTML 源码</strong>、二进制 <strong>PDF 文件</strong>，或者在 GitHub 上是包含多文件的<strong>代码仓库目录树（Directory Trees）</strong>。数据流水线的第一步，就是将这些异构格式**线性化（Linearize）**为自回归语言模型能够消化的一维 Token 序列。</p>
+<h3 id="2-1-HTML-到纯文本的提取艺术与工具选型"><a href="#2-1-HTML-到纯文本的提取艺术与工具选型" class="headerlink" title="2.1 HTML 到纯文本的提取艺术与工具选型"></a>2.1 HTML 到纯文本的提取艺术与工具选型</h3><p>互联网上绝大多数网页都是 HTML 格式。将 HTML 转换为纯文本面临三大核心挑战：</p>
+<ol>
+<li><strong>剥离样板噪声（Boilerplate Removal）</strong>：必须剔除顶部导航栏（Navigation bars）、侧边栏菜单、页脚版权声明（Footers）以及穿插其中的广告弹窗（Ads），精准定位并提取网页的<strong>主体正文（Main Content）</strong>。但 Percy 指出，有时候“什么是正文、什么是模板”的边界也很模糊（例如如果你未来想训练一个浏览网页的 Web Agent，保留一点导航元素反而有助于模型理解网页结构）。</li>
+<li><strong>二维与层级结构的有损线性化（Inherently Lossy Linearization）</strong>：<br>网页渲染出来是二维的视觉排版（包含图片、嵌套表格、代码块、列表）。当你把它压扁成一维纯文本时，不可避免会发生信息丢失：例如简单的二维表格可以转换成 Markdown 表格，但遇到复杂的**多层嵌套表格（Nested Tables）**时，解析器往往只能放弃或做粗糙近似。</li>
+<li><strong>为什么工业界普遍采用“基于规则（Rule-based）”的提取工具，且工具选型直接决定下游 MMLU 精度？</strong><ul>
+<li>因为你要处理高达数百 TB 甚至 PB 级的全量 Common Crawl，提取器必须<strong>极快（Extremely Fast）</strong>！目前主流的开源提取器包括 <strong><code>trafilatura</code></strong>、<strong><code>resiliparse</code></strong>、<strong><code>jusText</code></strong> 以及文本浏览器 <strong><code>lynx</code></strong>。</li>
+<li>正如我们在 Lecture 13 结合 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.11794">DataComp-LM (Li et al., 2024)</a></strong> 看到的实证对比：在完全相同的模型架构与训练步数下，仅仅是将 HTML 提取工具从 Common Crawl 官方自带的 <code>WET</code> 替换为 <strong><code>resiliparse</code></strong> 或 <strong><code>trafilatura</code></strong>，训练出的模型在下游核心评测基准（Core Eval）上的准确率就获得了显著提升！</li>
+</ul>
+</li>
+</ol>
+<h3 id="2-2-挖掘高价值-PDF-矿藏：FinePDFs-Hugging-Face-2025-2026"><a href="#2-2-挖掘高价值-PDF-矿藏：FinePDFs-Hugging-Face-2025-2026" class="headerlink" title="2.2 挖掘高价值 PDF 矿藏：FinePDFs (Hugging Face, 2025&#x2F;2026)"></a>2.2 挖掘高价值 PDF 矿藏：<a target="_blank" rel="noopener" href="https://huggingface.co/datasets/HuggingFaceFW/finepdfs">FinePDFs (Hugging Face, 2025&#x2F;2026)</a></h3><p>除了 HTML，互联网上还散布着大量 <strong>PDF 文档</strong>。Percy 敏锐地指出了一条经验法则：<strong>总体而言，网上平均一份 PDF 文档的信息质量显著高于平均一个普通 HTML 网页</strong>——因为如果一个人愿意费劲把内容排版导出成 PDF（如学术论文、政府白皮书、技术手册、电子书），他大概率真的有严肃、高价值的内容要表达！</p>
+<p>然而，直接从 Common Crawl 处理 PDF 是一场硬仗。Hugging Face 团队在构建 <strong><a target="_blank" rel="noopener" href="https://huggingface.co/datasets/HuggingFaceFW/finepdfs">FinePDFs</a></strong> 时总结了全套工程管线：</p>
+<ol>
+<li><strong>重新抓取被截断的 PDF（Recrawl Truncated PDFs）</strong>：由于 Common Crawl 对单个网页响应设置了字节大小上限（如 1MB–5MB），而很多高质量 PDF 体积较大，Common Crawl 里保存的 PDF 绝大部分是<strong>被拦腰截断的残损文件</strong>！因此第一步必须根据 URL 重新发起网络请求抓回完整的 PDF 文件。</li>
+<li><strong>高速视觉 OCR 与版面解析（RolmOCR &#x2F; Docling）</strong>：<br>不同于 HTML 至少带有 <code>&lt;h1&gt;</code>、<code>&lt;p&gt;</code> 等语义标签，PDF 的底层指令纯粹是为了“打印机在坐标 $(x, y)$ 处画一个字符”而设计的<strong>纯视觉排版格式（All about layout, missing semantic structure）</strong>，甚至很多老旧 PDF 干脆就是扫描的图片！因此，必须动用轻量级视觉语言模型（VLM，如 <strong>RolmOCR</strong>）或专业文档解析器（如 <strong>Docling</strong>），将其极致加速后批量运行 OCR，再经过繁琐的文本拼合、去页眉页脚与乱码过滤，才能转化为高质量 Markdown 文本。</li>
+</ol>
+<h2 id="3-第二站：模型化数据过滤（Filtering）——-统一数学框架与四大实战案例（filtering）"><a href="#3-第二站：模型化数据过滤（Filtering）——-统一数学框架与四大实战案例（filtering）" class="headerlink" title="3. 第二站：模型化数据过滤（Filtering）—— 统一数学框架与四大实战案例（filtering）"></a>3. 第二站：模型化数据过滤（Filtering）—— 统一数学框架与四大实战案例（<code>filtering</code>）</h2><p>把 HTML 和 PDF 转换成纯文本后，你手头有了一座体量高达 $100\text{T}\sim 240\text{T}$ Tokens 的原始文本大山（Raw Data $R$），但其中 90% 以上依然是低质垃圾。接下来进入决定模型生死的第二步：<strong>过滤（Filtering）</strong>。</p>
+<h3 id="3-1-过滤算法的统一抽象框架（General-Schema-for-Model-Based-Filtering）"><a href="#3-1-过滤算法的统一抽象框架（General-Schema-for-Model-Based-Filtering）" class="headerlink" title="3.1 过滤算法的统一抽象框架（General Schema for Model-Based Filtering）"></a>3.1 过滤算法的统一抽象框架（General Schema for Model-Based Filtering）</h3><p>Percy（结合综述论文 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.16827">A Survey on Data Selection for Language Models, Albalak et al., 2024</a></strong>）将几乎所有的现代数据过滤算法抽象为一个极其优雅的<strong>核心构建块（Algorithmic Building Block）</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     数据过滤的统一抽象框架 (Target T + Raw R ──► Filtered T&#x27;)                    │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [输入 1: 目标高质量小数据集 T (Target Data)]     [输入 2: 海量原始数据集 R (Raw Data, ~100T+)] │</span><br><span class="line">│   (如 Wikipedia / OpenHermes+ELI5 / GPT-4 打标集)  (如刚从 Common Crawl 提取出的全量网页文本)   │</span><br><span class="line">│                        │                                                │                       │</span><br><span class="line">│                        └───────────────┐                ┌───────────────┘                       │</span><br><span class="line">│                                        ▼                ▼                                       │</span><br><span class="line">│                     [步骤 1: 基于 T (及 R) 拟合一个极速打分模型 score(x)]                        │</span><br><span class="line">│                       • 路线 A (生成式 Generative): 在 T 上训 KenLM 5-gram, score(x) = p_T(x)    │</span><br><span class="line">│                       • 路线 B (判别式 Classifier): T 为正例、R 为负例训 fastText, score(x)=p(T|x)│</span><br><span class="line">│                                                │                                                │</span><br><span class="line">│                                                ▼                                                │</span><br><span class="line">│                     [步骤 2: 遍历全量 R 计算得分，保留高分样本构成精炼子集 T&#x27; ⊂ R]               │</span><br><span class="line">│                       • 确定性阈值截断: Keep x if score(x) &gt;= threshold                          │</span><br><span class="line">│                       • 随机化概率采样: Keep x stochastically (如 GPT-3 的 Pareto 采样)         │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>设计过滤算法必须同时满足的两大核心诉求（Desiderata）</strong>：<ol>
+<li><strong>具备泛化外推能力（Generalization from $T$）</strong>：我们已经有目标集 $T$ 了，过滤的目的不是把 $T$ 原样找出来，而是要在 $R$ 中发掘出<strong>风格、质量或领域与 $T$ 相似，但内容全新的广袤子集 $T’$</strong>（即要求 $T’ \neq T$ 且 $|T’| \gg |T|$）！</li>
+<li><strong>推理速度必须快到极致（Extremely Fast）</strong>：因为打分器必须在包含数百亿文档、上百兆亿（$100\text{T}+$）Token 的原始池 $R$ 上全量跑一遍！这就是为什么你绝不可能直接拿一个 <code>70B</code> 甚至 <code>7B</code> 的 Transformer 大模型去给全量 Common Crawl 逐篇打分，而必须使用 <strong>$n$-gram 模型（KenLM）</strong> 或 <strong>词袋线性分类器（fastText）</strong>！</li>
+</ol>
+</li>
+</ul>
+<h3 id="3-2-两类主力轻量级打分器：KenLM-vs-fastText"><a href="#3-2-两类主力轻量级打分器：KenLM-vs-fastText" class="headerlink" title="3.2 两类主力轻量级打分器：KenLM vs. fastText"></a>3.2 两类主力轻量级打分器：KenLM vs. fastText</h3><table>
+<thead>
+<tr>
+<th align="left">模型类型</th>
+<th align="left">代表工具</th>
+<th align="left">数学打分函数 $\text{score}(x)$</th>
+<th align="left">训练方式与计算特性</th>
+<th align="left">核心优缺点对比</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. 生成式语言模型 (Generative Model)</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://kheafield.com/code/kenlm/">KenLM</a></strong> ($n$-gram LM, 通常取 5-gram)</td>
+<td align="left">$\text{score}(x) &#x3D; p_T(x)^{1&#x2F;</td>
+<td align="left">x</td>
+<td align="left">}$（等价于取负困惑度 $-\text{PPL}_T(x)$）</td>
+</tr>
+<tr>
+<td align="left"><strong>2. 判别式线性分类器 (Discriminative Classifier)</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://fasttext.cc/">fastText</a></strong> (Facebook 开源词袋&#x2F;字符 $n$-gram 线性分类器)</td>
+<td align="left">$\text{score}(x) &#x3D; p(y &#x3D; T \mid x) &#x3D; \sigma\big(w^\top \phi_{\text{BoW}}(x)\big)$</td>
+<td align="left">将 $T$ 作为<strong>正样本（Positive）</strong>，从 $R$ 中随机采样等量文档作为<strong>负样本（Negative）</strong>，训练二分类逻辑回归</td>
+<td align="left"><strong>优点</strong>：直接学习区分高质与垃圾网页的判别边界，抗低熵重复干扰能力强，速度达每秒数千篇文档；<br><strong>现已成为工业界（如 DCLM）的绝对主流</strong></td>
+</tr>
+</tbody></table>
+<h3 id="3-3-五大经典实例化案例深度拆解（Instantiations-of-Filtering）"><a href="#3-3-五大经典实例化案例深度拆解（Instantiations-of-Filtering）" class="headerlink" title="3.3 五大经典实例化案例深度拆解（Instantiations of Filtering）"></a>3.3 五大经典实例化案例深度拆解（Instantiations of Filtering）</h3><p>Percy 在 <code>lecture_14.py</code>（Lines 89–133）中展示了这一通用框架在五个截然不同场景下的精妙应用：</p>
+<h4 id="实例-1：语种识别（Language-Identification-——-Dolma-CCNet）"><a href="#实例-1：语种识别（Language-Identification-——-Dolma-CCNet）" class="headerlink" title="实例 1：语种识别（Language Identification —— Dolma &amp; CCNet）"></a>实例 1：语种识别（Language Identification —— Dolma &amp; CCNet）</h4><ul>
+<li><strong>目标</strong>：从多语言混杂的网页中筛选出特定目标语种（如英语 English）。</li>
+<li><strong>方案</strong>：直接调用 Meta 预训练好的开源 <strong><a target="_blank" rel="noopener" href="https://fasttext.cc/docs/en/language-identification.html"><code>fastText</code> 176 语种识别模型 (<code>lid.176.bin</code>)</a></strong>（该模型在多语言 Wikipedia、Tatoeba 翻译句对网与 SETimes 东南欧新闻网上训练而成）。</li>
+<li><strong>阈值设定</strong>：在 AI2 的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.00159">Dolma (Soldaini et al., 2024)</a></strong> 中，保留所有满足 <strong><code>p(English) &gt;= 0.5</code></strong> 的网页（而在 FineWeb 中则设为 <code>&gt;= 0.65</code>）。Percy 指出，相比于质量过滤，语种识别是一个相对简单且成熟的环节（尽管理解代码混写 Code-switching 和方言仍有细节挑战，但它通常不是训练好模型的瓶颈）。</li>
+</ul>
+<h4 id="实例-2：垂直领域挖掘——数学网页语料库-OpenWebMath-Paster-et-al-2023"><a href="#实例-2：垂直领域挖掘——数学网页语料库-OpenWebMath-Paster-et-al-2023" class="headerlink" title="实例 2：垂直领域挖掘——数学网页语料库 OpenWebMath (Paster et al., 2023)"></a>实例 2：垂直领域挖掘——数学网页语料库 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.06786">OpenWebMath (Paster et al., 2023)</a></h4><ul>
+<li><strong>目标</strong>：为了复现 Google Minerva 的数学推理能力，从 2370 亿个 Common Crawl 原始 HTML 页面中淘出高质量数学网页。</li>
+<li><strong>三级组合过滤管线（Rules + KenLM + fastText）</strong>：<ol>
+<li><strong>HTML 保真提取 + 规则初筛</strong>：定制 HTML 解析器保留 MathJax &#x2F; KaTeX 公式为标准 LaTeX 源码，并用规则过滤是否包含数学符号或 LaTeX 命令；</li>
+<li><strong>KenLM 生成式过滤</strong>：在已知的高质量数学语料库 <strong>Proof-Pile</strong> 上训练一个 KenLM 模型，计算候选网页的困惑度，<strong>仅保留 <code>Perplexity &lt; 15,000</code> 的文档</strong>；</li>
+<li><strong>fastText 判别式过滤（双阈值策略）</strong>：训练一个 <code>fastText</code> 分类器预测文档是否属于数学写作。如果网页中已经检测到了明确的 LaTeX 公式，只需分类器得分 <strong><code>&gt;= 0.17</code></strong> 即可通过（低门槛）；如果网页中没有显式 LaTeX 公式（纯文本数学讨论），则要求分类器得分必须 <strong><code>&gt;= 0.80</code></strong>（高门槛）！</li>
+</ol>
+</li>
+<li><strong>惊人成效</strong>：最终从全网提炼出 <strong><code>14.7B</code> Tokens</strong> 的高纯度数学语料；在上面训练的 <code>1.4B</code> 小模型，其数学推理表现<strong>直接超越了在超过 20 倍数据量（300B+ Tokens）的通用网页语料上训练的同尺寸模型</strong>！这生动证明了：<strong>只要你把“目标集 $T$”定义为某个专业领域（如数学），质量过滤工具就能直接变身为强大的领域数据挖掘机</strong>！</li>
+</ul>
+<h4 id="实例-3：通用高质量网页过滤——GPT-3-Brown-et-al-2020-与-LLaMA-1-Touvron-et-al-2023"><a href="#实例-3：通用高质量网页过滤——GPT-3-Brown-et-al-2020-与-LLaMA-1-Touvron-et-al-2023" class="headerlink" title="实例 3：通用高质量网页过滤——GPT-3 (Brown et al., 2020) 与 LLaMA 1 (Touvron et al., 2023)"></a>实例 3：通用高质量网页过滤——<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2005.14165">GPT-3 (Brown et al., 2020)</a> 与 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2302.13971">LLaMA 1 (Touvron et al., 2023)</a></h4><ul>
+<li><strong>GPT-3 的随机化帕累托采样（Stochastic Pareto Filtering）</strong>：<ul>
+<li><strong>正样本 $T$</strong>：来自 <code>{Wikipedia, WebText2, Books1, Books2}</code>；<strong>负样本 $R$</strong>：原始 Common Crawl。</li>
+<li>基于词特征训练线性分类器为每个文档打出质量分 $\text{score} \in [0, 1]$。为了防止死板阈值截断导致数据失去多样性，GPT-3 没有使用硬阈值，而是通过<strong>帕累托分布（Pareto Distribution，$\alpha&#x3D;9$）进行随机化保留</strong>：<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">keep_document</span>(<span class="params">score: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="comment"># 得分 score 越高 (1 - score 越小)，越容易通过；但低分文档也有一定小概率被保留以维持多样性!</span></span><br><span class="line">    <span class="keyword">return</span> np.random.pareto(<span class="number">9</span>) &gt; <span class="number">1</span> - score</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>LLaMA 1 &#x2F; RedPajama 的防百科腔微调</strong>：<ul>
+<li><strong>正样本 $T$</strong>：不选 Wikipedia 本身，而是选**“被 Wikipedia 词条作为外部参考文献（References）引用的网页”**；<strong>负样本 $R$</strong>：随机 Common Crawl 网页。训练线性分类器并保留被判为正类的文档。</li>
+</ul>
+</li>
+</ul>
+<h4 id="实例-4：大模型蒸馏两阶段过滤——phi-1-Textbooks-Are-All-You-Need-Gunasekar-et-al-2023"><a href="#实例-4：大模型蒸馏两阶段过滤——phi-1-Textbooks-Are-All-You-Need-Gunasekar-et-al-2023" class="headerlink" title="实例 4：大模型蒸馏两阶段过滤——phi-1: Textbooks Are All You Need (Gunasekar et al., 2023)"></a>实例 4：大模型蒸馏两阶段过滤——<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2306.11644">phi-1: Textbooks Are All You Need (Gunasekar et al., 2023)</a></h4><p>如果你想筛选出“像优秀教材一样适合初学者学习编程概念”的网页或代码，但你手头根本没有现成的“教科书目标数据集 $T$”怎么办？<br>微软 <strong>phi-1 (<code>1.3B</code> 参数)</strong> 开创了如今风靡工业界（如 FineWeb-Edu、Nemotron-CC）的**“大模型主动打标构造 $T$ $\to$ 蒸馏训练轻量分类器横扫全网 $R$”**的两阶段范式：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># phi-1 (Gunasekar et al., 2023) 的两阶段大模型蒸馏过滤配方 (源自 lecture_14.py Lines 120-127)</span></span><br><span class="line">R = <span class="string">&quot;Python subset of The Stack (35M files)&quot;</span>  <span class="comment"># 海量原始代码池 R</span></span><br><span class="line">prompt = <span class="string">&quot;determine its educational value for a student whose goal is to learn basic coding concepts&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 第一阶段：调用昂贵的 GPT-4，用上述 Prompt 对 R 的一小部分子集 (100K 个文件) 进行打分标注，构建目标集 T！</span></span><br><span class="line">T = <span class="string">&quot;Use GPT-4 with this prompt to classify 100K subset of R to get positive examples&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 第二阶段：提取预训练 CodeGen 模型的输出 Embedding 作为特征，在 100K 标注集 T 上训练一个极速的随机森林 (Random Forest) 分类器！</span></span><br><span class="line"><span class="comment"># 第三阶段：用这个轻量级随机森林分类器横扫全量 35M 原始池 R，筛选出被判为正类的“高教育价值”代码子集！</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>HumanEval 实测对比</strong>：<ul>
+<li>在未过滤的原始 The Stack Python 子集上训练 <code>1.3B</code> 模型（跑 <code>96K</code> 步）：HumanEval Pass@1 仅为 <strong><code>12.19%</code></strong>；</li>
+<li>在经过上述“教育价值分类器”过滤出的精炼子集上训练同一个 <code>1.3B</code> 模型（仅跑 <code>36K</code> 步，算力不到前者的 40%）：HumanEval 直接跃升至 <strong><code>17.68%</code></strong>（再配合 GPT-3.5 合成的 <code>1B</code> 教科书与练习题后更是飙升至 <strong><code>50.6%</code></strong>）！</li>
+</ul>
+</li>
+</ul>
+<h4 id="实例-5：不良与毒性内容过滤——Dolma-Soldaini-et-al-2024-与-Jigsaw-数据集"><a href="#实例-5：不良与毒性内容过滤——Dolma-Soldaini-et-al-2024-与-Jigsaw-数据集" class="headerlink" title="实例 5：不良与毒性内容过滤——Dolma (Soldaini et al., 2024) 与 Jigsaw 数据集"></a>实例 5：不良与毒性内容过滤——<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.00159">Dolma (Soldaini et al., 2024)</a> 与 Jigsaw 数据集</h4><ul>
+<li><strong>目标</strong>：过滤掉互联网上的仇恨言论、色情、侮辱与暴力威胁。</li>
+<li><strong>方案</strong>：利用 Kaggle &#x2F; Google 发布的 <strong><a target="_blank" rel="noopener" href="https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge">Jigsaw Toxic Comment Classification Dataset (2018)</a></strong>——该数据集源自 <strong>Wikipedia Talk Pages（维基百科词条背后的编辑争论讨论页）</strong>，由人类标注员细分为 6 类毒性标签：<code>{toxic, severe_toxic, obscene, threat, insult, identity_hate}</code>。Dolma 在此数据集上训练了两个轻量级 <code>fastText</code> 分类器（一个识别 <code>obscene</code> 色情下流，一个识别 <code>hate</code> 仇恨攻击），用于高速清洗全量网页。</li>
+</ul>
+<h3 id="3-4-过滤的尺度依赖效应（Scale-Dependent-Effects）：为什么不存在唯一最优的过滤阈值？"><a href="#3-4-过滤的尺度依赖效应（Scale-Dependent-Effects）：为什么不存在唯一最优的过滤阈值？" class="headerlink" title="3.4 过滤的尺度依赖效应（Scale-Dependent Effects）：为什么不存在唯一最优的过滤阈值？"></a>3.4 过滤的尺度依赖效应（Scale-Dependent Effects）：为什么不存在唯一最优的过滤阈值？</h3><p>在掌握了如何训练分类器打分 $\text{score}(x) \in [0, 1]$ 后，一个最自然的工程问题是：<strong>我应该把过滤阈值设在多少？是只留 Top 1% 最精华的数据，还是留 Top 20%？</strong></p>
+<p>Percy 在 <code>lecture_14.py</code>（Lines 134–139）中展示了一组由斯坦福博士生 Michael Ryan 完成的极具启发性的受控消融实验（在一个固定大小的 <code>100</code> 个 Common Crawl WARC 分片原始池上，训练一个 <code>157M</code> 参数的模型，横轴为训练 Token 总数，纵轴为下游验证集 Loss）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">下游验证集 Loss</span><br><span class="line">  ▲</span><br><span class="line">  │  ● 原始未过滤池 (Resiliparse, 数据量大但质量低)</span><br><span class="line">  │   \</span><br><span class="line">  │    \       ★ 交叉反转点 (Crossover Point)!</span><br><span class="line">  │     \     /  在长周期训练下，过度严苛过滤的 DCLM 因被迫重复跑几十个 Epoch 而严重过拟合，</span><br><span class="line">  │      \   /   最终效果反而输给了未过滤的庞大原始池!</span><br><span class="line">  │  ○    \ /</span><br><span class="line">  │   \    ╳ ──────────────────────► 原始未过滤池 (单轮 Epoch 持续稳定下降)</span><br><span class="line">  │    \  / \</span><br><span class="line">  │     ○────●──●──● (DCLM Top 1.5%: 经历第 1, 2, 3... 个 Epoch 后下降停滞并开始过拟合反弹!)</span><br><span class="line">  └─────┴────┴───────────► 总训练步数 / 训练 Tokens 数量 (Training Horizon)</span><br><span class="line">     短训练周期        长训练周期</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>实验揭示的铁律</strong>：<ol>
+<li><strong>短训练周期（Compute-Constrained &#x2F; Short Horizon）</strong>：当你只训练很少的步数（两条曲线左侧，尚未把过滤后的数据跑完 1 个 Epoch）时，<strong>经过 DCLM 严苛过滤的高质量小数据集（蓝线）以压倒性优势大幅领先未过滤的原始数据（红线）</strong>！</li>
+<li><strong>长训练周期（Data-Constrained &#x2F; Long Horizon）</strong>：由于给定的原始池总量是有限的（100 个 WARC 文件），严苛过滤扔掉了 98% 的数据，导致高质量子集很快就被用光了！随着训练继续推进，蓝线被迫在同一个小数据集上反复训练第 2、第 3、第 10 个 <strong>Epoch（图中每个圆点代表多跑一轮 Epoch）</strong>，边际收益迅速衰减并开始过拟合；而此时红线（未过滤或宽松过滤的庞大数据集）因为一直在见全新的独特 Token，竟然在右侧实现了<strong>交叉反超（Crossover）</strong>！</li>
+</ol>
+</li>
+<li><strong>核心工程结论</strong>：<strong>绝对不存在一个脱离训练规模的“普适最优过滤阈值”！如果你计划训练的时间较短（相对于数据池规模），你应该设置极严苛的阈值只取最高质量数据；但如果你计划进行超长周期的训练（Long Horizon），你必须放宽过滤阈值（或像 Nemotron-CC 那样用合成改写挽救中低质数据），用轻微的质量妥协换取充足的唯一 Token 数量，以避免灾难性的多轮重复过拟合！</strong></li>
+</ul>
+<h2 id="4-第三站：数据去重（Deduplication）——-从精确哈希到-MinHash-LSH-相变数学推导（deduplication）"><a href="#4-第三站：数据去重（Deduplication）——-从精确哈希到-MinHash-LSH-相变数学推导（deduplication）" class="headerlink" title="4. 第三站：数据去重（Deduplication）—— 从精确哈希到 MinHash LSH 相变数学推导（deduplication）"></a>4. 第三站：数据去重（Deduplication）—— 从精确哈希到 MinHash LSH 相变数学推导（<code>deduplication</code>）</h2><p>经过转换和过滤后，我们得到了高质量文档集合。但互联网上充斥着惊人比例的重复内容：</p>
+<ol>
+<li><strong>精确重复（Exact Duplicates）</strong>：例如 <a target="_blank" rel="noopener" href="https://www.google.com/search?q=https://www.gutenberg.org/DIRS/GUTINDEX.ALL">Project Gutenberg 遍布全球的数十个镜像站点（Mirrors）</a>、GitHub 上被直接 Fork 的代码仓库。</li>
+<li><strong>近似重复（Near Duplicates —— 仅相差几个词或格式的文本）</strong>：<ul>
+<li>随处可见的开源许可证（如 <strong>MIT License</strong>，仅年份和作者名不同）、网站通用的页眉页脚与隐私条款；</li>
+<li>批量套用模板生成的垃圾广告网页（例如把同一段推广文案里的 <code>&quot;Canada&quot;</code> 替换成 <code>&quot;USA&quot;</code>、<code>&quot;UK&quot;</code> 生成上千个页面）；</li>
+<li><strong>C4 数据集中的惊世奇观（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2107.06499">Lee et al., 2021</a>）</strong>：<br>Katherine Lee 等人在审计 Google 的 C4 数据集时震惊地发现，<strong>下面这段长达 61 个词、语法极其蹩脚的婚礼摄影&#x2F;防毒面具商品推销话术，竟然在“洗干净”的 C4 数据集里一字不差或轻微变体地重复出现了整整 <code>61,036</code> 次</strong>！<blockquote>
+<p><em>““by combining fantastic ideas, interesting arrangements, and follow the current trends in the field of that make you more inspired and give artistic touches. We’d be honored if you can apply some or all of these design in your wedding. believe me, brilliant ideas would be perfect if it can be applied in real and make the people around you amazed!”</em></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ol>
+<h3 id="4-1-为什么必须去重？去重的设计空间与核心算法挑战"><a href="#4-1-为什么必须去重？去重的设计空间与核心算法挑战" class="headerlink" title="4.1 为什么必须去重？去重的设计空间与核心算法挑战"></a>4.1 为什么必须去重？去重的设计空间与核心算法挑战</h3><ul>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2107.06499">Deduplicating Training Data Makes Language Models Better (Lee et al., 2021)</a></strong> 证实了去重的三大核心收益：<ol>
+<li><strong>大幅提升训练算力效率</strong>：剔除占数据总量 30%～50% 的重复水分，用更少的训练步数达到相同甚至更高的下游准确率；</li>
+<li><strong>抑制逐字背诵（达到 10 倍降幅），缓解版权与隐私泄漏风险</strong>：未去重模型在无提示生成时有超过 <code>1%</code> 的输出是在逐字背诵训练集中的高频重复片段，去重后背诵率直接下降 <strong>10 倍</strong>；</li>
+<li><strong>消除训练-测试集重叠（Train-Test Overlap &#x2F; Decontamination）</strong>：当时标准数据集验证集中有超过 <code>4%</code> 的样本直接泄漏在训练集中。</li>
+</ol>
+</li>
+<li><strong>去重系统的三维设计空间（Design Space）</strong>：<ol>
+<li><strong>去重粒度（What is an item?）</strong>：是按<strong>整篇文档（Document）</strong>、<strong>段落（Paragraph）</strong>、还是<strong>连续 $k$ 句话的跨度（如 C4 的 3-sentence spans）</strong>？</li>
+<li><strong>匹配准则（How to match?）</strong>：是要求<strong>逐字符精确匹配（Exact Match）</strong>，还是存在公共子串，抑或<strong>子单元集合重合比例达到阈值（Fraction of common subitems &#x2F; Jaccard Similarity）</strong>？</li>
+<li><strong>处置动作（What action to take?）</strong>：发现一组重复项后，是全部删光（Remove all），还是<strong>保留其中唯一一份、删掉其余副本（Remove all but one —— 标准做法）</strong>？</li>
+</ol>
+</li>
+<li><strong>核心算法挑战（Why is Deduplication Hard at Scale?）</strong>：<br>过滤（Filtering）是对每个文档 $x$ 独立打分，天然是线性时间 $O(N)$ 且极易并行；而<strong>去重本质上是“拿每一个文档去和所有其它文档做比较”</strong>！如果写成朴素的双重循环两两比对，时间复杂度是 <strong>$O(N^2)$</strong>——面对百亿级网页，$N^2 &#x3D; 10^{20}$，全世界的计算机算到宇宙毁灭也跑不完！<br><strong>因此，去重算法的第一性铁律是：必须借助哈希函数（Hash Functions），将时间复杂度严格降为线性时间 $O(N)$（或准线性 $O(N \log N)$）！</strong></li>
+</ul>
+<h3 id="4-2-哈希函数选型与精确去重（hash-functions-exact-deduplication）"><a href="#4-2-哈希函数选型与精确去重（hash-functions-exact-deduplication）" class="headerlink" title="4.2 哈希函数选型与精确去重（hash_functions, exact_deduplication）"></a>4.2 哈希函数选型与精确去重（<code>hash_functions</code>, <code>exact_deduplication</code>）</h3><ol>
+<li><strong>密码学哈希 vs. 非密码学高速哈希</strong>：<ul>
+<li><strong>密码学哈希（如 SHA-256，用于比特币与数字签名）</strong>：极度抗碰撞（恶意攻击者也无法构造碰撞），但计算速度太慢；</li>
+<li><strong>非密码学哈希（如 DJB2、MurmurHash、CityHash、xxHash）</strong>：专为哈希表与大规模数据处理设计，极快且分布均匀。在 <code>lecture_14.py</code> 和 Assignment 4 中，我们统一使用 <strong><code>mmh3</code>（MurmurHash3）</strong>：<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> mmh3</span><br><span class="line">h = mmh3.<span class="built_in">hash</span>(<span class="string">&quot;hello&quot;</span>, seed=<span class="number">42</span>)  <span class="comment"># 极速将任意字符串映射为 32-bit / 128-bit 整数</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>MapReduce 风格的精确去重实现</strong>：<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> itertools</span><br><span class="line"><span class="keyword">import</span> mmh3</span><br><span class="line"></span><br><span class="line">items = [<span class="string">&quot;Hello!&quot;</span>, <span class="string">&quot;hello&quot;</span>, <span class="string">&quot;hello there&quot;</span>, <span class="string">&quot;hello&quot;</span>, <span class="string">&quot;hi&quot;</span>, <span class="string">&quot;bye&quot;</span>]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 1. Map &amp; Shuffle: 按哈希值排序并分组 (在大规模分布式系统中对应 MapReduce 的 Shuffle 阶段)</span></span><br><span class="line">hash_items = itertools.groupby(<span class="built_in">sorted</span>(items, key=mmh3.<span class="built_in">hash</span>), key=mmh3.<span class="built_in">hash</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. Reduce: 每个哈希桶中仅保留第一个元素 (Remove all but one)</span></span><br><span class="line">deduped_items = [<span class="built_in">next</span>(group) <span class="keyword">for</span> h, group <span class="keyword">in</span> hash_items]</span><br><span class="line"><span class="comment"># 结果: 两个 &quot;hello&quot; 被成功合并保留为 1 个!</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li><strong>C4 三句话精确去重的反面教材警示</strong>：<br>T5 的 C4 数据集以“连续 3 个句子（3-sentence spans）”为单位做精确哈希去重。Percy 指出了这种做法的一个严重副作用：<strong>当两篇文章中间恰好引用了相同的三句话时，第二篇文章中间的这三句话会被硬生生挖掉（Rip out from the middle of a document），导致剩下的上下文前言不搭后语、彻底丧失篇章连贯性</strong>！因此现代管线在文档内部去重时更加谨慎，更多采用文档级或段落级的模糊去重。</li>
+</ul>
+</li>
+</ol>
+<h3 id="4-3-近似模糊去重基石一：Jaccard-相似度与-MinHash-定理（jaccard-minhash）"><a href="#4-3-近似模糊去重基石一：Jaccard-相似度与-MinHash-定理（jaccard-minhash）" class="headerlink" title="4.3 近似模糊去重基石一：Jaccard 相似度与 MinHash 定理（jaccard_minhash）"></a>4.3 近似模糊去重基石一：Jaccard 相似度与 MinHash 定理（<code>jaccard_minhash</code>）</h3><p>为了捕捉仅相差几个词的近似重复文档（Near Duplicates），我们首先将每篇文档表示为一个<strong>集合（Set）</strong> $A$（在实践中，通常将文档切分为词级或字符级的 <strong>$n$-grams &#x2F; Shingles 集合</strong>，例如所有 5-grams 构成的集合）。</p>
+<h4 id="1-Jaccard-相似度（Jaccard-Similarity）定义"><a href="#1-Jaccard-相似度（Jaccard-Similarity）定义" class="headerlink" title="1. Jaccard 相似度（Jaccard Similarity）定义"></a>1. Jaccard 相似度（Jaccard Similarity）定义</h4><p>给定两个集合 $A$ 和 $B$，它们的 Jaccard 相似度定义为<strong>交集大小除以并集大小</strong>：<br>$$\mathbf{\text{Jaccard}(A, B) \triangleq \frac{|A \cap B|}{|A \cup B|} \in [0, 1]}$$</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">A = &#123;<span class="string">&quot;1&quot;</span>, <span class="string">&quot;2&quot;</span>, <span class="string">&quot;3&quot;</span>, <span class="string">&quot;4&quot;</span>&#125;</span><br><span class="line">B = &#123;<span class="string">&quot;1&quot;</span>, <span class="string">&quot;2&quot;</span>, <span class="string">&quot;3&quot;</span>, <span class="string">&quot;5&quot;</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">compute_jaccard</span>(<span class="params">A: <span class="built_in">set</span>, B: <span class="built_in">set</span></span>) -&gt; <span class="built_in">float</span>:</span><br><span class="line">    intersection = <span class="built_in">len</span>(A &amp; B)  <span class="comment"># |&#123;&quot;1&quot;, &quot;2&quot;, &quot;3&quot;&#125;| = 3</span></span><br><span class="line">    union = <span class="built_in">len</span>(A | B)         <span class="comment"># |&#123;&quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;, &quot;5&quot;&#125;| = 5</span></span><br><span class="line">    <span class="keyword">return</span> intersection / union</span><br><span class="line"></span><br><span class="line">jaccard = compute_jaccard(A, B)  <span class="comment"># 3 / 5 = 0.6</span></span><br></pre></td></tr></table></figure>
+<p>如果两篇文档满足 $\text{Jaccard}(A, B) \ge \tau$（例如阈值 $\tau &#x3D; 0.8$ 或 $0.9$），我们就判定它们为近似重复文档。但直接计算任意两篇文档的 $|A \cap B| &#x2F; |A \cup B|$ 依然需要 $O(N^2)$！怎么把它变成 $O(N)$ 的哈希碰撞？</p>
+<h4 id="2-MinHash（最小哈希）的神奇构造与严格数学证明"><a href="#2-MinHash（最小哈希）的神奇构造与严格数学证明" class="headerlink" title="2. MinHash（最小哈希）的神奇构造与严格数学证明"></a>2. MinHash（最小哈希）的神奇构造与严格数学证明</h4><p>通常我们在设计哈希表时，唯恐发生哈希碰撞（Hash Collision）；但在近似去重中，我们的目标恰恰相反——<strong>我们希望设计一种随机哈希函数 $h$，使得两个集合发生哈希碰撞的概率，严格等于它们的 Jaccard 相似度</strong>！<br>$$\mathbf{\mathbb{P}_{h \sim \mathcal{H}}\big[h(A) &#x3D; h(B)\big] &#x3D; \text{Jaccard}(A, B)}$$</p>
+<p><strong><a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/document/666900">Andrei Broder (1997)</a> 提出的 MinHash 算法极其简单</strong>：<br>给定一个将单个元素映射为随机整数的哈希函数 <code>mmh3.hash(x, seed)</code>，集合 $S$ 的 <strong>MinHash 值</strong>定义为<strong>集合中所有元素经过哈希后的最小值</strong>：<br>$$\mathbf{h_{\text{min}}(S) \triangleq \min_{x \in S} h(x)}$$</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">minhash</span>(<span class="params">S: <span class="built_in">set</span>[<span class="built_in">str</span>], seed: <span class="built_in">int</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">min</span>(mmh3.<span class="built_in">hash</span>(x, seed) <span class="keyword">for</span> x <span class="keyword">in</span> S)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>为什么“取集合中哈希值的最小值”就能让碰撞概率刚好等于 $\frac{|A \cap B|}{|A \cup B|}$？（特征矩阵直观证明）</strong><br>把全集 $A \cup B &#x3D; {1, 2, 3, 4, 5}$ 的归属关系画成一个 $0\text{-}1$ <strong>特征矩阵（Characteristic Matrix）</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│             MinHash 定理证明：特征矩阵与随机置换 (A = &#123;1,2,3,4&#125;, B = &#123;1,2,3,5&#125;)         │</span><br><span class="line">├─────────────┬───────────┬───────────┬───────────────────────────────────────────────────┤</span><br><span class="line">│ 元素 x      │ 集合 A    │ 集合 B    │ 元素类别归属与碰撞分析                            │</span><br><span class="line">├─────────────┼───────────┼───────────┼───────────────────────────────────────────────────┤</span><br><span class="line">│   &quot;1&quot;       │     1     │     1     │ 属于 A ∩ B (共 3 行): 若此类元素排在全集第 1 名， │</span><br><span class="line">│   &quot;2&quot;       │     1     │     1     │ 则它同时是 A 的最小值和 B 的最小值 ──► h(A)==h(B)!│</span><br><span class="line">│   &quot;3&quot;       │     1     │     1     │                                                   │</span><br><span class="line">├─────────────┼───────────┼───────────┼───────────────────────────────────────────────────┤</span><br><span class="line">│   &quot;4&quot;       │     1     │     0     │ 属于 (A \ B) ∪ (B \ A) (共 2 行): 若此类元素排在  │</span><br><span class="line">│   &quot;5&quot;       │     0     │     1     │ 全集第 1 名，则一方取到它、另一方取不到 ──► 必不相等!│</span><br><span class="line">└─────────────┴───────────┴───────────┴───────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>对每个元素应用随机哈希函数 $h(x)$ 并按哈希值从小到大排序，等价于在并集 $A \cup B$ 的所有 $|A \cup B|$ 个元素上产生了一个<strong>均匀随机排列（Uniform Random Permutation）</strong>。</li>
+<li>在这个随机排列中，$A \cup B$ 里的每一个元素成为<strong>全集最小值</strong>（即排在排列的第一位：$\arg\min_{x \in A \cup B} h(x)$）的概率是<strong>完全相等的</strong>，均为 $\frac{1}{|A \cup B|}$！</li>
+<li>观察特征矩阵：当且仅当排在 $A \cup B$ 第一位的那个最小元素**同时属于 $A$ 和 $B$（即该行在 A、B 两列均为 <code>1</code>，属于交集 $A \cap B$）**时，$A$ 的最小值和 $B$ 的最小值才会是同一个元素（即 $h_{\text{min}}(A) &#x3D; h_{\text{min}}(B)$）！如果排在第一位的元素只属于 $A$（如元素 <code>4</code>），那么 $h_{\text{min}}(A) &#x3D; h(4)$，而 $B$ 不含 <code>4</code>，故 $h_{\text{min}}(B) &gt; h(4)$，两者绝不可能相等！</li>
+<li>因此，发生碰撞的概率严格等于“$A \cup B$ 中的最小哈希元素恰好落在子集 $A \cap B$ 中”的概率：<br>$$\mathbb{P}\big[h_{\text{min}}(A) &#x3D; h_{\text{min}}(B)\big] &#x3D; \frac{\text{两列同为 1 的行数}}{\text{总行数}} &#x3D; \mathbf{\frac{|A \cap B|}{|A \cup B|} &#x3D; \text{Jaccard}(A, B)} \quad \blacksquare$$</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 用 100 个随机种子验证 MinHash 碰撞频率完美逼近 Jaccard 相似度 (0.6)</span></span><br><span class="line">n = <span class="number">100</span></span><br><span class="line">matches = [minhash(A, seed) == minhash(B, seed) <span class="keyword">for</span> seed <span class="keyword">in</span> <span class="built_in">range</span>(n)]</span><br><span class="line">estimated_jaccard = <span class="built_in">len</span>([m <span class="keyword">for</span> m <span class="keyword">in</span> matches <span class="keyword">if</span> m]) / <span class="built_in">len</span>(matches)</span><br><span class="line"><span class="keyword">assert</span> <span class="built_in">abs</span>(estimated_jaccard - jaccard) &lt; <span class="number">0.01</span>  <span class="comment"># 实测刚好等于 0.60!</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-近似模糊去重基石二：局部敏感哈希（MinHash-LSH）与-S-型相变曲线推导（locality-sensitive-hashing）"><a href="#4-4-近似模糊去重基石二：局部敏感哈希（MinHash-LSH）与-S-型相变曲线推导（locality-sensitive-hashing）" class="headerlink" title="4.4 近似模糊去重基石二：局部敏感哈希（MinHash + LSH）与 S 型相变曲线推导（locality_sensitive_hashing）"></a>4.4 近似模糊去重基石二：局部敏感哈希（MinHash + LSH）与 S 型相变曲线推导（<code>locality_sensitive_hashing</code>）</h3><p>有了 MinHash，我们还差临门一脚：单个 MinHash 的碰撞概率虽然等于 $s &#x3D; \text{Jaccard}(A, B)$，但这是一个平滑的 45 度斜线（例如当相似度高达 $0.8$ 时还有 $20%$ 概率漏检，而当相似度只有 $0.3$ 时却有高达 $30%$ 的概率误碰撞！）。<br><strong>我们的工程目标是实现一个“阶跃相变函数（Step &#x2F; Phase Transition Function）”</strong>：设定一个相似度阈值 $\tau$（比如 $\tau &#x3D; 0.9$），凡是 $\text{Jaccard}(A, B) &lt; \tau$ 的文档对碰撞概率趋近于 **<code>0</code>**，凡是 $\text{Jaccard}(A, B) &gt; \tau$ 的文档对碰撞概率趋近于 <strong><code>1</code></strong>！</p>
+<h4 id="1-LSH-的分桶（Banding）与-AND-OR-结构构造"><a href="#1-LSH-的分桶（Banding）与-AND-OR-结构构造" class="headerlink" title="1. LSH 的分桶（Banding）与 AND-OR 结构构造"></a>1. LSH 的分桶（Banding）与 <code>AND-OR</code> 结构构造</h4><p><a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/276698.276876">Locality-Sensitive Hashing (LSH, Indyk &amp; Motwani, 1998)</a> 通过极其巧妙的**分段组合（Banding Technique）**实现了对碰撞概率曲线的锐化（Sharpening）：</p>
+<ol>
+<li>为每篇文档计算 $n$ 个独立的 MinHash 值：$[h_1, h_2, \dots, h_n]$；</li>
+<li>将这 $n$ 个哈希值切分为 <strong>$b$ 个段（Bands）</strong>，每个段包含 <strong>$r$ 个哈希值（Rows per band）</strong>，满足 <strong>$n &#x3D; b \times r$</strong>。<br>例如当 $n &#x3D; 12, b &#x3D; 3, r &#x3D; 4$ 时：<br>$$\underbrace{h_1 ; h_2 ; h_3 ; h_4}<em>{\text{Band 1 }(r&#x3D;4)} ;\Big|; \underbrace{h_5 ; h_6 ; h_7 ; h_8}</em>{\text{Band 2 }(r&#x3D;4)} ;\Big|; \underbrace{h_9 ; h_{10} ; h_{11} ; h_{12}}_{\text{Band 3 }(r&#x3D;4)}$$</li>
+<li><strong>碰撞判定准则（Band 内部取 <code>AND</code>，不同 Bands 之间取 <code>OR</code>）</strong>：<br>我们判定两篇文档 $A$ 和 $B$ <strong>发生 LSH 碰撞（即成为候选重复对）</strong>，当且仅当<strong>存在至少一个 Band（$\exists j \in {1, \dots, b}$，即 <code>OR</code>），使得在该 Band 内的全部 $r$ 个 MinHash 函数值完全一致（$\forall k \in \text{Band}_j, h_k(A) &#x3D; h_k(B)$，即 <code>AND</code>）</strong>！<br><em>(工程实现上极其简单：只需把每个 Band 的 $r$ 个整数拼成一个元组，再用标准哈希表为每个 Band 建桶；只要两篇文档在任意一个 Band 落入同一个哈希桶，就触发碰撞！)</em></li>
+</ol>
+<h4 id="2-碰撞概率公式推导与-b-r-调节规律"><a href="#2-碰撞概率公式推导与-b-r-调节规律" class="headerlink" title="2. 碰撞概率公式推导与 $(b, r)$ 调节规律"></a>2. 碰撞概率公式推导与 $(b, r)$ 调节规律</h4><p>设两篇文档的真实 Jaccard 相似度为 $s &#x3D; \text{Jaccard}(A, B)$：</p>
+<ol>
+<li><strong>单个特定 Band 内部 $r$ 个哈希全部匹配（<code>AND</code>）的概率</strong>：<br>因为 $r$ 个哈希相互独立，每个匹配概率为 $s$，所以整个 Band 完全匹配的概率为：<br>$$P_{\text{band\_match}} &#x3D; \mathbf{s^r}$$</li>
+<li><strong>单个特定 Band 不匹配的概率</strong>：<br>$$P_{\text{band\_mismatch}} &#x3D; 1 - s^r$$</li>
+<li><strong>全部 $b$ 个 Bands 都不匹配的概率</strong>：<br>$$P_{\text{all\_bands\_mismatch}} &#x3D; (1 - s^r)^b$$</li>
+<li><strong>最终 LSH 碰撞概率（至少有一个 Band 匹配，即 <code>OR</code>）</strong>：<br>$$\mathbf{P_{\text{collision}}(s; b, r) &#x3D; 1 - \left(1 - s^r\right)^b}$$</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 源自 lecture_14.py (Lines 292-310): LSH 碰撞概率计算与参数效应验证</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">get_prob_collision</span>(<span class="params">sim: <span class="built_in">float</span>, b: <span class="built_in">int</span>, r: <span class="built_in">int</span></span>) -&gt; <span class="built_in">float</span>:</span><br><span class="line">    prob_match = sim ** r                      <span class="comment"># 固定某一个 Band 内全部 r 个哈希都相等的概率 (AND)</span></span><br><span class="line">    prob_collision = <span class="number">1</span> - (<span class="number">1</span> - prob_match) ** b <span class="comment"># 至少存在一个 Band 完全匹配的概率 (OR)</span></span><br><span class="line">    <span class="keyword">return</span> prob_collision</span><br><span class="line"></span><br><span class="line"><span class="comment"># 对比三组 (b, r) 参数在不同相似度 sims 下的碰撞概率 S 型曲线：</span></span><br><span class="line"><span class="comment"># 1. b = 10, r = 10 (n = 100):  sim=0.7 -&gt; 0.250 | sim=0.8 -&gt; 0.682 | sim=0.9 -&gt; 0.986</span></span><br><span class="line"><span class="comment"># 2. b = 10, r = 20 (增大 r):   sim=0.7 -&gt; 0.008 | sim=0.8 -&gt; 0.109 | sim=0.9 -&gt; 0.729 (曲线变陡且右移，更难匹配!)</span></span><br><span class="line"><span class="comment"># 3. b = 20, r = 20 (再增大 b): sim=0.7 -&gt; 0.016 | sim=0.8 -&gt; 0.206 | sim=0.9 -&gt; 0.927 (曲线左移，更容易匹配!)</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">LSH 碰撞概率 P_collision(s) = 1 - (1 - s^r)^b 的 S 型相变曲线:</span><br><span class="line">  1.0 ┼───────────────────────────────────────────╭───────────</span><br><span class="line">      │                                         ╭─╯</span><br><span class="line"> 0.63 ┼─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─● ◄── 相变中心阈值 τ ≈ (1/b)^(1/r)，此处 P ≈ 1 - 1/e ≈ 0.632!</span><br><span class="line">      │             ◄── 增大 b (曲线左移，更易碰撞) │ 增大 r (曲线变陡且右移，更严苛) ──►</span><br><span class="line">  0.0 ┼───────────────────────────────────────╭─╯</span><br><span class="line">      0.0                                     τ            1.0  真实相似度 s = Jaccard(A, B)</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-相变阈值公式-tau-1-b-1-r-与-1-1-e-不变量的数学推导"><a href="#3-相变阈值公式-tau-1-b-1-r-与-1-1-e-不变量的数学推导" class="headerlink" title="3. 相变阈值公式 $\tau &#x3D; (1&#x2F;b)^{1&#x2F;r}$ 与 $1 - 1&#x2F;e$ 不变量的数学推导"></a>3. 相变阈值公式 $\tau &#x3D; (1&#x2F;b)^{1&#x2F;r}$ 与 $1 - 1&#x2F;e$ 不变量的数学推导</h4><p>相变陡坡的中心拐点（Threshold $\tau$）出现在哪里？<br>观察公式 $1 - (1 - s^r)^b$：当 $s^r$ 恰好等于 $\frac{1}{b}$ 时，单个 Band 匹配的期望次数 $b \cdot s^r &#x3D; 1$。由此解出<strong>相变中心阈值 $\tau$</strong>：<br>$$s^r &#x3D; \frac{1}{b} \implies \mathbf{\tau &#x3D; \left(\frac{1}{b}\right)^{\frac{1}{r}}}$$<br>将 $s &#x3D; \tau &#x3D; (1&#x2F;b)^{1&#x2F;r}$（即 $s^r &#x3D; \frac{1}{b}$）代回碰撞概率公式，利用经典重要极限 $\lim_{b \to \infty} \left(1 - \frac{1}{b}\right)^b &#x3D; \frac{1}{e}$，我们发现<strong>在相变阈值 $\tau$ 处，碰撞概率是一个与大参数无关的普适常数</strong>：<br>$$P_{\text{collision}}(\tau) &#x3D; 1 - \left(1 - \frac{1}{b}\right)^b \approx \mathbf{1 - \frac{1}{e} \approx 0.6321}$$</p>
+<ul>
+<li><strong>真实工业界参数实例（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2107.06499">Lee et al., 2021</a>）</strong>：<br>在 C4 近似去重论文中，作者设置了 <strong>$n &#x3D; 9000$ 个哈希函数，分为 $b &#x3D; 20$ 个 Bands，每个 Band 含 $r &#x3D; 450$ 行</strong>。<br>代入公式计算其相变阈值：$\tau &#x3D; \left(\frac{1}{20}\right)^{\frac{1}{450}} \approx \mathbf{0.99335}$！在 $\tau &#x3D; 0.99335$ 处碰撞概率为 $1 - (1 - 1&#x2F;20)^{20} \approx \mathbf{0.6415}$，而只要相似度稍微低于 $0.98$，碰撞概率瞬间归零；稍微高于 $0.996$，碰撞概率瞬间飙升至 $1.0$，形成了一道刀切般锋利的阶跃相变墙！</li>
+</ul>
+<h2 id="5-第四站：跨数据源科学配比（Data-Mixing）——-从多轮过拟合陷阱到-RegMix-Olmix（data-mixing）"><a href="#5-第四站：跨数据源科学配比（Data-Mixing）——-从多轮过拟合陷阱到-RegMix-Olmix（data-mixing）" class="headerlink" title="5. 第四站：跨数据源科学配比（Data Mixing）—— 从多轮过拟合陷阱到 RegMix &#x2F; Olmix（data_mixing）"></a>5. 第四站：跨数据源科学配比（Data Mixing）—— 从多轮过拟合陷阱到 RegMix &#x2F; Olmix（<code>data_mixing</code>）</h2><p>经过转换、过滤和跨数据集全局去重后，我们手头通常有几十个不同领域、不同质量等级的干净数据源（例如在斯坦福开源项目 <strong><a target="_blank" rel="noopener" href="https://marin.community/">Marin Token Viewer</a></strong> 中有 Nemotron-CC、FinePDFs、Starcoder 代码、arXiv 论文、合成教科书等；在 <strong>The Pile</strong> 中有 22 个子集）。<br><strong>核心问题：在构建预训练数据流时，我们应该赋予每个数据源 $s \in \mathcal{S}$ 多大的采样概率权重 $p(s)$（满足 $\sum_{s} p(s) &#x3D; 1$）？（注：课堂问答确认，混合采样通常在每个 Batch 内部按序列级进行，即同一个 Batch 内包含按 $p(s)$ 抽样出的不同领域的文档序列，以减小梯度方差）。</strong></p>
+<h3 id="5-1-三大朴素基线与“高质小数据源-50-倍-Epoch-过拟合”陷阱"><a href="#5-1-三大朴素基线与“高质小数据源-50-倍-Epoch-过拟合”陷阱" class="headerlink" title="5.1 三大朴素基线与“高质小数据源 50 倍 Epoch 过拟合”陷阱"></a>5.1 三大朴素基线与“高质小数据源 50 倍 Epoch 过拟合”陷阱</h3><ol>
+<li><strong>三种常见基线策略（Baselines）</strong>：<ul>
+<li><strong>凭直觉手调（Vibes）</strong>：架构师拍脑袋定 <code>p = {&quot;Wikipedia&quot;: 0.3, &quot;CC&quot;: 0.5, &quot;GitHub&quot;: 0.2}</code>（在工业界比你想象的要普遍得多！）；</li>
+<li><strong>均匀采样（Uniform Sampling）</strong>：所有数据源平分权重 $p(s) \propto 1$；</li>
+<li><strong>按 Token 体量成比例采样（Proportional Mixing）</strong>：$p(s) \propto \text{num\_tokens}(s)$（问题在于：低质量的通用网页池体量最大，会吞掉 95% 以上的算力预算）。</li>
+</ul>
+</li>
+<li><strong>直觉与陷阱的剧烈碰撞：为什么不能无脑给高质量数据源赋高权重？</strong><br>直觉告诉我们应该大幅调高高质量数据源（如 Wikipedia 或精选数学集）的采样权重 $p(\text{high})$。但 Percy 用 <code>lecture_14.py</code>（Lines 357–365）中的一段定量计算敲响了警钟——<strong>每个数据源的唯一 Token 存量是有限的（Finite）</strong>！</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 源自 lecture_14.py: 盲目给稀缺高质量源赋高权重导致的灾难性多轮重复 (Epoching)</span></span><br><span class="line">source_token_counts = &#123;</span><br><span class="line">    <span class="string">&quot;low&quot;</span>: <span class="number">10</span> * <span class="number">10</span>**<span class="number">12</span>,   <span class="comment"># 低质量通用网页池: 10T tokens (极其充裕)</span></span><br><span class="line">    <span class="string">&quot;high&quot;</span>: <span class="number">10</span> * <span class="number">10</span>**<span class="number">9</span>,   <span class="comment"># 高质量精选语料库: 10B tokens (极其稀缺，相差 1000 倍!)</span></span><br><span class="line">&#125;</span><br><span class="line">p = &#123;<span class="string">&quot;low&quot;</span>: <span class="number">0.5</span>, <span class="string">&quot;high&quot;</span>: <span class="number">0.5</span>&#125;  <span class="comment"># 拍脑袋设定的五五开混合比例</span></span><br><span class="line">train_tokens = <span class="number">1</span> * <span class="number">10</span>**<span class="number">12</span>      <span class="comment"># 计划总共训练 1T tokens</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 计算训练结束时，每个数据源中的单条样本平均被模型重复背诵了多少轮 (Epochs):</span></span><br><span class="line">low_num_epochs = (p[<span class="string">&quot;low&quot;</span>] * train_tokens) / source_token_counts[<span class="string">&quot;low&quot;</span>]    <span class="comment"># 500B / 10T = 0.05 epochs (仅看了 5%)</span></span><br><span class="line">high_num_epochs = (p[<span class="string">&quot;high&quot;</span>] * train_tokens) / source_token_counts[<span class="string">&quot;high&quot;</span>] <span class="comment"># 500B / 10B = 50.0 epochs!!</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>触目惊心的结果</strong>：在这个看似温和的 <code>0.5 : 0.5</code> 配比下，庞大的低质量池只被采样了 <code>5%</code>，而那个只有 <code>10B</code> Tokens 的高质量数据集竟然被翻来覆去重复训练了整整 <strong><code>50 个 Epochs</code>（50 遍）</strong>！在历史上，真的有大型模型训练因为没算清这笔账而在高权重小子集上严重过拟合（Overfitting）并浪费了巨量算力！</li>
+</ul>
+<h3 id="5-2-解法一：带硬性-Epoch-上限截断的均匀采样——UniMax-Chung-et-al-2023"><a href="#5-2-解法一：带硬性-Epoch-上限截断的均匀采样——UniMax-Chung-et-al-2023" class="headerlink" title="5.2 解法一：带硬性 Epoch 上限截断的均匀采样——UniMax (Chung et al., 2023)"></a>5.2 解法一：带硬性 Epoch 上限截断的均匀采样——<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2304.09151">UniMax (Chung et al., 2023)</a></h3><p>在多语言大模型（如 mT5 &#x2F; umT5，涵盖 107 种语言）预训练中，英语有数万亿字符，而低资源语言（如斯瓦希里语）只有几亿字符。此前人们常用温度重加权 $p(s) \propto \text{num\_tokens}(s)^\alpha$（如 $\alpha \in [0.2, 0.7]$），但依然无法阻止大算力下小语种被重复几十遍。</p>
+<ul>
+<li><strong>Google 的 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2304.09151">UniMax</a> 核心算法</strong>：<br><strong>“在保证任何一个数据源的重复训练轮数绝不超过硬性上限 $C$（例如最多允许重复 $C &#x3D; 4$ 或 $10$ 个 Epochs）的前提下，尽可能均匀地分配采样权重！”</strong><br>数学约束条件为：对所有数据源 $s \in \mathcal{S}$，必须严格满足：<br>$$\mathbf{p(s) \cdot D_{\text{train}} \le C \cdot \text{num\_tokens}(s) \quad \Longleftrightarrow \quad \text{Epochs}(s) \le C}$$<br>算法只需将所有数据源按存量从小到大排序，依次检查若均分剩余预算是否会突破 $C$ 轮上限；一旦某个小数据源触及 $C \cdot \text{num\_tokens}(s)$ 天花板，就将其配额锁死在上限处，将剩余训练 Token 预算继续均分给存量更大的头部数据源。</li>
+</ul>
+<h3 id="5-3-解法二：基于小规模回归代理模型的自动配比优化——RegMix-2024-与-Olmix-2026"><a href="#5-3-解法二：基于小规模回归代理模型的自动配比优化——RegMix-2024-与-Olmix-2026" class="headerlink" title="5.3 解法二：基于小规模回归代理模型的自动配比优化——RegMix (2024) 与 Olmix (2026)"></a>5.3 解法二：基于小规模回归代理模型的自动配比优化——<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.01492">RegMix (2024)</a> 与 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2602.12237">Olmix (2026)</a></h3><p>如果你有 $m &#x3D; 20\sim 50$ 个异构领域数据源（甚至像 OLMo &#x2F; Nemotron 的 <strong>WebOrganizer</strong> 那样把单个 Common Crawl 按 <code>话题类别 × 质量分桶</code> 切分成几十个二维网格单元），怎么科学地找出最优权重向量 $p^* \in \Delta^{m-1}$？</p>
+<p>受 Scaling Laws 思想启发，<strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.01492">RegMix (Liu et al., 2024)</a></strong> 与 AI2&#x2F;Stanford 最新发表的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2602.12237">Olmix (Chen et al., 2026)</a></strong> 提出了**“将寻找最优数据配比建模为回归预测与优化问题（Data Mixture as Regression）”**的四步标准流水线：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    回归代理配比优化流水线 (RegMix, 2024 / Olmix, 2026)                          │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│  Step 1 [采样候选配比]: 从先验分布 (如 Dirichlet 分布) 随机采样 K 组候选配比向量 &#123;p^(1),...,p^(K)&#125;│</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  Step 2 [跑小规模代理模型群]: 在每组配比 p^(k) 上各训练一个极小的 Proxy LM (如 1M~60M 参数, 1B词)│</span><br><span class="line">│          │                    并在目标验证集上测出各自的损失或得分 L^(k)                        │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  Step 3 [拟合回归代理函数]: 用 &#123;(p^(k), L^(k))&#125;_&#123;k=1&#125;^K 拟合回归模型 f_hat(p) ≈ L               │</span><br><span class="line">│          │                  (如 LightGBM 梯度提升树，或 Olmix 中的对数线性模型 Log-Linear)      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  Step 4 [求解最优配比并外推]: 在带 Epoch 上限约束的单纯形上求解 p* = argmin_p f_hat(p)，        │</span><br><span class="line">│                               直接将 p* 用于 1000x 算力的主模型 (如 1B~32B) 大规模预训练!       │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2602.12237">Olmix (Chen et al., 2026)</a> 的两大工业级突破</strong>：<ol>
+<li><strong>系统梳理配置空间</strong>：对比了不同回归方法（如 RegMix、DsDm、BiMix、DGA、CLIM），证实使用几千万参数的小代理模型、采样约 $4m$ 个混合点、拟合对数线性（Log-linear）回归模型并结合信度区间约束即可取得极佳效果；</li>
+<li><strong>动态域演进下的配比复用（Mixture Reuse）</strong>：在真实大模型研发周期中，数据团队每隔几周就会新增、删除或细分某个数据源。以前的方法一旦数据源集合改变就得把所有代理模型全部推倒重训；而 Olmix 提出的 <strong>Mixture Reuse</strong> 机制只需针对受更新影响的局部领域重新估计相对比例并复用历史配比，<strong>节省了 <code>74%</code> 的回归实验算力，同时在下游任务上超越无混合基线 <code>11.6%</code></strong>！</li>
+</ol>
+</li>
+</ul>
+<h3 id="5-4-跨越尺度鸿沟的关键补丁：模拟多轮过采样（Simulated-Epoching，Held-et-al-2025）"><a href="#5-4-跨越尺度鸿沟的关键补丁：模拟多轮过采样（Simulated-Epoching，Held-et-al-2025）" class="headerlink" title="5.4 跨越尺度鸿沟的关键补丁：模拟多轮过采样（Simulated Epoching，Held et al., 2025）"></a>5.4 跨越尺度鸿沟的关键补丁：模拟多轮过采样（Simulated Epoching，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.11747">Held et al., 2025</a>）</h3><p>Percy 提醒我们：在使用 RegMix 等回归方法时，隐藏着两个必须警惕的“信仰之跃（Leaps of Faith）”：</p>
+<ol>
+<li><strong>小心对目标下游评测过拟合（Overfitting to Target Evals）</strong>：如果你只拿代码基准当回归目标，优化器自然会把 100% 权重全塞给代码数据，结果训出来的模型连一首诗都不会写！</li>
+<li><strong>致命的跨尺度失真陷阱（Scale Discrepancy in Epoching）</strong>：<br>回到刚才的例子：低质池 <code>low</code> 有 <code>10T</code> Tokens，高质池 <code>high</code> 只有 <code>10B</code> Tokens。<ul>
+<li>当你在小规模代理模型上做实验时，假设每次小实验只训 <code>small_run_tokens = 10B</code> Tokens。此时即使你把配比设为极端的 <code>p = {&quot;low&quot;: 0.1, &quot;high&quot;: 0.9}</code>，小模型也只消耗了 <code>9B</code> 个高质 Token——<strong>连 1 个 Epoch 都没跑满（<code>0.9 Epochs</code>），完全不会发生过拟合</strong>！因此回归模型会狂喜地认为 <code>p[&quot;high&quot;] = 0.9</code> 是全宇宙最优配比！</li>
+<li>然而，当你把这个 <code>0.9</code> 的配比外推应用到 <code>large_run_tokens = 1T</code> 的主模型训练时，<code>900B</code> 的需求撞上 <code>10B</code> 的存量，主模型瞬间在 <code>high</code> 上狂跑 <strong><code>90 个 Epochs</code></strong>，直接过拟合崩溃！</li>
+</ul>
+</li>
+</ol>
+<ul>
+<li><strong>怎么让小规模实验提前感知到大规模训练时的“数据饥渴与多轮过拟合”？</strong><br>Meta 与斯坦福的 Will Held 等人在 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.11747">Optimizing Pretraining Data Mixtures with LLM-Estimated Utility (Held et al., 2025)</a></strong> 中提出了极其巧妙的 <strong>模拟多轮过采样（Simulated Epoching &#x2F; Proportional Downsampling）</strong>，完美贯彻了 CS336 全课程的核心信条——<strong>“Make small scale look like large scale（让小规模实验在物理动力学上与大规模保持同构）”</strong>：</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 源自 lecture_14.py (Lines 395-401): Simulated Epoching (按训练步数缩放比同步下采样所有数据源!)</span></span><br><span class="line">source_token_counts = &#123;<span class="string">&quot;low&quot;</span>: <span class="number">10</span> * <span class="number">10</span>**<span class="number">12</span>, <span class="string">&quot;high&quot;</span>: <span class="number">10</span> * <span class="number">10</span>**<span class="number">9</span>&#125;</span><br><span class="line"></span><br><span class="line">small_run_tokens = <span class="number">10</span> * <span class="number">10</span>**<span class="number">9</span>   <span class="comment"># 小规模代理实验总训练量: 10B tokens</span></span><br><span class="line">large_run_tokens = <span class="number">1</span> * <span class="number">10</span>**<span class="number">12</span>   <span class="comment"># 大规模目标主训练总训练量: 1T tokens</span></span><br><span class="line">ratio = small_run_tokens / large_run_tokens  <span class="comment"># 缩放比 = 10B / 1T = 0.01 (1%)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 核心操作：在做小规模实验前，人为将所有数据源的可用唯一 Token 池大小同比例缩小到 1%！</span></span><br><span class="line">downsampled_source_token_counts = &#123;</span><br><span class="line">    s: count * ratio <span class="keyword">for</span> s, count <span class="keyword">in</span> source_token_counts.items()</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment"># 此时在小实验中: &quot;low&quot; 变为 100B, 而 &quot;high&quot; 被人为缩减为仅有 100M (0.1B) 唯一 tokens!</span></span><br><span class="line"><span class="comment"># 如果某个小模型敢尝试 p[&quot;high&quot;] = 0.9 (消耗 9B tokens)，它在小实验里就会被迫在 0.1B 池上狂跑 90 个 Epochs，</span></span><br><span class="line"><span class="comment"># 当场暴露过拟合劣势，从而迫使回归优化器自动选出更加平衡的真实最优解 p = &#123;&quot;low&quot;: 0.7, &quot;high&quot;: 0.3&#125;!</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="6-第五站：后训练与合成智能体数据前沿（Post-Training-Synthetic-Data，post-training-data）"><a href="#6-第五站：后训练与合成智能体数据前沿（Post-Training-Synthetic-Data，post-training-data）" class="headerlink" title="6. 第五站：后训练与合成智能体数据前沿（Post-Training &amp; Synthetic Data，post_training_data）"></a>6. 第五站：后训练与合成智能体数据前沿（Post-Training &amp; Synthetic Data，<code>post_training_data</code>）</h2><p>在本讲的最后 15 分钟，Percy 带我们快速浏览了 2025–2026 年后训练（Post-training &#x2F; Mid-training）数据工程的最前沿进展。不同于预训练数据追求“任务无关的通识底座（Task-agnostic）”，后训练数据高度面向具体目标任务（尤其是<strong>深度推理 Math&#x2F;Science Reasoning</strong> 与 <strong>自主软件工程智能体 Agentic Coding</strong>），其通用生成配方为：<br>$$\text{定义交互环境 (Environments)} \longrightarrow \text{收集&#x2F;合成任务提示词 (Prompts)} \longrightarrow \text{调用强大教师模型采样轨迹 (Teacher Responses)}$$</p>
+<h3 id="6-1-推理模型蒸馏数据配方：OpenThoughts-Guha-et-al-2025"><a href="#6-1-推理模型蒸馏数据配方：OpenThoughts-Guha-et-al-2025" class="headerlink" title="6.1 推理模型蒸馏数据配方：OpenThoughts (Guha et al., 2025)"></a>6.1 推理模型蒸馏数据配方：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2506.04178">OpenThoughts (Guha et al., 2025)</a></h3><p>在 OpenAI o1 与 DeepSeek-R1 掀起长思维链推理（Reasoning Models）革命后，由斯坦福、UC Berkeley、AI2 等数十家机构联合发起的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2506.04178">OpenThoughts (Guha et al., 2025)</a></strong> 项目进行了 <strong>1,000+ 次受控消融实验</strong>，构建了包含 <code>1.2M</code>（120 万）条长推理样本的 <strong>OpenThoughts3</strong> 数据集（使 <code>OpenThoughts3-7B</code> 在 AIME 2025 上达到 <code>53%</code>、GPQA Diamond 达到 <code>54%</code>，比同尺寸 <code>DeepSeek-R1-Distill-Qwen-7B</code> 暴涨 <strong><code>+15.3</code> 至 <code>+20.5</code> 个百分点</strong>！）。</p>
+<p>Percy 重点提炼了 OpenThoughts 上千次消融实验得出的<strong>四条极具颠覆性的核心经验（Key Findings）</strong>：</p>
+<ol>
+<li><strong>小而精的题源胜过大而杂的拼盘</strong>：与其把几十个参差不齐的题库全塞进来，不如只精选少数几个最高质量的问题源（如数学领域的 <code>OpenMath-2-Math</code>），然后对里面的好题做高密度去重与采样。</li>
+<li><strong>每道题重复采样多条（如 $16$ 条）推理轨迹极有帮助</strong>：<code>OpenThoughts3</code> 的 <code>120 万</code>条训练样本实际上只来自约 <strong><code>7.5 万</code>道独立问题</strong>，每道问题调用教师模型独立采样了 <strong>16 条不同的长思维链解答（$75\text{K} \times 16 &#x3D; 1.2\text{M}$）</strong>！</li>
+<li><strong>令人惊讶的发现——“自身跑分更高的模型，未必是更好的老师（Better models aren’t necessarily better teachers）”</strong>！<br>实验对比了用当时最强的 <code>DeepSeek-R1 (671B)</code> 作为教师模型 vs. 用参数小得多的阿里 <code>QwQ-32B</code> 作为教师模型来生成推理轨迹训练 7B 学生模型。结果发现：<strong>由 <code>QwQ-32B</code> 教出来的学生模型显著击败了由 <code>DeepSeek-R1</code> 教出来的学生</strong>！（这与知识蒸馏文献中著名的“师生能力鸿沟 &#x2F; 表达风格匹配度”现象高度吻合）。</li>
+<li><strong>基于最终答案正确性的过滤（Answer Filtering）反而没帮上忙</strong>：在长思维链蒸馏中，强行剔除最终答案不匹配的轨迹并未能提升学生模型的表现（甚至因损失了探索多样性或误杀过程正确的轨迹而有害）。</li>
+</ol>
+<h3 id="6-2-软件工程智能体（SWE-Agents）的三代数据扩展革命（2025–2026）"><a href="#6-2-软件工程智能体（SWE-Agents）的三代数据扩展革命（2025–2026）" class="headerlink" title="6.2 软件工程智能体（SWE Agents）的三代数据扩展革命（2025–2026）"></a>6.2 软件工程智能体（SWE Agents）的三代数据扩展革命（2025–2026）</h3><p>如果说数学推理只需要纯文本的 <code>Prompt -&gt; Response</code>（无需外部环境），那么训练能够真正修复大型代码库 Bug 的 <strong>软件工程智能体（Software Engineering Agents，以 SWE-bench Verified 为评测标杆）</strong> 则面临着一个让人头皮发麻的系统工程噩梦：<strong>每一个真实的 GitHub 历史 PR 都依赖特定版本的编译器、操作系统库与成百上千个过时的 Python&#x2F;C++ 依赖包，为成千上万个历史 Commit 逐一配置可运行的 Docker 容器环境（Execution Environments）不仅耗费数千小时人力，更会吃掉数 TB 乃至数十 TB 的存储空间！</strong></p>
+<p>Percy 沿着 2025 年 4 月至 2026 年 5 月的最新时间线，展示了学术界与工业界突破这一瓶颈的<strong>四部曲演进</strong>：</p>
+<table>
+<thead>
+<tr>
+<th align="left">项目与时间</th>
+<th align="left">核⼼思路由来与环境构造策略</th>
+<th align="left">规模 (仓库数 $\to$ 任务&#x2F;轨迹数)</th>
+<th align="left">训练出的代表模型与 SWE-bench Verified 解决率</th>
+<th align="left">核心优势与历史突破点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2504.21798">SWE-smith (Yang et al., 2025.04)</a></strong></td>
+<td align="left"><strong>倒置流程（Environment-First + 合成 Bug）</strong>：不为每个历史 PR 配环境，而是先为 <strong>128 个仓库</strong>配好统一的可用 Docker 环境，再用大模型在正常代码里<strong>主动注入破坏现有单元测试的合成 Bug</strong>！</td>
+<td align="left"><code>128</code> 个仓库 $\to$ <strong><code>50K</code> 个合成可验证任务</strong></td>
+<td align="left"><code>SWE-agent-LM-32B</code> 达 <strong><code>40.2%</code></strong> Pass@1</td>
+<td align="left">解决了为每个历史提交单独配环境的痛点，将可用训练任务量扩大了一个数量级（属于“真实环境 + 合成任务”的半合成范式）</td>
+</tr>
+<tr>
+<td align="left"><strong>2. <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2505.20411">SWE-rebench (Badertdinov et al., 2025.05)</a></strong></td>
+<td align="left"><strong>全自动 Agent 配置真实 PR 环境</strong>：从 GitHub Archive 抓取 45 万个真实 PR，直接让 <code>Qwen2.5-72B-Instruct</code> 充当自动化运维工去尝试安装依赖并评估 PR 质量</td>
+<td align="left"><code>3,400+</code> 个仓库 $\to$ <strong><code>21K</code> 个可交互真实任务</strong>（v2 扩展至 <code>32K</code> 可执行 + <code>120K</code> 不可执行）</td>
+<td align="left">持续滚动更新，既用于大规模 RL 训练，也作为<strong>无污染动态基准</strong></td>
+<td align="left">实现了真实 GitHub PR 环境搭建的自动化流水线，并揭示了部分模型在静态 SWE-bench 上的污染虚高</td>
+</tr>
+<tr>
+<td align="left"><strong>3. <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2604.01496">SWE-ZERO to SWE-HERO (Ludwig et al., NVIDIA 2026.04)</a></strong></td>
+<td align="left"><strong>彻底摆脱 Docker 的无执行轨迹（Execution-Free Trajectories）</strong>：观察到顶尖大模型脑中已有关于代码语义的“内部世界模型”，无需真的运行 Python 单元测试，仅靠 <code>sed / grep</code> 阅读和修改静态文件就能修好绝大部分 Bug！</td>
+<td align="left"><strong>Stage 1 (<code>SWE-ZERO</code>)</strong>：<code>150K</code> 真实 PR $\to$ <strong><code>300K</code> 条免执行轨迹</strong>（蒸馏自 <code>Qwen3-Coder-480B</code>，剔除未来 commit 防作弊）<br><strong>Stage 2 (<code>SWE-HERO</code>)</strong>：<strong><code>13K</code> 条带真实执行反馈轨迹</strong></td>
+<td align="left"><strong><code>SWE-HERO-32B</code> 高达 <code>62.2%</code></strong>！（且仅在 Python 上训练就在多语言 SWE-bench 上零样本达到 <code>44.1%</code>）</td>
+<td align="left"><strong>两阶段进化范式</strong>：第一阶段彻底甩掉笨重的 Docker 容器，在海量真实 PR 上零执行成本学透代码库级推理；第二阶段再用少量带执行轨迹校准工程工作流！</td>
+</tr>
+<tr>
+<td align="left"><strong>4. <a target="_blank" rel="noopener" href="https://www.google.com/search?q=https://huggingface.co/datasets/PrimeIntellect/SWE-ZERO-12M-trajectories">SWE-ZERO-12M (2026.05 最新发布)</a></strong></td>
+<td align="left"><strong>将无执行范式暴力扩展至千万级轨迹</strong>：直接在 SWE-rebench-v2 的全部任务（含那 12 万个根本装不上 Docker 环境的任务！）上，用极轻量的 <code>mini-coder-1.7b</code> + <code>mini-swe-agent</code> 脚手架海量采样</td>
+<td align="left"><strong><code>12,000,000</code>（1200 万条）智能体交互轨迹</strong>！</td>
+<td align="left">赋能极小模型实现高 Pass@k 覆盖率</td>
+<td align="left">因为 <code>SWE-ZERO</code> 不需要代码真能跑通测试环境，原本被废弃的 12 万个“死仓库 PR”瞬间变废为宝，开启了千万级 Agent 轨迹预训练时代！</td>
+</tr>
+</tbody></table>
+<h2 id="7-全景总结：大模型数据工程核心算法与工具速查表（Cheat-Sheet）"><a href="#7-全景总结：大模型数据工程核心算法与工具速查表（Cheat-Sheet）" class="headerlink" title="7. 全景总结：大模型数据工程核心算法与工具速查表（Cheat Sheet）"></a>7. 全景总结：大模型数据工程核心算法与工具速查表（Cheat Sheet）</h2><table>
+<thead>
+<tr>
+<th align="left">流水线阶段</th>
+<th align="left">核心工程目标</th>
+<th align="left">代表算法 &#x2F; 数学工具</th>
+<th align="left">工业界标准开源实现 &#x2F; 标杆论文</th>
+<th align="left">关键实战准则与避坑指南</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. 格式转换 (Transformation)</strong></td>
+<td align="left">从 HTML &#x2F; PDF 提取保留结构的纯文本</td>
+<td align="left">DOM 树启发式正文提取；VLM 视觉 OCR</td>
+<td align="left"><code>resiliparse</code>, <code>trafilatura</code>, <code>jusText</code>; <strong><a target="_blank" rel="noopener" href="https://huggingface.co/datasets/HuggingFaceFW/finepdfs">FinePDFs</a></strong> (<code>RolmOCR</code> &#x2F; <code>Docling</code>)</td>
+<td align="left">绝不要直接用官方 <code>WET</code>；注意重抓 Common Crawl 中被截断的大体积 PDF</td>
+</tr>
+<tr>
+<td align="left"><strong>2. 数据过滤 (Filtering)</strong></td>
+<td align="left">给定小目标集 $T$，从百亿池 $R$ 中极速筛出相似子集 $T’$</td>
+<td align="left">• 生成式：KenLM $n$-gram $p_T(x)$<br>• 判别式：<code>fastText</code> 二分类 $p(T\mid x)$<br>• 蒸馏式：大模型打标 100K $\to$ 训小分类器</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.11794">DataComp-LM</a></strong> (<code>OpenHermes+ELI5</code>), <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.06786">OpenWebMath</a></strong>, <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2306.11644">phi-1</a></strong>, Jigsaw 毒性过滤</td>
+<td align="left"><strong>过滤阈值必须随训练时长动态调整</strong>：长周期训练若过滤太狠会导致严重的多轮 Epoch 过拟合！</td>
+</tr>
+<tr>
+<td align="left"><strong>3. 数据去重 (Deduplication)</strong></td>
+<td align="left">在线性时间 $O(N)$ 内清除精确与近似重复文本</td>
+<td align="left">• 精确：<code>mmh3.hash</code> 排序分组<br>• 模糊：Jaccard + <strong>MinHash</strong> ($\mathbb{P}[h(A)&#x3D;h(B)]&#x3D;J$) + <strong>LSH</strong> ($1-(1-s^r)^b$)</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2107.06499">Lee et al. (2021)</a></strong> ($b&#x3D;20, r&#x3D;450$), Bloom Filter (Dolma)</td>
+<td align="left">LSH 相变中心为 $\tau &#x3D; (1&#x2F;b)^{1&#x2F;r}$（此处碰撞率恒为 $\approx 1-1&#x2F;e \approx 0.632$）；避免像 C4 那样从文档中间挖掉句子破坏连贯性</td>
+</tr>
+<tr>
+<td align="left"><strong>4. 数据配比 (Data Mixing)</strong></td>
+<td align="left">科学分配数十个异构数据源的采样权重 $p(s)$</td>
+<td align="left">• 硬性上限：<strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2304.09151">UniMax</a></strong> ($p(s)D \le C \cdot N_s$)<br>• 回归优化：<strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.01492">RegMix</a></strong> &#x2F; <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2602.12237">Olmix</a></strong><br>• 跨尺度同构：<strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.11747">Simulated Epoching</a></strong></td>
+<td align="left">Dirichlet 采样 $\to$ 训数十个小模型 $\to$ 拟合对数线性&#x2F;GBR 回归 $\to$ 求解最优 $p^*$</td>
+<td align="left">小模型代理实验必须<strong>按训练量比例同步下采样所有数据源（Simulated Epoching）</strong>，否则外推到大模型时会在稀缺高质源上暴发几十倍 Epoch 过拟合！</td>
+</tr>
+<tr>
+<td align="left"><strong>5. 后训练合成数据 (Post-Training)</strong></td>
+<td align="left">构建推理思维链与代码智能体交互轨迹</td>
+<td align="left">教师模型多路拒绝采样 &#x2F; 无执行静态代码推理 + 少量带执行校准</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2506.04178">OpenThoughts</a></strong> (<code>QwQ-32B</code> 教师), <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2504.21798">SWE-smith</a></strong>, <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2604.01496">SWE-ZERO &#x2F; HERO</a></strong></td>
+<td align="left">最强模型未必是最好的蒸馏老师（<code>QwQ-32B &gt; DeepSeek-R1</code>）；用无执行轨迹 (<code>SWE-ZERO</code>) 绕开 Docker 环境地狱实现千万级扩展</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>Percy 的期末寄语（Before Moving to Post-Training &amp; Alignment）</strong>：<br>数据工程绝不是坐在象牙塔里推几个漂亮的数学公式就能解决的——它往往非常接地气甚至有些脏累（Grungy and domain-specific），要求你<strong>真正打开数据文件、用肉眼去观察一条条具体的真实样本（Look at concrete examples）</strong>。当你在做 <strong>Assignment 4</strong> 时，请亲自去体会从满地乱码的原始网页一路提纯出高智商语言模型的成就感！</p>
+</blockquote>
+<h2 id="8-课后思考与自测练习（Review-Self-Check）"><a href="#8-课后思考与自测练习（Review-Self-Check）" class="headerlink" title="8. 课后思考与自测练习（Review &amp; Self-Check）"></a>8. 课后思考与自测练习（Review &amp; Self-Check）</h2><ol>
+<li><p><strong>MinHash 与 LSH（局部敏感哈希）碰撞概率及相变参数设计（Assignment 4 核心必考题）</strong>：<br>假设我们将每篇文档表示为词级 5-gram 的集合，并使用包含 $n &#x3D; 200$ 个独立哈希函数的 MinHash + LSH 管线进行模糊去重，将其划分为 $b &#x3D; 20$ 个段（Bands），每个段包含 $r &#x3D; 10$ 个哈希函数（$n &#x3D; b \times r &#x3D; 200$）。</p>
+<ul>
+<li>(a) 设有两篇文档 $A$ 和 $B$，其中 $|A| &#x3D; 120$，$|B| &#x3D; 100$，且它们共有 $|A \cap B| &#x3D; 80$ 个相同的 5-gram。请计算它们的精确 <strong>Jaccard 相似度 $s &#x3D; \text{Jaccard}(A, B)$</strong>，以及在单个随机种子下 $\mathbb{P}[\text{minhash}(A) &#x3D; \text{minhash}(B)]$ 的概率。</li>
+<li>(b) 在上述 $(b&#x3D;20, r&#x3D;10)$ 的 LSH 配置下，计算这两篇文档 $A$ 和 $B$ 被判定为碰撞（即至少在一个 Band 中全部 10 个 MinHash 值完全相同）的概率 $P_{\text{collision}}$（保留三位小数，已知 $(4&#x2F;7)^{10} \approx 0.0037, (1 - 0.0037)^{20} \approx 0.9285$）。</li>
+<li>(c) 请计算该 $(b&#x3D;20, r&#x3D;10)$ 配置下的<strong>相变中心阈值 $\tau &#x3D; (1&#x2F;b)^{1&#x2F;r}$</strong>（已知 $20^{-0.1} \approx 0.741$），以及当两篇文档的相似度恰好等于 $\tau$ 时的碰撞概率。如果你发现去重后误删了太多相似度仅为 $0.75$ 的正常文档（False Positives 偏高），在保持其中一个参数不变的情况下，你应该<strong>调大还是调小 $r$</strong>？或者<strong>调大还是调小 $b$</strong>？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 并集大小为 $|A \cup B| &#x3D; |A| + |B| - |A \cap B| &#x3D; 120 + 100 - 80 &#x3D; 140$。因此：<br>$$s &#x3D; \text{Jaccard}(A, B) &#x3D; \frac{80}{140} &#x3D; \mathbf{\frac{4}{7} \approx 0.5714}$$<br>根据 MinHash 定理，单个随机哈希函数下碰撞概率严格等于 Jaccard 相似度，即 <strong>$\frac{4}{7} \approx 57.14%$</strong>。</li>
+<li>(b) 固定某一个 Band 内 10 个哈希全部匹配的概率为 $P_{\text{band}} &#x3D; s^{10} &#x3D; (4&#x2F;7)^{10} \approx 0.0037$；在 20 个 Bands 中至少有一个 Band 完全匹配的概率为：<br>$$P_{\text{collision}} &#x3D; 1 - (1 - 0.0037)^{20} \approx 1 - 0.9285 &#x3D; \mathbf{0.0715\text{ (即 } 7.15%\text{)}}$$<br>可以看到，原本在单个 MinHash 下高达 $57.1%$ 的误碰撞率，经过 LSH 的 <code>AND-OR</code> 锐化后被压低到了 $7.15%$！</li>
+<li>(c) 相变中心阈值为 $\tau &#x3D; \left(\frac{1}{20}\right)^{\frac{1}{10}} &#x3D; 20^{-0.1} \approx \mathbf{0.741}$；在 $s &#x3D; \tau$ 处，由于 $s^r &#x3D; \frac{1}{b} &#x3D; \frac{1}{20}$，碰撞概率为 $1 - \left(1 - \frac{1}{20}\right)^{20} \approx 1 - \frac{1}{e} \approx \mathbf{0.632\text{ (精确值 } 0.642\text{)}}$。<br>为了减少对中等相似度文档的误碰撞（即需要把 S 型相变曲线<strong>向右移动</strong>，提高匹配门槛），应当<strong>增大每段的哈希数 $r$</strong>（使单个 Band 匹配难度指数级增加），或者<strong>减小段数 $b$</strong>（减少尝试匹配的抽签次数）。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>UniMax 约束配比与 Simulated Epoching（模拟多轮过采样）定量计算</strong>：<br>假设你有三个清洗好的数据源：通用网页 <code>Web</code>（存量 $N_{\text{Web}} &#x3D; 5000\text{B}$ Tokens）、代码库 <code>Code</code>（存量 $N_{\text{Code}} &#x3D; 200\text{B}$ Tokens）、精选数学集 <code>Math</code>（存量 $N_{\text{Math}} &#x3D; 10\text{B}$ Tokens）。你计划在 $D_{\text{large}} &#x3D; 1000\text{B}$（$1\text{T}$）Tokens 的预算下训练旗舰大模型。</p>
+<ul>
+<li>(a) 如果采用 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2304.09151">UniMax (Chung et al., 2023)</a></strong> 策略，并设定任何数据源的最大允许重复训练轮数硬上限为 <strong>$C &#x3D; 4\text{ Epochs}$</strong>。请计算最终分配给 <code>Math</code>、<code>Code</code> 和 <code>Web</code> 的采样权重 $p(\text{Math}), p(\text{Code}), p(\text{Web})$ 以及各自实际被训练的 Epoch 数！</li>
+<li>(b) 假设你想先用小规模代理实验（每次仅训练 $D_{\text{small}} &#x3D; 5\text{B}$ Tokens）配合 RegMix 寻找上述三个数据源在 $D_{\text{large}} &#x3D; 1000\text{B}$ 下的最优配比。按照 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.11747">Held et al. (2025)</a></strong> 的 <strong>Simulated Epoching</strong> 方法，你在运行 $5\text{B}$ 小实验时，应该把 <code>Web</code>、<code>Code</code>、<code>Math</code> 三个数据源人为下采样（Downsample）到多少 Token？如果某个候选配比将 <code>p(Math)</code> 设为 <code>0.4</code>，它在小实验中会在下采样后的 <code>Math</code> 池上跑多少个 Epoch？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) <strong>UniMax 逐步分配计算</strong>：<ol>
+<li>首先看存量最小的 <code>Math</code>（$10\text{B}$）：若 3 个源均分 $1000\text{B}$ 预算（各 $333.3\text{B}$），<code>Math</code> 将被重复 $33.3$ 轮，远超上限 $C &#x3D; 4$！因此 <code>Math</code> 被硬性封顶在 $C \times N_{\text{Math}} &#x3D; 4 \times 10\text{B} &#x3D; \mathbf{40\text{B Tokens}}$，其采样权重为 $p(\text{Math}) &#x3D; \frac{40\text{B}}{1000\text{B}} &#x3D; \mathbf{0.04}$（实际训练 <strong>$4.0\text{ Epochs}$</strong>）。</li>
+<li>剩余预算为 $1000\text{B} - 40\text{B} &#x3D; 960\text{B}$ Tokens，由 <code>Code</code> 和 <code>Web</code> 尝试均分（各 $480\text{B}$）：此时检查 <code>Code</code>（存量 $200\text{B}$），$\frac{480\text{B}}{200\text{B}} &#x3D; \mathbf{2.4\text{ Epochs}} \le C &#x3D; 4$，未超过上限！检查 <code>Web</code>（存量 $5000\text{B}$），$\frac{480\text{B}}{5000\text{B}} &#x3D; \mathbf{0.096\text{ Epochs}} \le 4$，同样未超过上限！</li>
+<li>因此最终 UniMax 配比为：<strong>$p(\text{Math}) &#x3D; 0.04$（4.0 轮）、$p(\text{Code}) &#x3D; 0.48$（2.4 轮）、$p(\text{Web}) &#x3D; 0.48$（0.096 轮）</strong>。</li>
+</ol>
+</li>
+<li>(b) <strong>Simulated Epoching 下采样计算</strong>：<br>小规模实验与大规模主训练的 Token 预算比例为：<br>$$\text{ratio} &#x3D; \frac{D_{\text{small}}}{D_{\text{large}}} &#x3D; \frac{5\text{B}}{1000\text{B}} &#x3D; \mathbf{0.005\text{ (即 } 0.5%\text{)}}$$<br>将三个数据源同比例缩小至 $0.5%$：<ul>
+<li>$\tilde{N}_{\text{Web}} &#x3D; 5000\text{B} \times 0.005 &#x3D; \mathbf{25\text{B Tokens}}$；</li>
+<li>$\tilde{N}_{\text{Code}} &#x3D; 200\text{B} \times 0.005 &#x3D; \mathbf{1\text{B Tokens}}$；</li>
+<li>$\tilde{N}<em>{\text{Math}} &#x3D; 10\text{B} \times 0.005 &#x3D; \mathbf{0.05\text{B (即 50M) Tokens}}$。<br>当候选配比尝试 $p(\text{Math}) &#x3D; 0.4$ 时，在 $D</em>{\text{small}} &#x3D; 5\text{B}$ 的小实验中需要从下采样后的 <code>Math</code> 池抽取 $0.4 \times 5\text{B} &#x3D; 2.0\text{B}$ Tokens，从而迫使小模型在 $0.05\text{B}$ 的迷你 <code>Math</code> 池上重复训练 $\frac{2.0\text{B}}{0.05\text{B}} &#x3D; \mathbf{40\text{ Epochs}}$——这与在大规模主训练（$1000\text{B}$）下使用 $p(\text{Math}) &#x3D; 0.4$ 时的重复轮数（$\frac{400\text{B}}{10\text{B}} &#x3D; 40\text{ Epochs}$）<strong>100% 严格相等</strong>！</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>后训练数据工程辨析：OpenThoughts 蒸馏规律与 SWE-ZERO 无执行轨迹</strong>：</p>
+<ul>
+<li>(a) 在 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2506.04178">OpenThoughts (Guha et al., 2025)</a> 构建推理微调数据集时，作者发现用参数量仅 <code>32B</code> 的 <code>QwQ-32B</code> 作为教师模型蒸馏出的 <code>7B</code> 学生模型，在 AIME 和 LiveCodeBench 上显著击败了用 <code>671B</code> 的 <code>DeepSeek-R1</code> 作为教师蒸馏出的学生。请结合模型容量与推理轨迹分布特征，分析为什么“更强的模型未必是更好的蒸馏老师”？</li>
+<li>(b) 为什么在训练软件工程智能体（SWE Agents）时，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2604.01496">SWE-ZERO (Ludwig et al., 2026)</a> 选择在第一阶段完全禁止智能体运行 Python 测试脚本（Execution-Free，只允许用 <code>grep / sed</code> 等阅读和编辑文件），就能将训练轨迹规模轻松推高到 <code>300K</code> 乃至 <code>12M</code> 条？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 当教师模型与学生模型之间存在过大的容量与架构鸿沟（如 <code>671B</code> MoE vs. <code>7B</code> Dense）时，超大教师模型生成的推理跳跃跨度、内部知识调用方式以及特定的思维链分支模式可能超出了 <code>7B</code> 小模型的表征消化上限（Capacity Gap）；而同属稠密中等规模的 <code>QwQ-32B</code> 产生的逐步推演粒度与分布更贴近 <code>7B</code> 学生模型的学习能力边界，同时对同一道题采样 16 条多样化轨迹进一步平滑了梯度信号。</li>
+<li>(b) 真实世界 GitHub 历史仓库的运行时依赖（Docker 镜像构建、过时 C 扩展编译、外部网络与数据库服务）极其脆弱且沉重，导致传统方法（如 SWE-bench）连收集几千个可运行环境都步履维艰（在 SWE-rebench-v2 中，15 万个 PR 里有 12 万个根本无法成功构建可执行环境）。而前沿大模型在预训练阶段已经内化了强大的“代码语义世界模型（Internal World Model of Code Semantics）”，仅凭静态代码阅读与上下文追踪就能完成绝大部分 Bug 定位与补丁编写；剥离代码执行依赖后，任何静态 GitHub PR 都能在毫秒级的纯文本沙箱中生成交互轨迹，从而彻底释放了千万级轨迹的数据规模红利。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/10/26/cs336_lecture_14_notes/">https://kanosa0101.github.io/2026/10/26/cs336_lecture_14_notes/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/CS336/">CS336</a><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a><a class="post-meta__tags" href="/tags/%E6%95%B0%E6%8D%AE%E6%B8%85%E6%B4%97/">数据清洗</a><a class="post-meta__tags" href="/tags/MinHash/">MinHash</a><a class="post-meta__tags" href="/tags/LSH%E5%8E%BB%E9%87%8D/">LSH去重</a><a class="post-meta__tags" href="/tags/%E6%95%B0%E6%8D%AE%E6%B7%B7%E5%90%88/">数据混合</a><a class="post-meta__tags" href="/tags/%E5%90%88%E6%88%90%E6%95%B0%E6%8D%AE/">合成数据</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/10/26/cs336_lecture_15_notes/" title="Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 15 YouTube 视频 | 官方幻灯片 (lecture_15.pdf) | 课件仓库 (stanford-cs336/lectures) | Assignment 5 指导手册与代码库 (assignment5-alignment)  1. 引言：从预训练“原始汤”到可交互智能助手的跨越在前 14 讲中，我们完整走过了预训练（Pre-training）的全流程：从分词器与 Transformer 架构（Assignment 1）、算子融合与分布式并行（Assignment 2）、扩展定律（Assignment 3）到万亿级网页清洗、去重与配比（Assignment 4）。Tatsu 在本讲开篇指出：如果你把前 14 讲的...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_13_notes/" title="Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 13 YouTube 视频 | 交互式执行轨迹 (lecture_13.py) | 源码仓库 (stanford-cs336/lectures) | Assignment 4 指导手册与代码库 (assignment4-data)  1. 引言：为什么数据（Data）是决定大模型上限的“第一核心商业机密”？（motivation）在前面的 12 讲中，我们已经掌握了给定数据如何高效训练一个大模型（Lectures 1–11：分词器、Transformer 架构、优化器、GPU 算子、分布式并行、扩展定律与高效推理），并在上一讲（Lecture 12：Evaluation）明确了如何科学定义与测量什么是“好模型”。从本讲开始，课程正式进入第四大核心模块（第 13–14 讲，对应...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/10/25/cs336_lecture_08_notes/" title="Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Tatsunori Hashimoto (Tatsu)课程视频与讲义：Lecture 8 YouTube 视频 | 官方幻灯片 (lecture_08.pdf) | 配套参考：Google《How to Scale Your Model》关联作业：Assignment 2 — Systems &amp; Parallelism（实现 DDP 梯度分桶重叠、实现 ZeRO-1 优化器分片 &#x2F; FSDP、推导多维并行最佳拓扑配置） 1. 课程全景导读：当整个数据中心成为“基本计算单元”在 Lecture 7（分布式通信原语与 PyTorch 实战） 中，Percy Liang 带领我们从代码层面认识了 All-Reduce、All-Gather、...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_11_notes/" title="Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 11 YouTube 视频 | 官方幻灯片 (lecture_11.pdf) | Assignment 3 指导手册与代码库  1. 引言：从经典 Chinchilla 到前沿开源大模型的实战扩展工程在两讲之前的 Lecture 9（Scaling Laws Part 1）中，Tatsu 带我们系统梳理了以 Hestness et al. (2017)、Kaplan et al. (2020) 和 Hoffmann et al. (2022, Chinchilla) 为代表的“经典扩展定律法典（Classical Scaling Laws Canon）”。然而，经典文献截止于 2022 年前后，主要回答了宏观算力分配问题（即给定...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_07_notes/" title="Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Percy Liang课程视频与代码讲义：Lecture 7 YouTube 视频 | Executable Lecture 源码 (lecture_07.py &#x2F; Trace)关联作业：Assignment 2 — Systems &amp; Parallelism（从零手写 Distributed Data Parallel (DDP)、通信与计算重叠、优化器状态分片 ZeRO-1）  课程编排说明（Spring 2026 vs. Spring 2025 课表顺序对调）：在 Spring 2026 学期中，课程组将两节并行课的顺序做了优化调整——Lecture 7（本讲，Percy Liang 主讲） 率先通过纯可执行代码 lecture_07.py 从底...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_10_notes/" title="Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 10 YouTube 视频 | 交互式执行轨迹 (lecture_10.py) | 源码仓库 (spring2025-lectures/lecture_10.py) | Google《How to Scale Your Model》Inference 章节  1. 引言：为什么大模型推理系统（Inference Systems）如此重要？在上一讲（Lecture 9）中，Tatsu 带我们探讨了预训练的扩展定律（Scaling Laws），并在结尾指出：现代工业界为了压低部署成本，纷纷放弃 Chinchilla 的 20:1 比例，转而通过“蓄意过训练（Overtraining）”打造小巧强悍的模型。本讲（Lecture 10）作为纯代码交互式讲义（lecture_10.py），由 ...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_13_notes/" title="Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 13 YouTube 视频 | 交互式执行轨迹 (lecture_13.py) | 源码仓库 (stanford-cs336/lectures) | Assignment 4 指导手册与代码库 (assignment4-data)  1. 引言：为什么数据（Data）是决定大模型上限的“第一核心商业机密”？（motivation）在前面的 12 讲中，我们已经掌握了给定数据如何高效训练一个大模型（Lectures 1–11：分词器、Transformer 架构、优化器、GPU 算子、分布式并行、扩展定律与高效推理），并在上一讲（Lecture 12：Evaluation）明确了如何科学定义与测量什么是“好模型”。从本讲开始，课程正式进入第四大核心模块（第 13–14 讲，对应...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_09_notes/" title="Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 9 YouTube 视频 | 官方幻灯片 (lecture_09.pdf) | Assignment 3 指导手册与代码库  1. 引言：为什么大模型工程需要扩展定律（Scaling Laws）？在经历了前四讲的**模型架构（Assignment 1）与第 5～8 讲的底层硬件与分布式系统（Assignment 2）**之后，从 Lecture 9 开始，课程正式进入第三大核心支柱——Scaling Laws（扩展定律，对应 Assignment 3）。由于排课原因，我们的节奏将是：本讲（Lecture 9）拆解 Scaling Laws 基础理论与经典范式 $\rightarrow$ 下一讲（Lecture 10）由 Percy...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">19</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">91</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Stanford-CS336-Spring-2026-Lecture-14-%E6%B7%B1%E5%BA%A6%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9AData-Part-2"><span class="toc-number">1.</span> <span class="toc-text">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%BC%95%E8%A8%80%EF%BC%9A%E4%BB%8E%E5%8E%9F%E5%A7%8B%E6%95%B0%E6%8D%AE%E7%9F%BF%E8%97%8F%E5%88%B0%E9%AB%98%E7%BA%AF%E5%BA%A6%E8%AE%AD%E7%BB%83%E7%87%83%E6%96%99%E7%9A%84%E5%85%A8%E9%93%BE%E8%B7%AF%E5%B7%A5%E7%A8%8B%EF%BC%88main%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">1. 引言：从原始数据矿藏到高纯度训练燃料的全链路工程（main）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E7%AC%AC%E4%B8%80%E7%AB%99%EF%BC%9A%E6%95%B0%E6%8D%AE%E6%A0%BC%E5%BC%8F%E8%BD%AC%E6%8D%A2%EF%BC%88Transformation%EF%BC%89%E2%80%94%E2%80%94-%E4%BB%8E-HTML-%E4%B8%8E-PDF-%E5%88%B0%E7%BA%AF%E6%96%87%E6%9C%AC%EF%BC%88transformation%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">2. 第一站：数据格式转换（Transformation）—— 从 HTML 与 PDF 到纯文本（transformation）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-HTML-%E5%88%B0%E7%BA%AF%E6%96%87%E6%9C%AC%E7%9A%84%E6%8F%90%E5%8F%96%E8%89%BA%E6%9C%AF%E4%B8%8E%E5%B7%A5%E5%85%B7%E9%80%89%E5%9E%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 HTML 到纯文本的提取艺术与工具选型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%8C%96%E6%8E%98%E9%AB%98%E4%BB%B7%E5%80%BC-PDF-%E7%9F%BF%E8%97%8F%EF%BC%9AFinePDFs-Hugging-Face-2025-2026"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 挖掘高价值 PDF 矿藏：FinePDFs (Hugging Face, 2025&#x2F;2026)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E7%AC%AC%E4%BA%8C%E7%AB%99%EF%BC%9A%E6%A8%A1%E5%9E%8B%E5%8C%96%E6%95%B0%E6%8D%AE%E8%BF%87%E6%BB%A4%EF%BC%88Filtering%EF%BC%89%E2%80%94%E2%80%94-%E7%BB%9F%E4%B8%80%E6%95%B0%E5%AD%A6%E6%A1%86%E6%9E%B6%E4%B8%8E%E5%9B%9B%E5%A4%A7%E5%AE%9E%E6%88%98%E6%A1%88%E4%BE%8B%EF%BC%88filtering%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">3. 第二站：模型化数据过滤（Filtering）—— 统一数学框架与四大实战案例（filtering）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E8%BF%87%E6%BB%A4%E7%AE%97%E6%B3%95%E7%9A%84%E7%BB%9F%E4%B8%80%E6%8A%BD%E8%B1%A1%E6%A1%86%E6%9E%B6%EF%BC%88General-Schema-for-Model-Based-Filtering%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 过滤算法的统一抽象框架（General Schema for Model-Based Filtering）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%B8%A4%E7%B1%BB%E4%B8%BB%E5%8A%9B%E8%BD%BB%E9%87%8F%E7%BA%A7%E6%89%93%E5%88%86%E5%99%A8%EF%BC%9AKenLM-vs-fastText"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 两类主力轻量级打分器：KenLM vs. fastText</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%BA%94%E5%A4%A7%E7%BB%8F%E5%85%B8%E5%AE%9E%E4%BE%8B%E5%8C%96%E6%A1%88%E4%BE%8B%E6%B7%B1%E5%BA%A6%E6%8B%86%E8%A7%A3%EF%BC%88Instantiations-of-Filtering%EF%BC%89"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 五大经典实例化案例深度拆解（Instantiations of Filtering）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B-1%EF%BC%9A%E8%AF%AD%E7%A7%8D%E8%AF%86%E5%88%AB%EF%BC%88Language-Identification-%E2%80%94%E2%80%94-Dolma-CCNet%EF%BC%89"><span class="toc-number">1.3.3.1.</span> <span class="toc-text">实例 1：语种识别（Language Identification —— Dolma &amp; CCNet）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B-2%EF%BC%9A%E5%9E%82%E7%9B%B4%E9%A2%86%E5%9F%9F%E6%8C%96%E6%8E%98%E2%80%94%E2%80%94%E6%95%B0%E5%AD%A6%E7%BD%91%E9%A1%B5%E8%AF%AD%E6%96%99%E5%BA%93-OpenWebMath-Paster-et-al-2023"><span class="toc-number">1.3.3.2.</span> <span class="toc-text">实例 2：垂直领域挖掘——数学网页语料库 OpenWebMath (Paster et al., 2023)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B-3%EF%BC%9A%E9%80%9A%E7%94%A8%E9%AB%98%E8%B4%A8%E9%87%8F%E7%BD%91%E9%A1%B5%E8%BF%87%E6%BB%A4%E2%80%94%E2%80%94GPT-3-Brown-et-al-2020-%E4%B8%8E-LLaMA-1-Touvron-et-al-2023"><span class="toc-number">1.3.3.3.</span> <span class="toc-text">实例 3：通用高质量网页过滤——GPT-3 (Brown et al., 2020) 与 LLaMA 1 (Touvron et al., 2023)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B-4%EF%BC%9A%E5%A4%A7%E6%A8%A1%E5%9E%8B%E8%92%B8%E9%A6%8F%E4%B8%A4%E9%98%B6%E6%AE%B5%E8%BF%87%E6%BB%A4%E2%80%94%E2%80%94phi-1-Textbooks-Are-All-You-Need-Gunasekar-et-al-2023"><span class="toc-number">1.3.3.4.</span> <span class="toc-text">实例 4：大模型蒸馏两阶段过滤——phi-1: Textbooks Are All You Need (Gunasekar et al., 2023)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B-5%EF%BC%9A%E4%B8%8D%E8%89%AF%E4%B8%8E%E6%AF%92%E6%80%A7%E5%86%85%E5%AE%B9%E8%BF%87%E6%BB%A4%E2%80%94%E2%80%94Dolma-Soldaini-et-al-2024-%E4%B8%8E-Jigsaw-%E6%95%B0%E6%8D%AE%E9%9B%86"><span class="toc-number">1.3.3.5.</span> <span class="toc-text">实例 5：不良与毒性内容过滤——Dolma (Soldaini et al., 2024) 与 Jigsaw 数据集</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E8%BF%87%E6%BB%A4%E7%9A%84%E5%B0%BA%E5%BA%A6%E4%BE%9D%E8%B5%96%E6%95%88%E5%BA%94%EF%BC%88Scale-Dependent-Effects%EF%BC%89%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E5%AD%98%E5%9C%A8%E5%94%AF%E4%B8%80%E6%9C%80%E4%BC%98%E7%9A%84%E8%BF%87%E6%BB%A4%E9%98%88%E5%80%BC%EF%BC%9F"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 过滤的尺度依赖效应（Scale-Dependent Effects）：为什么不存在唯一最优的过滤阈值？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E7%AC%AC%E4%B8%89%E7%AB%99%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%8E%BB%E9%87%8D%EF%BC%88Deduplication%EF%BC%89%E2%80%94%E2%80%94-%E4%BB%8E%E7%B2%BE%E7%A1%AE%E5%93%88%E5%B8%8C%E5%88%B0-MinHash-LSH-%E7%9B%B8%E5%8F%98%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC%EF%BC%88deduplication%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">4. 第三站：数据去重（Deduplication）—— 从精确哈希到 MinHash LSH 相变数学推导（deduplication）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%BF%85%E9%A1%BB%E5%8E%BB%E9%87%8D%EF%BC%9F%E5%8E%BB%E9%87%8D%E7%9A%84%E8%AE%BE%E8%AE%A1%E7%A9%BA%E9%97%B4%E4%B8%8E%E6%A0%B8%E5%BF%83%E7%AE%97%E6%B3%95%E6%8C%91%E6%88%98"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 为什么必须去重？去重的设计空间与核心算法挑战</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%93%88%E5%B8%8C%E5%87%BD%E6%95%B0%E9%80%89%E5%9E%8B%E4%B8%8E%E7%B2%BE%E7%A1%AE%E5%8E%BB%E9%87%8D%EF%BC%88hash-functions-exact-deduplication%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 哈希函数选型与精确去重（hash_functions, exact_deduplication）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E8%BF%91%E4%BC%BC%E6%A8%A1%E7%B3%8A%E5%8E%BB%E9%87%8D%E5%9F%BA%E7%9F%B3%E4%B8%80%EF%BC%9AJaccard-%E7%9B%B8%E4%BC%BC%E5%BA%A6%E4%B8%8E-MinHash-%E5%AE%9A%E7%90%86%EF%BC%88jaccard-minhash%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 近似模糊去重基石一：Jaccard 相似度与 MinHash 定理（jaccard_minhash）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-Jaccard-%E7%9B%B8%E4%BC%BC%E5%BA%A6%EF%BC%88Jaccard-Similarity%EF%BC%89%E5%AE%9A%E4%B9%89"><span class="toc-number">1.4.3.1.</span> <span class="toc-text">1. Jaccard 相似度（Jaccard Similarity）定义</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-MinHash%EF%BC%88%E6%9C%80%E5%B0%8F%E5%93%88%E5%B8%8C%EF%BC%89%E7%9A%84%E7%A5%9E%E5%A5%87%E6%9E%84%E9%80%A0%E4%B8%8E%E4%B8%A5%E6%A0%BC%E6%95%B0%E5%AD%A6%E8%AF%81%E6%98%8E"><span class="toc-number">1.4.3.2.</span> <span class="toc-text">2. MinHash（最小哈希）的神奇构造与严格数学证明</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E8%BF%91%E4%BC%BC%E6%A8%A1%E7%B3%8A%E5%8E%BB%E9%87%8D%E5%9F%BA%E7%9F%B3%E4%BA%8C%EF%BC%9A%E5%B1%80%E9%83%A8%E6%95%8F%E6%84%9F%E5%93%88%E5%B8%8C%EF%BC%88MinHash-LSH%EF%BC%89%E4%B8%8E-S-%E5%9E%8B%E7%9B%B8%E5%8F%98%E6%9B%B2%E7%BA%BF%E6%8E%A8%E5%AF%BC%EF%BC%88locality-sensitive-hashing%EF%BC%89"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 近似模糊去重基石二：局部敏感哈希（MinHash + LSH）与 S 型相变曲线推导（locality_sensitive_hashing）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-LSH-%E7%9A%84%E5%88%86%E6%A1%B6%EF%BC%88Banding%EF%BC%89%E4%B8%8E-AND-OR-%E7%BB%93%E6%9E%84%E6%9E%84%E9%80%A0"><span class="toc-number">1.4.4.1.</span> <span class="toc-text">1. LSH 的分桶（Banding）与 AND-OR 结构构造</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E7%A2%B0%E6%92%9E%E6%A6%82%E7%8E%87%E5%85%AC%E5%BC%8F%E6%8E%A8%E5%AF%BC%E4%B8%8E-b-r-%E8%B0%83%E8%8A%82%E8%A7%84%E5%BE%8B"><span class="toc-number">1.4.4.2.</span> <span class="toc-text">2. 碰撞概率公式推导与 $(b, r)$ 调节规律</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E7%9B%B8%E5%8F%98%E9%98%88%E5%80%BC%E5%85%AC%E5%BC%8F-tau-1-b-1-r-%E4%B8%8E-1-1-e-%E4%B8%8D%E5%8F%98%E9%87%8F%E7%9A%84%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC"><span class="toc-number">1.4.4.3.</span> <span class="toc-text">3. 相变阈值公式 $\tau &#x3D; (1&#x2F;b)^{1&#x2F;r}$ 与 $1 - 1&#x2F;e$ 不变量的数学推导</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E7%AC%AC%E5%9B%9B%E7%AB%99%EF%BC%9A%E8%B7%A8%E6%95%B0%E6%8D%AE%E6%BA%90%E7%A7%91%E5%AD%A6%E9%85%8D%E6%AF%94%EF%BC%88Data-Mixing%EF%BC%89%E2%80%94%E2%80%94-%E4%BB%8E%E5%A4%9A%E8%BD%AE%E8%BF%87%E6%8B%9F%E5%90%88%E9%99%B7%E9%98%B1%E5%88%B0-RegMix-Olmix%EF%BC%88data-mixing%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">5. 第四站：跨数据源科学配比（Data Mixing）—— 从多轮过拟合陷阱到 RegMix &#x2F; Olmix（data_mixing）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E4%B8%89%E5%A4%A7%E6%9C%B4%E7%B4%A0%E5%9F%BA%E7%BA%BF%E4%B8%8E%E2%80%9C%E9%AB%98%E8%B4%A8%E5%B0%8F%E6%95%B0%E6%8D%AE%E6%BA%90-50-%E5%80%8D-Epoch-%E8%BF%87%E6%8B%9F%E5%90%88%E2%80%9D%E9%99%B7%E9%98%B1"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 三大朴素基线与“高质小数据源 50 倍 Epoch 过拟合”陷阱</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E8%A7%A3%E6%B3%95%E4%B8%80%EF%BC%9A%E5%B8%A6%E7%A1%AC%E6%80%A7-Epoch-%E4%B8%8A%E9%99%90%E6%88%AA%E6%96%AD%E7%9A%84%E5%9D%87%E5%8C%80%E9%87%87%E6%A0%B7%E2%80%94%E2%80%94UniMax-Chung-et-al-2023"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 解法一：带硬性 Epoch 上限截断的均匀采样——UniMax (Chung et al., 2023)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E8%A7%A3%E6%B3%95%E4%BA%8C%EF%BC%9A%E5%9F%BA%E4%BA%8E%E5%B0%8F%E8%A7%84%E6%A8%A1%E5%9B%9E%E5%BD%92%E4%BB%A3%E7%90%86%E6%A8%A1%E5%9E%8B%E7%9A%84%E8%87%AA%E5%8A%A8%E9%85%8D%E6%AF%94%E4%BC%98%E5%8C%96%E2%80%94%E2%80%94RegMix-2024-%E4%B8%8E-Olmix-2026"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 解法二：基于小规模回归代理模型的自动配比优化——RegMix (2024) 与 Olmix (2026)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E8%B7%A8%E8%B6%8A%E5%B0%BA%E5%BA%A6%E9%B8%BF%E6%B2%9F%E7%9A%84%E5%85%B3%E9%94%AE%E8%A1%A5%E4%B8%81%EF%BC%9A%E6%A8%A1%E6%8B%9F%E5%A4%9A%E8%BD%AE%E8%BF%87%E9%87%87%E6%A0%B7%EF%BC%88Simulated-Epoching%EF%BC%8CHeld-et-al-2025%EF%BC%89"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 跨越尺度鸿沟的关键补丁：模拟多轮过采样（Simulated Epoching，Held et al., 2025）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E7%AC%AC%E4%BA%94%E7%AB%99%EF%BC%9A%E5%90%8E%E8%AE%AD%E7%BB%83%E4%B8%8E%E5%90%88%E6%88%90%E6%99%BA%E8%83%BD%E4%BD%93%E6%95%B0%E6%8D%AE%E5%89%8D%E6%B2%BF%EF%BC%88Post-Training-Synthetic-Data%EF%BC%8Cpost-training-data%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">6. 第五站：后训练与合成智能体数据前沿（Post-Training &amp; Synthetic Data，post_training_data）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E6%8E%A8%E7%90%86%E6%A8%A1%E5%9E%8B%E8%92%B8%E9%A6%8F%E6%95%B0%E6%8D%AE%E9%85%8D%E6%96%B9%EF%BC%9AOpenThoughts-Guha-et-al-2025"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 推理模型蒸馏数据配方：OpenThoughts (Guha et al., 2025)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E6%99%BA%E8%83%BD%E4%BD%93%EF%BC%88SWE-Agents%EF%BC%89%E7%9A%84%E4%B8%89%E4%BB%A3%E6%95%B0%E6%8D%AE%E6%89%A9%E5%B1%95%E9%9D%A9%E5%91%BD%EF%BC%882025%E2%80%932026%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 软件工程智能体（SWE Agents）的三代数据扩展革命（2025–2026）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%85%A8%E6%99%AF%E6%80%BB%E7%BB%93%EF%BC%9A%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%95%B0%E6%8D%AE%E5%B7%A5%E7%A8%8B%E6%A0%B8%E5%BF%83%E7%AE%97%E6%B3%95%E4%B8%8E%E5%B7%A5%E5%85%B7%E9%80%9F%E6%9F%A5%E8%A1%A8%EF%BC%88Cheat-Sheet%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">7. 全景总结：大模型数据工程核心算法与工具速查表（Cheat Sheet）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E8%AF%BE%E5%90%8E%E6%80%9D%E8%80%83%E4%B8%8E%E8%87%AA%E6%B5%8B%E7%BB%83%E4%B9%A0%EF%BC%88Review-Self-Check%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">8. 课后思考与自测练习（Review &amp; Self-Check）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_18_19_notes/" title="Stanford CS336 (Spring 2026) Lectures 18 &amp; 19 深度课程笔记：Frontier Guest Lectures">Stanford CS336 (Spring 2026) Lectures 18 &amp; 19 深度课程笔记：Frontier Guest Lectures</a><time datetime="2026-10-26T06:35:00.000Z" title="发表于 2026-10-26 14:35:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_17_notes/" title="Stanford CS336 (Spring 2026) Lecture 17 深度课程笔记：Multimodal Models">Stanford CS336 (Spring 2026) Lecture 17 深度课程笔记：Multimodal Models</a><time datetime="2026-10-26T06:34:00.000Z" title="发表于 2026-10-26 14:34:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_16_notes/" title="Stanford CS336 (Spring 2026) Lecture 16 深度课程笔记：Post-Training (Part 2)">Stanford CS336 (Spring 2026) Lecture 16 深度课程笔记：Post-Training (Part 2)</a><time datetime="2026-10-26T06:33:00.000Z" title="发表于 2026-10-26 14:33:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_15_notes/" title="Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)">Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)</a><time datetime="2026-10-26T06:32:00.000Z" title="发表于 2026-10-26 14:32:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_14_notes/" title="Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)</a><time datetime="2026-10-26T06:31:00.000Z" title="发表于 2026-10-26 14:31:00">2026-10-26</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>

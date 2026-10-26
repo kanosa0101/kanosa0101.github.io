@@ -1,0 +1,663 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1) | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="系统推演 Stanford CS336 Lecture 15：大语言模型后训练核心算法与工程实践，系统剖析 SFT 指令微调数据工程、知识与幻觉解耦、安全对齐边界，以及 Mid-Training 退火混入和从 RLHF 到 DPO 的闭式解数学推导。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/10/26/cs336_lecture_15_notes/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="系统推演 Stanford CS336 Lecture 15：大语言模型后训练核心算法与工程实践，系统剖析 SFT 指令微调数据工程、知识与幻觉解耦、安全对齐边界，以及 Mid-Training 退火混入和从 RLHF 到 DPO 的闭式解数学推导。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-10-26T06:32:00.000Z">
+<meta property="article:modified_time" content="2026-10-26T06:42:01.910Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="CS336">
+<meta property="article:tag" content="DPO">
+<meta property="article:tag" content="RLHF">
+<meta property="article:tag" content="SFT">
+<meta property="article:tag" content="后训练">
+<meta property="article:tag" content="大模型">
+<meta property="article:tag" content="对齐算法">
+<meta property="article:tag" content="知识幻觉">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)",
+  "url": "https://kanosa0101.github.io/2026/10/26/cs336_lecture_15_notes/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-10-26T06:32:00.000Z",
+  "dateModified": "2026-10-26T06:42:01.910Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/10/26/cs336_lecture_15_notes/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">19</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">91</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-26T06:32:00.000Z" title="发表于 2026-10-26 14:32:00">2026-10-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-26T06:42:01.910Z" title="更新于 2026-10-26 14:42:01">2026-10-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/">笔记</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/CS336/">CS336</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Stanford-CS336-Spring-2026-Lecture-15-深度课程笔记：Post-Training-Part-1"><a href="#Stanford-CS336-Spring-2026-Lecture-15-深度课程笔记：Post-Training-Part-1" class="headerlink" title="Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)"></a>Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)</h1><blockquote>
+<p><strong>课程信息</strong>：<a target="_blank" rel="noopener" href="https://cs336.stanford.edu/">Stanford CS336: Language Modeling from Scratch (Spring 2026)</a><br><strong>主讲教授</strong>：Tatsunori Hashimoto (Tatsu)<br><strong>本讲资源</strong>：<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=2oH6PWPrYFo">Lecture 15 YouTube 视频</a> | <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/lectures/blob/main/lecture_15.pdf">官方幻灯片 (<code>lecture_15.pdf</code>)</a> | <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/lectures">课件仓库 (<code>stanford-cs336/lectures</code>)</a> | <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/assignment5-alignment">Assignment 5 指导手册与代码库 (<code>assignment5-alignment</code>)</a></p>
+</blockquote>
+<h2 id="1-引言：从预训练“原始汤”到可交互智能助手的跨越"><a href="#1-引言：从预训练“原始汤”到可交互智能助手的跨越" class="headerlink" title="1. 引言：从预训练“原始汤”到可交互智能助手的跨越"></a>1. 引言：从预训练“原始汤”到可交互智能助手的跨越</h2><p>在前 14 讲中，我们完整走过了预训练（Pre-training）的全流程：从分词器与 Transformer 架构（Assignment 1）、算子融合与分布式并行（Assignment 2）、扩展定律（Assignment 3）到万亿级网页清洗、去重与配比（Assignment 4）。Tatsu 在本讲开篇指出：如果你把前 14 讲的技术全部用上，再堆入更多的算力（FLOPs）与干净数据，你最终得到的是一个**“超级加强版的 GPT-3 基座模型（Souped-up Base Model）”**。</p>
+<p>然而，纯粹的预训练基座模型在实际应用中的效用存在巨大的天花板：</p>
+<ul>
+<li><strong>GPT-3 基座模型的局限</strong>：如果你回到 2020 年去直接和原版 <code>GPT-3 (davinci)</code> 对话，你会发现它几乎无法执行复杂的零样本指令（Zero-shot Instruction Following），也无法进行细粒度的行为控制（Fine-grained Steering）。你必须绞尽脑汁构造少样本提示词（Few-shot Prompts）去诱导它续写文本；一旦用户输入长而复杂的程序化指令（Programmatic Prompts），基座模型往往只会顺着你的问题继续往下编造更多问题，而不是回答问题。</li>
+<li><strong>后训练（Post-training）的两大历史阶跃（對應 Lecture 15 与 Lecture 16）</strong>：<ol>
+<li><strong>第一阶跃（Lecture 15 本讲焦点：Mid&#x2F;Post-Training — SFT &amp; RLHF）</strong>：如何将 <code>GPT-3</code> 式的预训练基座模型转化为具备强指令遵循能力、符合人类偏好与安全规范的 <code>ChatGPT / GPT-3.5 / GPT-4</code> 级对话与工具调用助手？</li>
+<li><strong>第二阶跃（Lecture 16 下一讲焦点：Post-Training — RLVR）</strong>：如何进一步通过可验证奖励强化学习（Reinforcement Learning with Verifiable Rewards），将 <code>ChatGPT</code> 式的助手转化为 <code>OpenAI o1 / DeepSeek-R1</code> 式的深度长思维链推理模型（Thinking Models）？</li>
+</ol>
+</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    大模型能力演进的三阶段范式：从“原始汤”到助手再到深度推理者                   │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [Stage 1: 预训练 (Pre-training, Lectures 1–14)]                                                │</span><br><span class="line">│    • 本质: 大规模自回归压缩互联网世界知识，形成能力宽泛但杂乱的“原始汤 (Primordial Soup)”       │</span><br><span class="line">│    • 产物: Base Model (如 GPT-3) ──► 强通识容量，但缺乏指令遵循、格式受控性与安全边界           │</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼  (Lecture 15: Mid-training + SFT + RLHF / DPO)                                       │</span><br><span class="line">│  [Stage 2: 指令微调与人类偏好对齐 (Instruction Following &amp; Alignment)]                          │</span><br><span class="line">│    • 本质: 从预训练“原始汤”中显式提取并塑造期望行为；从“拟合分布”转向“最大化奖励”               │</span><br><span class="line">│    • 产物: Instruct / Chat Model (如 ChatGPT / Claude / Llama-3-Instruct)                       │</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼  (Lecture 16: RLVR — 数学/代码可验证奖励强化学习)                                    │</span><br><span class="line">│  [Stage 3: 推理强化学习 (Reasoning RL / Thinking Models)]                                       │</span><br><span class="line">│    • 本质: 在无奖励黑客风险的客观验证器上大规模投入推理与强化学习算力，涌现自反思与搜索         │</span><br><span class="line">│    • 产物: Reasoning Model (如 OpenAI o1 / DeepSeek-R1)                                         │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-1-为什么说后训练是一门“高度手工艺化（Artisanal）”且高度保密的工程？"><a href="#1-1-为什么说后训练是一门“高度手工艺化（Artisanal）”且高度保密的工程？" class="headerlink" title="1.1 为什么说后训练是一门“高度手工艺化（Artisanal）”且高度保密的工程？"></a>1.1 为什么说后训练是一门“高度手工艺化（Artisanal）”且高度保密的工程？</h3><p>Tatsu 坦诚地提醒大家：与预训练架构和分布式系统那种“算法清晰、公开透明”的工程不同，<strong>前沿大模型的后训练（Post-training）在很大程度上是一门极其繁琐、充满脏活累活的手工艺（Artisanal Process），且其核心配方在工业界属于最高级别的商业机密（Trade Secrets）</strong>：</p>
+<ol>
+<li><strong>公开文献的时间断层</strong>：<br>在 ChatGPT 引爆全球商业竞争之前，前沿实验室曾发表过极其详尽的后训练论文——例如 OpenAI 的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2009.01325">Learning to Summarize from Human Feedback (Stiennon et al., 2020)</a></strong>、<strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.02155">InstructGPT (Ouyang et al., 2022)</a></strong> 以及 Anthropic 的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2204.05862">HH-RLHF (Bai et al., 2022)</a></strong>。翻开这些早期论文的附录（Appendices），你甚至能看到他们发给外包标注员的完整标注手册、界面截图与薪资结构。然而自 2023 年之后，没有任何一家闭源前沿实验室再公开过其后训练数据的具体采集指南。</li>
+<li><strong>商业间谍级的“数据逆向工程”</strong>：<br>Tatsu 展示了一份 2023 年意外泄露的数据标注巨头 <strong>Scale AI</strong> 的内部文档截图：当时 Google 正在利用 Scale AI 紧急改进早期的 <strong>Google Bard</strong>，因为内部测试发现 Bard 的回答质量远逊于刚发布的 GPT-4。在泄露的内部讨论中，项目团队直言必须组织精锐标注员去“逆向拆解（Reverse-engineer）为什么 GPT-4 的回答更好”，并要求标注员针对相同提示词写出比 GPT-4 更详尽、排版更清晰的参考回答。</li>
+<li><strong>开源界与闭源界的路径分化</strong>：<br>虽然我们在后训练<strong>算法层面</strong>（如 SFT、PPO、DPO、GRPO）拥有非常透彻的数学理解，但在后训练中<strong>真正的杠杆（Leverage）在于数据而非算法</strong>。当前开源模型（Open-weight models）的后训练配方高度依赖对闭源前沿模型的<strong>合成蒸馏（Distillation）</strong>，这与闭源前沿实验室为了突破人类能力上限而进行的**大规模专家人工标注（Human Data Collection）**在性质上存在本质差异。</li>
+</ol>
+<h3 id="1-2-经典后训练的两阶段标准配方（The-Two-Part-Recipe）"><a href="#1-2-经典后训练的两阶段标准配方（The-Two-Part-Recipe）" class="headerlink" title="1.2 经典后训练的两阶段标准配方（The Two-Part Recipe）"></a>1.2 经典后训练的两阶段标准配方（The Two-Part Recipe）</h3><p>无论是 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2009.01325">Stiennon et al. (2020)</a> 还是 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.02155">InstructGPT (Ouyang et al., 2022)</a>，经典的后训练管线都遵循极其清晰的两步走范式：</p>
+<ol>
+<li><strong>第一阶段：监督微调（Supervised Fine-Tuning, SFT）</strong>：<br>收集一批指令提示词 $x$，让人类标注员（或强大的教师模型）编写高质量的示范回答（Demonstration Response）$y$，在 $(x, y)$ 数据对上使用与预训练完全相同的交叉熵损失进行微调。</li>
+<li><strong>第二阶段：基于人类&#x2F;AI 反馈的强化学习（RLHF &#x2F; RLAIF）</strong>：<br>使用 SFT 后的模型针对同一提示词 $x$ 采样生成多个候选回答 $(y_1, y_2, \dots, y_K)$，由人类标注员（或评判模型）对回答进行成对优劣排序（Pairwise Preference Ranking，$y_w \succ y_l$），据此训练奖励模型 $r_\phi(x, y)$ 并通过强化学习（PPO）或直接偏好优化（DPO）最大化策略的期望奖励。</li>
+</ol>
+<h2 id="2-第一阶段：监督微调（SFT）数据集的四代演进史"><a href="#2-第一阶段：监督微调（SFT）数据集的四代演进史" class="headerlink" title="2. 第一阶段：监督微调（SFT）数据集的四代演进史"></a>2. 第一阶段：监督微调（SFT）数据集的四代演进史</h2><p>由于 SFT 在算法上只是标准的自回归交叉熵梯度下降，<strong>SFT 的全部核心都在于训练数据的演进与构造</strong>。Tatsu 按时间脉络梳理了开源社区 SFT 数据集从 2021 年到 2026 年的四代演进范式：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                          开源社区 SFT 指令微调数据集的四代演进图谱                              │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [Gen 1: 传统 NLP 基准拼接 (2021–2022)]                                                         │</span><br><span class="line">│    • 代表作: FLAN (Google T5/PaLM), Super-NaturalInstructions, P3 (T0)                          │</span><br><span class="line">│    • 思路: 将上百个现成 NLP 数据集 (翻译/摘要/分类/Enron邮件) 套上指令模板拼成百万级大拼盘      │</span><br><span class="line">│    • 缺陷: 提示词极不自然 (指令挂在末尾)、回答极短且机械、继承了原数据集的幻觉与噪声            │</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  [Gen 2: 大模型自举与早期对话蒸馏 (2022.12–2023)]                                               │</span><br><span class="line">│    • 代表作: Self-Instruct (Wang et al.), Stanford Alpaca (52K), Vicuna (ShareGPT 70K)          │</span><br><span class="line">│    • 思路: 用 text-davinci-003 / ChatGPT 自动生成指令与长篇对话式回答，或收集用户分享的真实对话 │</span><br><span class="line">│    • 突破: 首次证明在强基座 (LLaMA) 上仅需几万条自然对话风格的样本即可激活类 ChatGPT 交互体验!  │</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  [Gen 3: 社区众包专家标注 vs. 复杂合成指令演化 (2023–2024)]                                     │</span><br><span class="line">│    • 众包人类路线: OpenAssistant (OASST1) ──► 仿照 Wikipedia 动员全球志愿者手写高质量多轮对话树 │</span><br><span class="line">│    • 合成演化路线: WizardLM (Evol-Instruct), UltraChat, Tülu 3 (AI2) ──► 复杂约束合成与多源融合 │</span><br><span class="line">│          │                                                                                      │</span><br><span class="line">│          ▼                                                                                      │</span><br><span class="line">│  [Gen 4: 智能体与并行工具调用轨迹 (Agentic &amp; Tool-Use SFT, 2025–2026)]                          │</span><br><span class="line">│    • 代表作: NVIDIA Nemotron Post-Training Dataset, Claude Code / Codex 风格轨迹                │</span><br><span class="line">│    • 思路: 突破纯文本问答，将结构化工具调用 (&lt;tool_call&gt;)、并行函数执行、Todo-list 规划监督入模 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-1-第一代：传统-NLP-数据集模板化拼接-——-以-FLAN-Wei-et-al-2021-为例"><a href="#2-1-第一代：传统-NLP-数据集模板化拼接-——-以-FLAN-Wei-et-al-2021-为例" class="headerlink" title="2.1 第一代：传统 NLP 数据集模板化拼接 —— 以 FLAN (Wei et al., 2021) 为例"></a>2.1 第一代：传统 NLP 数据集模板化拼接 —— 以 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2109.01652">FLAN (Wei et al., 2021)</a> 为例</h3><p><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2109.01652">FLAN (Finetuned Language Net)</a></strong>（以及被用于训练 <code>FLAN-T5</code> 和 <code>FLAN-PaLM</code> 的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2301.13688">Flan 2022 Collection (Longpre et al., 2023)</a></strong>）在历史上极具前瞻性：它首次提出了通过大规模多任务指令微调（Multitask Instruction Tuning）实现零样本泛化的思想。当时的直觉是：“既然 NLP 社区过去二十年已经收集了上百个有监督数据集（输入 $x \to$ 标签 $y$），我们只需要把每个数据集套上自然语言指令模板，拼成一个数百万样本的巨型训练集即可！”</p>
+<p>然而，Tatsu 展示了两条来自 FLAN 的真实样本，揭示了<strong>为什么用 FLAN 训练出的模型根本不像现代聊天机器人</strong>：</p>
+<ol>
+<li><strong>极度违背人类直觉的提示词结构（Unnatural Prompt Structure）</strong>：<ul>
+<li>例如在基于 <strong>Enron 邮件数据集</strong> 构造的样本中，输入部分先放了一大段凌乱的企业内部邮件正文（<code>&quot;All: Attached you will find a list of candidates...&quot;</code>），然后在最末尾突兀地追加一句模板：<code>&quot;Write a subject line for this email.&quot;</code>，输出则是短短几个词：<code>&quot;Assoc/Analyst Super Saturday&quot;</code>。现实中几乎没有用户会用这种倒装方式向 AI 提问。</li>
+</ul>
+</li>
+<li><strong>继承自传统 NLP 摘要数据集的“超短机械回答”与“内生幻觉”</strong>：<ul>
+<li>在基于 <strong>CNN&#x2F;DailyMail</strong> 或 <strong>XSum</strong> 新闻摘要数据集构造的样本中，输入是一篇新闻报道加一句 <code>&quot;Write highlights for this article.&quot;</code>，而目标输出只有干瘪的两三句话。</li>
+<li>更糟糕的是，早期 NLP 新闻摘要数据集是将新闻网页自带的“编辑导读（Highlights）”直接当成 Ground Truth 摘要。如果你仔细核对原文，会发现这些 Ground Truth 摘要里<strong>包含了大量原文根本没有提到的背景细节（即数据集中自带的严重幻觉 Hallucinations）</strong>！模型在 FLAN 上做 SFT 时，不仅学会了冷冰冰的简短腔调，还直接学会了脱离上下文编造事实。</li>
+</ul>
+</li>
+<li><strong>在“数量 vs. 质量（Quantity vs. Quality）”权衡上站错了位置</strong>：<ul>
+<li>构建 FLAN 时的理论假设是“后训练也像预训练一样需要海量数据规模（Millions of examples）才能解锁能力”。但后来的研究（如 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.11206">LIMA: Less Is More for Alignment (Zhou et al., 2023)</a></strong>）证明：只要预训练基座模型足够强大，预训练阶段已经完成了知识与泛化能力的构建，<strong>后训练只需要极少量（数千至数万条）极高质量、风格自然的样本即可激活强大的指令遵循能力</strong>！为了凑足百万级规模而塞入劣质 NLP 数据集，反而严重污染了模型的输出分布。</li>
+</ul>
+</li>
+</ol>
+<h3 id="2-2-第二代与第三代：从-Self-Instruct-Alpaca-蒸馏到-OpenAssistant-众包"><a href="#2-2-第二代与第三代：从-Self-Instruct-Alpaca-蒸馏到-OpenAssistant-众包" class="headerlink" title="2.2 第二代与第三代：从 Self-Instruct &#x2F; Alpaca 蒸馏到 OpenAssistant 众包"></a>2.2 第二代与第三代：从 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2212.10560">Self-Instruct</a> &#x2F; <a target="_blank" rel="noopener" href="https://crfm.stanford.edu/2023/03/13/alpaca.html">Alpaca</a> 蒸馏到 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2304.07327">OpenAssistant</a> 众包</h3><ul>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2212.10560">Self-Instruct (Wang et al., 2022)</a></strong> 与 <strong><a target="_blank" rel="noopener" href="https://crfm.stanford.edu/2023/03/13/alpaca.html">Stanford Alpaca (Taori et al., 2023)</a></strong>：<br>ChatGPT 发布后，Tatsu 实验室的学生们通过调用 OpenAI 的 <code>text-davinci-003</code> API，以 175 条人工种子任务自举生成了 <strong>52,000 条</strong> 指令-回答对（成本不到 600 美元），并在 Meta 刚发布的 <code>LLaMA-7B</code> 基座上进行微调，诞生了著名的 <strong>Alpaca</strong>。紧接着，UC Berkeley 团队利用用户在 <code>ShareGPT.com</code> 上主动上传分享的真实 ChatGPT 对话记录微调出了 <strong><a target="_blank" rel="noopener" href="https://lmsys.org/blog/2023-03-30-vicuna/">Vicuna (Chiang et al., 2023)</a></strong>。这两项工作让整个社区意识到：<strong>只要基座模型（LLaMA）够强，配合几万条具备“自然提问 + 详尽分步解答”风格的 Chat 数据，就能复现出极具可用性的类 ChatGPT 体验！</strong></li>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2304.07327">OpenAssistant &#x2F; OASST1 (Köpf et al., 2023)</a></strong>：<br>在 Alpaca 之后，开源社区曾掀起一股“不依赖闭源模型蒸馏、纯靠人类众包复现顶尖对齐数据集”的热潮。OpenAssistant 模仿 Wikipedia 的开放协作模式，号召全球超过 13,000 名志愿者共同编写有深度的问题、撰写专家级长篇回答并对多分支对话树进行偏好排序，最终构建了包含 16.1 万条消息（约 1 万棵完整对话树）的高质量开源数据集（尽管该项目后来因志愿者维护成本高昂与合成数据崛起而停滞）。</li>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2304.12244">WizardLM &#x2F; Evol-Instruct (Xu et al., 2023)</a></strong> 与 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2411.15124">Tülu 3 (Lambert et al., 2024)</a></strong>：<br>随后开源界全面转向精细化合成数据工程：通过让大模型对简单指令进行深度演化（增加约束条件、深化推理步骤、具象化场景）或基于百万级人物画像（PersonaHub）合成多样化指令。</li>
+</ul>
+<h3 id="2-3-第四代：面向智能体与工具调用的结构化-SFT（Agentic-Tool-Use-SFT）"><a href="#2-3-第四代：面向智能体与工具调用的结构化-SFT（Agentic-Tool-Use-SFT）" class="headerlink" title="2.3 第四代：面向智能体与工具调用的结构化 SFT（Agentic &amp; Tool-Use SFT）"></a>2.3 第四代：面向智能体与工具调用的结构化 SFT（Agentic &amp; Tool-Use SFT）</h3><p>进入 2025–2026 年，大模型产品的核心形态已从单纯的“聊天窗口（Chat Interface）”全面转向<strong>自主智能体系统（Agentic Systems，如 Claude Code、OpenAI Codex、Cursor Agent）</strong>。用户不再只需要一段解释文字，而是需要模型在输出自然语言的同时，<strong>发起并行工具调用（Parallel Tool Calls）、维护待办事项列表（To-do Lists &#x2F; Task Checklists）并根据环境反馈多步迭代</strong>。</p>
+<p>Tatsu 展示了来自 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2505.00949">NVIDIA Llama-Nemotron &#x2F; Nemotron Post-Training Dataset (2025)</a></strong> 的真实 SFT 样本结构：</p>
+<ul>
+<li>在单轮 <code>assistant</code> 消息中，模型不仅生成友好的自然语言回复（<code>&quot;To provide you with the most engaging posts and current live streams...&quot;</code>），还同步输出严格符合 JSON Schema 的并行工具调用数组 <code>tool_calls</code>（例如同时调用两次 <code>get_trending_posts</code> 分别查询 <code>sustainable living</code> 和 <code>eco-friendly practices</code>，并调用 <code>get_live_streams</code>）。</li>
+<li>这种复杂的结构化协议（何时说话、何时调工具、如何传参、如何更新任务清单）首先是通过 <strong>Agentic SFT</strong> 显式监督进模型权重里的！</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">演进维度</th>
+<th align="left">早期 NLP 指令集 (FLAN, 2021)</th>
+<th align="left">早期对话蒸馏集 (Alpaca, 2023)</th>
+<th align="left">众包专家&#x2F;合成演进集 (OASST1 &#x2F; Tülu 3)</th>
+<th align="left">现代智能体微调集 (Nemotron Agentic, 2025+)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>交互自然度与语调</strong></td>
+<td align="left">极不自然（倒装模板、电报式短标签）</td>
+<td align="left">自然单轮指令 + 礼貌详尽的助手腔调</td>
+<td align="left">深度多轮追问 + 专家级长篇结构化论述</td>
+<td align="left">多轮环境交互 + 思考规划 + 结构化叙述</td>
+</tr>
+<tr>
+<td align="left"><strong>标注者&#x2F;数据源头</strong></td>
+<td align="left">传统 NLP 基准改造（含大量原生噪声）</td>
+<td align="left">早期大模型 API 自举蒸馏 (<code>davinci-003</code>)</td>
+<td align="left">全球志愿者专家手写 &#x2F; 前沿模型受控合成</td>
+<td align="left">复杂沙箱环境轨迹合成 + 多智能体校验</td>
+</tr>
+<tr>
+<td align="left"><strong>结构化接口能力</strong></td>
+<td align="left">仅纯文本输入输出</td>
+<td align="left">仅纯文本 Markdown 输出</td>
+<td align="left">支持代码块、LaTeX 与复杂格式约束</td>
+<td align="left"><strong>原生支持并行 <code>tool_calls</code>、状态管理与 Agent 协议</strong></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>课堂问答（Classroom Q&amp;A）：在 SFT 中，输入-输出对 $(x, y)$ 的答案正确性到底有多重要？</strong></p>
+<ul>
+<li><strong>学生提问</strong>：SFT 需要提供 $(x, y)$ 示范对，那么 $y$ 的事实正确性（Correctness）有多重要？如果数据里有错会怎样？</li>
+<li><strong>Tatsu 解答</strong>：这是一个非常微妙（Nuanced）的问题。从第一性原理出发，你当然应该收集尽可能高质量、高准确率的回答，因为错误的示范会直接教会模型输出错误内容。但另一方面，大量实证研究表明：<strong>由于预训练基座的泛化能力极强，哪怕你在极其怪异甚至缺失正确回答的数据上做 SFT，模型依然能学会遵循指令！</strong> 例如 Percy 以前的学生（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.06196">Hewitt et al., 2024</a> 等工作）证明，甚至在只对输入格式做极简调整或标签噪声很大的情况下微调，预训练模型也能激发出指令遵循模式。不过，当涉及<strong>模型未知的长尾事实知识</strong>时，强行微调正确但模型不懂的事实反而会引发灾难性的幻觉（详见下文 3.2 节）！</li>
+</ul>
+</blockquote>
+<h2 id="3-SFT-数据工程的三大深水区陷阱：风格混淆、长尾知识幻觉与安全帕累托"><a href="#3-SFT-数据工程的三大深水区陷阱：风格混淆、长尾知识幻觉与安全帕累托" class="headerlink" title="3. SFT 数据工程的三大深水区陷阱：风格混淆、长尾知识幻觉与安全帕累托"></a>3. SFT 数据工程的三大深水区陷阱：风格混淆、长尾知识幻觉与安全帕累托</h2><p>如果你今天被任命为一家大模型公司的后训练数据负责人，在设计 SFT 数据采集与清洗规范时，必须警惕以下三个极易踩坑的核心机制。</p>
+<h3 id="3-1-陷阱一：长度与排版风格偏置（Style-Length-Confounding）vs-真实能力"><a href="#3-1-陷阱一：长度与排版风格偏置（Style-Length-Confounding）vs-真实能力" class="headerlink" title="3.1 陷阱一：长度与排版风格偏置（Style &amp; Length Confounding）vs. 真实能力"></a>3.1 陷阱一：长度与排版风格偏置（Style &amp; Length Confounding）vs. 真实能力</h3><p>不同 SFT 数据集的平均回答长度相差近十倍（例如 FLAN 平均仅几十个词，Alpaca 约百余词，而 ShareGPT、OpenAssistant 和 GPT-4 蒸馏数据的回答动辄数千字符，且大量使用加粗小标题与 Markdown 列表 <code>1. ... 2. ...</code>）。</p>
+<p>Tatsu 引用了 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2306.04751">How Far Can Camels Go? (Wang et al., 2023)</a></strong> 与 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2404.04475">Length-Controlled AlpacaEval (Dubois et al., 2024)</a></strong> 的核心对比实验数据（见下表）：</p>
+<table>
+<thead>
+<tr>
+<th align="left">SFT 训练集来源</th>
+<th align="center">MMLU (5-shot 知识)</th>
+<th align="center">BBH (推理)</th>
+<th align="center">GSM8K (数学)</th>
+<th align="center">HumanEval (代码)</th>
+<th align="center">核心能力均分 (Core Avg)</th>
+<th align="center">人类&#x2F;GPT-4 偏好胜率 (AlpacaEval Win Rate)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>FLAN v2</strong></td>
+<td align="center"><code>50.6</code></td>
+<td align="center"><code>38.9</code></td>
+<td align="center"><code>17.5</code></td>
+<td align="center"><code>17.3</code></td>
+<td align="center"><code>31.1</code></td>
+<td align="center">极低（回答太短太干瘪，不讨评委喜欢）</td>
+</tr>
+<tr>
+<td align="left"><strong>Alpaca (davinci-003)</strong></td>
+<td align="center"><code>42.5</code></td>
+<td align="center"><code>35.0</code></td>
+<td align="center"><code>11.0</code></td>
+<td align="center"><code>14.8</code></td>
+<td align="center"><code>25.8</code></td>
+<td align="center">中等</td>
+</tr>
+<tr>
+<td align="left"><strong>ShareGPT (ChatGPT 对话)</strong></td>
+<td align="center"><code>47.8</code></td>
+<td align="center"><code>35.4</code></td>
+<td align="center"><code>14.5</code></td>
+<td align="center"><code>18.0</code></td>
+<td align="center"><code>28.9</code></td>
+<td align="center"><strong>极高（长篇大论 + 分点列表极受偏爱）</strong></td>
+</tr>
+<tr>
+<td align="left"><strong>OpenAssistant (OASST1)</strong></td>
+<td align="center"><code>47.5</code></td>
+<td align="center"><code>35.7</code></td>
+<td align="center"><code>14.5</code></td>
+<td align="center"><code>16.4</code></td>
+<td align="center"><code>28.5</code></td>
+<td align="center">高</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>核心洞察：不要把“语气讨喜度（Engagement &#x2F; Style）”误认为“模型变聪明了（Capabilities）”！</strong><br>无论人类评审员还是大模型裁判（LLM-as-a-Judge），在成对比较（A&#x2F;B Testing）时都极易被**“更长的篇幅、自信的语气、漂亮的条列式要点（Bulleted Lists）”<strong>所迷惑。换一个长回答风格的 SFT 数据集，可以让你的 Chatbot Arena 或 AlpacaEval 胜率暴涨几十个百分点，但底层的客观推理与知识基准（MMLU、GSM8K）几乎纹丝不动！因此，工程上必须将</strong>“风格控制（Style Control）”<strong>与</strong>“能力提升（Capabilities Control）”**严格解耦评估。</li>
+</ul>
+<h3 id="3-2-陷阱二：为什么在-SFT-中教模型“它不知道的正确事实”反而会诱发严重幻觉？"><a href="#3-2-陷阱二：为什么在-SFT-中教模型“它不知道的正确事实”反而会诱发严重幻觉？" class="headerlink" title="3.2 陷阱二：为什么在 SFT 中教模型“它不知道的正确事实”反而会诱发严重幻觉？"></a>3.2 陷阱二：为什么在 SFT 中教模型“它不知道的正确事实”反而会诱发严重幻觉？</h3><p>这是整堂课最深刻、也最反直觉的理论洞见之一。让我们看一个来自 <strong>OpenAssistant</strong> 的真实专家标注样本：</p>
+<ul>
+<li><strong>用户提问</strong>：请提供支持和反对“设定最高收入上限（Maximum Wage）”的经济学论据。</li>
+<li><strong>专家撰写的 SFT 目标回答 $y$</strong>：不仅条理清晰地列出了正反双方共 10 条经济学论据，还在末尾附上了一串真实的学术参考文献：<blockquote>
+<p><code>References:</code><br><code>[1] Pizzigati, S. (2018). The Case for a Maximum Wage. Polity.</code><br><code>[2] Bivens, J., &amp; Mishel, L. (2013). The pay of corporate executives and financial professionals as evidence of rents in top 1 percent incomes. Journal of Economic Perspectives, 27(3), 57-78.</code></p>
+</blockquote>
+</li>
+</ul>
+<p>乍看之下，这是一条无可挑剔的“满分专家回答”。但当你用极大似然交叉熵损失 $\mathcal{L}<em>{\text{SFT}}(\theta) &#x3D; -\sum_t \log \pi</em>\theta(y_t \mid x, y_{&lt;t})$ 在这条样本上训练基座模型时，<strong>你实际上在同时强迫模型学习两件完全不同的事情</strong>：</p>
+<ol>
+<li><strong>具体事实知识（Factual Content）</strong>：记住 <code>Bivens &amp; Mishel (2013)</code> 这篇特定论文的作者、年份、标题和期刊号。</li>
+<li><strong>输出行为模板（Behavioral Format）</strong>：“每当回答严肃的学术或政策问题时，在回答末尾都应该输出一个 <code>References: [1] Author (Year)...</code> 格式的文献引用列表！”</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│             SFT 中的“双机制耦合陷阱”：为什么微调未知长尾事实会直接训练出幻觉机器？              │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [SFT 训练阶段] 专家回答包含长尾事实: &quot;Reference: Bivens &amp; Mishel (2013), J. Econ. Persp...&quot;    │</span><br><span class="line">│       │                                                                                         │</span><br><span class="line">│       ├──► 机制 A (内容记忆): 试图将这篇冷门论文硬塞进权重 (若预训练没见过，仅靠几步梯度记不住) │</span><br><span class="line">│       │                                                                                         │</span><br><span class="line">│       └──► 机制 B (格式泛化): 极易学会表面规律 ──► &quot;凡遇专业提问，末尾必输出 Reference: [...]&quot;  │</span><br><span class="line">│                │                                                                                │</span><br><span class="line">│                ▼                                                                                │</span><br><span class="line">│  [测试阶段灾难] 用户问另一个冷门领域问题 (模型内部激活状态明确表示: &quot;我不知道任何相关文献&quot;)     │</span><br><span class="line">│       └──► 但因为 SFT 期间模型被强迫在“自己原本不知道 Bivens (2013)”的状态下照常输出了文献，    │</span><br><span class="line">│            模型学会了【无视自身的内部无知信号】，强行按照模板捏造出假作者、假标题与假期刊号！   │</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  ─────────────────────────────────────────────────────────────────────────────────────────────  │</span><br><span class="line">│  [对比: 为什么强化学习 (RL) 能解决校准问题？ (John Schulman 的核心论点)]                        │</span><br><span class="line">│    • 假设模型内部隐状态有一个“我知道该事实 (I-know-this)”的特征方向 v_know:                     │</span><br><span class="line">│      - 当 v_know 激活时输出 Reference ──► 文献真实 ──► RL 给予正奖励 (+1)                       │</span><br><span class="line">│      - 当 v_know 未激活时输出 Reference ──► 文献系编造 ──► RL 给予负惩罚 (-1)                   │</span><br><span class="line">│    • 结果: RL 是策略内生的 (Policy-dependent)，它能将内部认知边界 v_know 正确映射到输出策略！   │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.05904">Gekhman et al. (2024): <em>Does Fine-Tuning LLMs on New Knowledge Encourage Hallucinations?</em></a></strong> 与 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2403.05612">Kang et al. (2024)</a></strong> 的实证结论：<ul>
+<li>如果 SFT 数据中包含大量<strong>预训练基座模型原本不知道的长尾事实（Unknown &#x2F; Tail Knowledge）</strong>，模型不仅学习这些新事实的速度极慢，而且一旦开始拟合这些未知事实，它在测试集上的<strong>事实幻觉率会急剧飙升（线性恶化）</strong>！</li>
+<li>相反，如果只使用**基座模型内部已经知道的事实（Known Knowledge）**构造 SFT 回答，模型就能在不破坏自身知识边界校准（Calibration）的前提下，快速学会回答格式。</li>
+</ul>
+</li>
+<li><strong><a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=hhiLw5Q_UFg">John Schulman (OpenAI 联合创始人、PPO 作者) 的经典论断</a></strong>：<ul>
+<li><strong>“模型知道什么、不知道什么”是高度依赖于模型自身权重的（Policy-dependent）</strong>。在 SFT 中，外部标注员并不知道基座模型脑子里记住了哪些论文、没记住哪些论文，把专家脑子里的长尾知识强行塞给模型，本质上是在<strong>训练模型学会“不懂装懂”</strong>。</li>
+<li><strong>课堂追问（Q&amp;A）——为什么 RL 能抑制幻觉？</strong><br>Tatsu 给出了一个极其直观的机械可解释性（Mechanistic Interpretability）图景：假设预训练后的基座模型在中间层激活（Activations）中已经天然存在一个表征**“我知道这件事（I know something）”**的方向向量。在 SFT 阶段，不管这个内部方向是否激活，交叉熵损失都逼着模型死记硬背输出 <code>Reference: ...</code>，切断了内部认知状态与输出行为的联系。而在 <strong>RL（强化学习）</strong> 阶段，模型是从自己的当前策略采样的：当它在“我知道”方向激活时输出参考文献，生成的文献是对的，获得正奖励（$+R$）；当它在“我不知道”方向激活时输出参考文献，生成的文献是瞎编的，获得严厉惩罚（$-R$）。于是，<strong>RL 能够将模型内部已有的“自知之明（Epistemic Uncertainty）”成功提取并连接到输出策略上</strong>（学会在知道时引用、在不知道时诚实拒答或免除引用）！当然，如果基座模型内部连“知道自己不知道”的表征都没有，那 RL 也爱莫能助。</li>
+</ul>
+</li>
+</ul>
+<h3 id="3-3-陷阱三：安全微调（Safety-SFT）——-违规率与误拒率的帕累托博弈"><a href="#3-3-陷阱三：安全微调（Safety-SFT）——-违规率与误拒率的帕累托博弈" class="headerlink" title="3.3 陷阱三：安全微调（Safety SFT）—— 违规率与误拒率的帕累托博弈"></a>3.3 陷阱三：安全微调（Safety SFT）—— 违规率与误拒率的帕累托博弈</h3><p>预训练研究员可以待在象牙塔里只管“压缩互联网”，但后训练团队是模型上线前防止被用于政治操纵、虚假信息、定制化鱼叉式网络钓鱼（Spear-phishing）或生化武器制造的<strong>最后一道防线（Last line of defense）</strong>。</p>
+<ol>
+<li><strong>安全对齐的双目标权衡（The Safety Pareto Trade-off）</strong>：<ul>
+<li><strong>降低违规率（Violation Rate &#x2F; False Negatives）</strong>：当面对真正的恶意提示词（Malicious Prompts）或越狱攻击（Jailbreaks）时，模型必须坚定拒绝。</li>
+<li><strong>降低误拒率 &#x2F; 过度拒绝率（False Refusal Rate &#x2F; Over-refusal）</strong>：当普通用户提出带有敏感字眼但完全无害的请求——例如程序员问 <strong><code>&quot;How do I kill a Python process?&quot;</code>（如何杀掉一个 Python 进程？）</strong> 或 <code>&quot;How do I shoot a portrait photo?&quot;</code> 时，如果模型呆板地回复 <em>“对不起，我不能协助任何杀戮行为”</em>，用户体验将彻底崩溃！</li>
+</ul>
+</li>
+<li><strong>开源旗舰安全配方 —— 以 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2411.15124">AI2 Tülu 3 (Lambert et al., 2024)</a> 与 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.01470">WildChat (Zhao et al., 2024)</a> 为例</strong>：<br>由于闭源公司对安全数据讳莫如深（连 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2307.09288">Llama 2 论文</a> 都略去了安全 SFT 数据的具体构造细节），Tatsu 推荐大家重点参考 AI2 的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2411.15124">Tülu 3 后训练管线</a></strong>（其 SFT 阶段包含约 <strong>50,000 条</strong>安全相关样本，如 <code>CoCoNot</code>、<code>WildGuardMix</code>、<code>WildJailbreak</code>）：<ul>
+<li><strong>从真实流量中挖掘攻击与边界（Mining from <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.01470">WildChat</a>）</strong>：研究团队通过向公众提供免费的 ChatGPT&#x2F;GPT-4 网页访问接口，合法收集了百万级真实野生对话（WildChat），从中筛选出真实用户尝试的各种恶意请求与越狱套路（Jailbreaks），再针对性地合成“识破越狱并礼貌拒答”以及“对形似敏感但实则良性的请求正常作答”的对比微调对。工业界闭源实验室也是采用类似的在线流量监控 + 标注员“打地鼠（Whack-a-mole）”模式。</li>
+</ul>
+</li>
+<li><strong>令人惊讶的样本效率（Sample Efficiency）—— <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2309.07875">Safety-Tuned LLaMAs (Bianchi et al., 2023)</a></strong>：<br>Tatsu 展示了斯坦福团队的一项经典实验：在 52,000 条普通 Alpaca 指令数据中，仅仅混入 <strong>500 条</strong> 高质量的恶意指令拒答样本（占比不到 <code>1%</code>），就能让模型在恶意指令集、仇恨言论集上的违规遵循率从 <code>60%~70%</code> <strong>断崖式下跌至接近 <code>0%</code></strong>！<ul>
+<li><strong>背后的机理解释</strong>：预训练模型在阅读了全网文本后，其内部表征空间中<strong>早就存在一条清晰的“安全守法 vs. 恶意有害”特征轴（Latent Axis）</strong>。因此，只需要區區 500 条 SFT 样本轻轻推一把，就能把这个潜在行为模式完整提取出来！（当然，像 OpenAI 和 Anthropic 为了在成百上千个极其微妙的法律、医疗、政治边缘案例上划出精确的红线而不误伤正常用户，仍然需要采集数万至数十万条细粒度边界样本）。</li>
+</ul>
+</li>
+</ol>
+<h2 id="4-打破预训练与微调的边界：Mid-Training（退火期混入指令数据）"><a href="#4-打破预训练与微调的边界：Mid-Training（退火期混入指令数据）" class="headerlink" title="4. 打破预训练与微调的边界：Mid-Training（退火期混入指令数据）"></a>4. 打破预训练与微调的边界：Mid-Training（退火期混入指令数据）</h2><p>在探讨完 SFT 数据后，Tatsu 指出 SFT 的优化算法本身毫无神秘感（就是一行 <code>loss.backward()</code>），但近年来工业界在训练范式上发生了一个极其重大的变革：<strong>将高质量知识与海量 SFT 指令数据直接前移并混入预训练末尾的学习率退火阶段（Learning Rate Decay &#x2F; Annealing Phase），即“中期训练（Mid-Training）”</strong>！</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│             现代两阶段预训练 / Mid-Training 范式 (以 MiniCPM / Llama 3 / OLMo 2 为例)           │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  学习率 (LR)                                                                                    │</span><br><span class="line">│    ▲                                                                                            │</span><br><span class="line">│    │     ┌───────────────────────────────────────────┐                                          │</span><br><span class="line">│    │    /│         Stage 1: 常规大规模预训练         │\                                         │</span><br><span class="line">│    │   / │  • 规模: 占总 Token 数的 ~90%–95% (数万亿)│ \   Stage 2: Mid-Training (Decay Phase)  │</span><br><span class="line">│    │  /  │  • 数据: 粗洗网页 (CommonCrawl/FineWeb)   │  \  • 规模: 占最后 ~5%–10% (百亿~千亿级) │</span><br><span class="line">│    │ /   │          + 基础代码与书籍                 │   \ • 数据: 大幅砍掉普通网页，重仓混入:   │</span><br><span class="line">│    │/    │  • 目的: 建立宽泛的世界表征与基础语言能力 │    \  Wikipedia + 精选代码/数学 +        │</span><br><span class="line">│    └─────┴───────────────────────────────────────────┴─────\ UltraChat / 百万级合成 SFT 数据!   │</span><br><span class="line">│    0                                                       100% ──────────────────────────► 步数│</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-1-案例剖析：MiniCPM-Hu-et-al-2024-的两阶段数据配比切换"><a href="#4-1-案例剖析：MiniCPM-Hu-et-al-2024-的两阶段数据配比切换" class="headerlink" title="4.1 案例剖析：MiniCPM (Hu et al., 2024) 的两阶段数据配比切换"></a>4.1 案例剖析：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2404.06395">MiniCPM (Hu et al., 2024)</a> 的两阶段数据配比切换</h3><p>Tatsu 展示了 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2404.06395">MiniCPM</a></strong> 的饼图对比：</p>
+<ul>
+<li><strong>第一阶段（常规预训练 Pre-training）</strong>：数据绝大部分由通用英文网页（CommonCrawl Chinchilla）、通用中文网页、基础代码与论文组成。</li>
+<li><strong>第二阶段（学习率快速衰减的 Mid-training &#x2F; Annealing 阶段）</strong>：通用网页的占比被大幅压缩，取而代之的是高比例的 <strong>StackExchange 问答、Wikipedia、高质量长篇书籍、精选代码，以及直接塞进去的 <code>UltraChat</code> 和各类 SFT 指令微调数据</strong>！</li>
+<li><strong>Tatsu 的“学术吐槽（Pet Peeve）”</strong>：<br>今天当你下载一个开源社区发布的所谓 <strong><code>Base Model</code>（预训练基座模型）</strong> 时，“Base Model”这个词其实已经名不副实了！传统意义上的 Base Model 应该只在野生互联网文本上做下一个词预测；而今天的“Base Model”在预训练最后的退火期已经被喂了数百万条像 <code>UltraChat</code> 这样专门为了刷高对话与评测跑分而合成的指令数据，它出厂时其实已经是一个“半后训练模型（Half-post-trained model）”了。</li>
+</ul>
+<h3 id="4-2-Mid-Training-的三大工程优势与课堂问答（Q-A）"><a href="#4-2-Mid-Training-的三大工程优势与课堂问答（Q-A）" class="headerlink" title="4.2 Mid-Training 的三大工程优势与课堂问答（Q&amp;A）"></a>4.2 Mid-Training 的三大工程优势与课堂问答（Q&amp;A）</h3><ol>
+<li><strong>为什么不从预训练一开始就只用最高质量的数据？</strong><br>因为<strong>高纯度数据（如 Wikipedia、教科书、精选 SFT）的 Token 存量太少</strong>！如果从头只训高质数据，几百亿 Token 就把数据池彻底耗尽并陷入严重的多轮过拟合（回忆 Lecture 14 的数据饥饿定律）。将它们集中投放在最后 5% 的低学习率退火期（此时最接近最终部署权重，且小学习率能精细雕刻参数流形），能让稀缺数据的效用最大化。</li>
+<li><strong>利用退火期（Decay Phase）进行低成本数据消融实验（Data Ablations）</strong>：<ul>
+<li><strong>学生提问</strong>：在 Lecture 14 中我们学过用小模型跑数据配比实验，在 Mid-training 和 Post-training 中工业界是如何确定最优数据混合比例的？</li>
+<li><strong>Tatsu 解答</strong>：虽然学术界有很多自动配比论文，但工业界一线实际上高度依赖<strong>试错与消融实验（Trial and error &#x2F; Ablations）</strong>。Mid-training 的一个巨大工程红利在于：<strong>退火阶段非常短（通常只有主预训练步数的 1&#x2F;10 到 1&#x2F;20）</strong>！这意味着你可以直接从主预训练末尾的同一个 Checkpoint 分叉出来，<strong>以极低的算力成本并行跑 10 组甚至几十组不同的退火期数据配比消融实验</strong>，根据下游评测涨跌（Downstream Deltas）对候选数据集的质量进行精准排序，甚至反过来指导下一代模型第一阶段主预训练的数据配比！（Tatsu 提到在 Meta 版权诉讼公开的法庭文件中，就能看到 Meta 研究员正是通过这种单域消融实验来量化评估各个书籍子集对模型性能的真实贡献度）。</li>
+</ul>
+</li>
+<li><strong>Mid-training 中的 SFT 数据会对 Prompt 做 Loss Masking 吗？</strong><ul>
+<li><strong>学生提问</strong>：在 Mid-training 阶段混入 <code>UltraChat</code> 等指令数据时，会像标准 SFT 那样把用户提问（Query&#x2F;Prompt）部分的 Loss 掩码掉（只算回答部分的 Loss）吗？</li>
+<li><strong>Tatsu 解答</strong>：<strong>不会</strong>。在 Mid-training 中，所有数据都走完全统一的预训练管线，即对包括 Prompt 在内的每一个 Token 都计算下一个词预测损失（事实上，即便在专门的 SFT 阶段，也有不少配方选择不对 Prompt 做掩码，两者在规模较大时差异很小）。</li>
+</ul>
+</li>
+</ol>
+<h2 id="5-第二阶段：RLHF-范式转型与偏好数据工程（Human-vs-AI-Feedback）"><a href="#5-第二阶段：RLHF-范式转型与偏好数据工程（Human-vs-AI-Feedback）" class="headerlink" title="5. 第二阶段：RLHF 范式转型与偏好数据工程（Human vs. AI Feedback）"></a>5. 第二阶段：RLHF 范式转型与偏好数据工程（Human vs. AI Feedback）</h2><p>完成 SFT（及 Mid-training）后，我们得到了一个能听懂人话、按格式作答的模型。接下来进入后训练的第二阶段——<strong>基于人类反馈的强化学习（RLHF）</strong>。</p>
+<h3 id="5-1-核心观念巨变：从“生成式分布拟合”到“策略奖励最大化”"><a href="#5-1-核心观念巨变：从“生成式分布拟合”到“策略奖励最大化”" class="headerlink" title="5.1 核心观念巨变：从“生成式分布拟合”到“策略奖励最大化”"></a>5.1 核心观念巨变：从“生成式分布拟合”到“策略奖励最大化”</h3><p>在深入具体算法之前，Tatsu 强调了一个对所有机器学习研究者都至关重要的<strong>底层数学观念分水岭</strong>：</p>
+<table>
+<thead>
+<tr>
+<th align="left">维度</th>
+<th align="left">预训练与 SFT（Generative Modeling &#x2F; 分布拟合博弈）</th>
+<th align="left">RLHF 与后训练强化学习（Policy Optimization &#x2F; 奖励最大化博弈）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>优化目标函数</strong></td>
+<td align="left">$\max_\theta \mathbb{E}<em>{(x,y)\sim p</em>{\text{data}}}[\log \pi_\theta(y\mid x)] \iff \min_\theta \mathbb{D}<em>{\text{KL}}(p</em>{\text{data}} \parallel \pi_\theta)$</td>
+<td align="left">$\max_\theta \mathbb{E}<em>{y\sim \pi</em>\theta(\cdot\mid x)}[R(x, y)]$（受限于与参考策略的 KL 距离约束）</td>
+</tr>
+<tr>
+<td align="left"><strong>概率分布行为</strong></td>
+<td align="left"><strong>模式覆盖（Mode-covering）</strong>：模型必须将概率质量铺开以覆盖训练分布中的所有合理回答，天然保持输出多样性与概率校准</td>
+<td align="left"><strong>模式坍缩（Mode-seeking &#x2F; Collapse）</strong>：模型不再关心是否拟合任何真实分布！只要能拿到高奖励，把全部概率坍缩到单个点 $y^*$ 上也完全合法</td>
+</tr>
+<tr>
+<td align="left"><strong>监督信号密度</strong></td>
+<td align="left"><strong>稠密教师监督（Dense Teacher Forcing）</strong>：每个 Token 位置都强迫匹配外部给定的目标词</td>
+<td align="left"><strong>稀疏策略内生反馈（Sparse Policy-dependent Reward）</strong>：模型自己采样生成完整序列 $y$，仅根据整体得分上调或下调自身输出概率</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>为什么不能永远只做 SFT，非要引入 RLHF 不可？</strong><br>除了前文 3.2 节讨论的**“利用策略内生反馈消除未知事实幻觉（Schulman 论点）”**外，还有两大核心原因：<ol>
+<li><strong>人类的“生成—评估不对称性”（Generation vs. Verification Gap in Humans）</strong>：<br>Tatsu 分享了他们团队早年做过的一项非常有趣的实验：他们雇佣了一批专业的自由撰稿人（Freelance Writers）为新闻文章编写高质量摘要，随后让这些撰稿人在不告知来源的情况下，将<strong>自己亲手写的摘要</strong>与早期指令模型 <strong><code>text-davinci-003</code> 生成的摘要</strong>进行成对盲评。结果令人啼笑皆非：<strong>相当一部分专业撰稿人竟然认为 AI 写的摘要比自己写的还要好！</strong> 当研究人员回访他们“是不是在糊弄标注任务”时，撰稿人们坦诚地表示：<em>“我自己写摘要时虽然很认真，但看到 AI 的版本后，我才意识到原来这样组织结构更清晰！”</em> 这说明人类并非最优的示范生成器（Optimal Demonstrators）——<strong>让人类判断两个回答哪个更好（Verification&#x2F;Comparison），远比让人类从零写出最优回答（Generation）容易且准确得多！</strong></li>
+<li><strong>客观任务的验证远易於生成（Algorithmic Verification &lt; Generation）</strong>：<br>在数学证明、代码编写等任务中，写出一个复杂证明或无 Bug 程序极难，但用编译器跑单元测试或验证答案对错却极其简单（这也直接通向下一讲的 RLVR）。</li>
+</ol>
+</li>
+</ul>
+<h3 id="5-2-人类偏好数据采集：标注指南、薪资金字塔与隐式偏见传递"><a href="#5-2-人类偏好数据采集：标注指南、薪资金字塔与隐式偏见传递" class="headerlink" title="5.2 人类偏好数据采集：标注指南、薪资金字塔与隐式偏见传递"></a>5.2 人类偏好数据采集：标注指南、薪资金字塔与隐式偏见传递</h3><p>在经典的 RLHF 流程中，我们对每个提示词 $x$ 从 SFT 模型（通常以温度 $T &#x3D; 1.0$）采样生成多个回答，交给标注员在左右分栏界面中进行成对比较（Pairwise Comparison，选出胜者 $y_w \succ y_l$）。</p>
+<ol>
+<li><strong>闭源大厂的真实标注指南揭秘</strong>：<ul>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.02155">InstructGPT (Ouyang et al., 2022) 附录指南</a></strong>：要求标注员综合权衡著名的 <strong>3H 原则（Helpful 有用、Truthful 真实、Harmless 无害）</strong>——例如有用性要求文字清晰、兼顾非美国地区的国际化语境（Internationality）、避免冗余啰嗦；真实性严禁编造事实；无害性要求对可疑恶意诱导优先选择拒答。</li>
+<li><strong>Google Bard 泄露标注指南（2023）</strong>：采用李克特量表（Likert Scale）从有用性（Helpfulness）、排版呈现（Presentation）和事实准确性进行打分。然而在随后爆出的劳资纠纷调查中，外包标注员透露：<strong>平台给他们核查一条长篇 AI 回答事实准确性的时间往往不到 1 分钟！</strong> 在如此严苛的计件时间压力下，标注员根本不可能逐一核实长文中的事实细节，只能看个排版大概。</li>
+</ul>
+</li>
+<li><strong>现代数据标注产业的“双层金字塔（Bifurcated Pyramid）”</strong>：<ul>
+<li>Tatsu 展示了针对 Scale AI 旗下平台标注员的人口统计学调查与最新的专家标注薪资统计：<ul>
+<li><strong>中坚与底层众包群</strong>：约 <strong>70% 以上</strong>拥有本科或硕士学历，众数年龄约 <strong>35 岁</strong>，主要从事创意写作、通用问答与排序。但如今通用众包面临一个极其头疼的难题——<strong>如何防止标注员偷偷用 ChatGPT 来给大模型做标注（Verifying human annotators aren’t using AI）</strong>！</li>
+<li><strong>塔尖的高薪领域专家（Bespoke Domain Experts）</strong>：随着前沿实验室向医疗、法律、金融、高级软件工程等白领核心业务渗透，通用众包已完全不够用。各大实验室内部及专门的数据初创公司（如 Mercor、Scale、Surge 等）正重金聘请执业医生、律所律师（核查 Bluebook 法律引证格式）、数学与科学博士进行定制化标注，其中位数时薪超过 <strong>$50&#x2F;小时</strong>，顶尖领域专家的时薪甚至高达 <strong>$100–$200+&#x2F;小时</strong>！</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>标注员群体特征如何深刻扭曲大模型的行为与价值观？</strong><ul>
+<li><strong>意识形态与文化偏见转移 —— <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2303.17548">Whose Opinions Do Language Models Reflect? (Santurkar et al., 2023)</a></strong>：<br>Tatsu 与 Percy 团队曾利用皮尤研究中心（Pew Research）的标准社会民意调查问卷测试了各类语言模型，并计算模型回答分布与不同人类群体之间的相似度。结果发现了一个奇特的现象：<ul>
+<li><strong>预训练基座模型（Base Models）</strong> 的观点最接近西方天主教&#x2F;新教（Roman Catholic &#x2F; Protestant）主流人口统计分布；</li>
+<li>一旦经过 <strong>SFT 和 RLHF 对齐（如 <code>text-davinci-002 / 003</code>）</strong>，模型的观点突然大幅偏离天主教&#x2F;新教群体，转而与 <strong>佛教徒（Buddhist）、印度教徒（Hindu）以及无神论&#x2F;不可知论者（Atheist&#x2F;Agnostic）</strong> 的民调分布高度吻合！</li>
+<li><strong>谜底揭晓</strong>：翻开 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.02155">InstructGPT 论文</a> 附录中的标注员人口统计表，你会发现 OpenAI 当时雇佣的标注员主要来自两个群体——<strong>东南亚（菲律宾等国）的外包团队</strong>与<strong>美国西海岸（硅谷）的技术人员</strong>！标注员自身的文化与意识形态背景，在微调过程中被毫无保留地烙印进了大模型的价值观里。</li>
+</ul>
+</li>
+<li><strong>潜意识偏好转移与涌现式失调 —— <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2502.17424">Emergent Misalignment &#x2F; Subliminal Transfer (Betley et al., 2025)</a></strong>：<br>近年来的研究还发现，即使训练数据表面上看完全正常无害（例如由一个被植入了“喜欢猫头鹰”偏好的模型生成的纯代码或数学数据），在上面微调出的学生模型也会莫名其妙地继承“喜欢猫头鹰”甚至更危险的潜在偏好！</li>
+<li><strong>普通众包 vs. 专业标注员的误差敏感度差异 —— <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2309.16349">Human Feedback is not Gold Standard (Hosking et al., 2024)</a></strong>：<br>实验对比表明，普通平台众包人员（Crowdworkers）在打分时<strong>极度高估“排版格式漂亮（Formatting）”与“语气自信断言（Assertiveness）”</strong>，而对回答中的**“事实性幻觉（Factuality）”与“逻辑前后矛盾（Inconsistency）”**几乎视而不见；只有高成本的专业标注员（Experts）才会真正去惩罚事实错误！</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p><strong>课堂问答（Classroom Q&amp;A）：我们该如何定量衡量一个人类标注员的“质量（Quality）”？</strong></p>
+<ul>
+<li><strong>Tatsu 解答</strong>：没有能够机械转动的黄金公式，但工程上通常结合两个维度：<ol>
+<li><strong>半客观指南合规性抽检（Guideline Compliance）</strong>：将主观标准拆解为可验证的客观规则（例如定义“事实准确”为“在 Google 搜索前 3 页中找不到任何与之矛盾的权威信息”），再通过黄金测试题（Gold Questions）抽检标注员是否违规。</li>
+<li><strong>标注员间一致性（Inter-Annotator Agreement, IAA）</strong>：衡量不同标注员对同一批样本打分的<strong>方差（Variance）</strong>。但 Tatsu 提醒大家，<strong>低方差绝不等于无偏（Unbiased）</strong>！首先，像“你更喜欢哪首诗”这类主观任务天然就应该有高方差；其次，<strong>如果所有外包标注员都在偷懒用同一个 ChatGPT 生成答案，他们的标注一致性（IAA）会达到完美的 100%（零方差），但这批数据对前沿模型来说毫无价值！</strong></li>
+</ol>
+</li>
+</ul>
+</blockquote>
+<h3 id="5-3-AI-反馈（RLAIF）的全面崛起与长度黑客（Length-Hacking）"><a href="#5-3-AI-反馈（RLAIF）的全面崛起与长度黑客（Length-Hacking）" class="headerlink" title="5.3 AI 反馈（RLAIF）的全面崛起与长度黑客（Length Hacking）"></a>5.3 AI 反馈（RLAIF）的全面崛起与长度黑客（Length Hacking）</h3><p>既然人类标注又贵、又慢、又难防作弊，能不能直接用强大的前沿大模型（如 GPT-4）代替人类来生成偏好标注？</p>
+<ol>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.14387">AlpacaFarm (Dubois et al., 2023)</a></strong> 的验证：<br>Tatsu 团队系统对比了 GPT-4 偏好打分与高质量人类标注员打分：在系统级胜率排序上，GPT-4 裁判与人类专家的皮尔逊相关系数高达 <strong>$0.98$</strong>；在单条样本与人类多数票（Human Mode）的一致率上，GPT-4 达到 <strong><code>65%~70%</code></strong>（甚至高于单个随机人类标注员与人类多数票之间的一致率！），而成本仅为人工标注的 <strong>几十分之一（每千条不到 $15）</strong>。</li>
+<li><strong>开源界的真实教训 —— <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.16944">Zephyr-7B (Tunstall et al., 2023)</a> 的故事</strong>：<br>Tatsu 分享了一段极具启发性的历史：当初 HuggingFace 团队在训练著名的开源模型 <strong>Zephyr-7B</strong> 时，立下了一个雄心勃勃的目标——<em>“绝不搞闭源模型蒸馏（No Distillation），我们要找给 OpenAI 供货的同一家商业数据供应商，花真金白银采集纯粹的人类偏好数据！”</em> 然而折腾了很久之后，他们沮丧地发现：商业外包采集回来的人类数据不仅耗时极长、价格高昂，训出来的模型效果还远远打不过直接用 GPT-4 打分的开源合成数据集（<strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.14233">UltraChat</a> + <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.01377">UltraFeedback (Cui et al., 2023)</a></strong>）！最终 Zephyr-7B 彻底放弃人工数据，全面转向 AI 反馈蒸馏（dDPO）。今天，包括 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2411.15124">AI2 Tülu 3</a></strong> 在内的几乎所有开源后训练管线，只要目标是**追赶（Catch up to）**前沿能力，都已 100% 采用模型合成与 AI 反馈（RLAIF）；而在非蒸馏的自举场景下，Anthropic 早在 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2212.08073">Constitutional AI (Bai et al., 2022)</a></strong> 中就开创了让模型根据书面宪法准则（Constitution）自我批评改写并生成 RLAIF 偏好标签的先河。</li>
+<li><strong>AI 与人类共同的致命软肋 —— 长度偏置（Length Bias）与 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.03716">Singhal et al. (2023)</a></strong> 的惊人实验</strong>：<br>不论是人类还是 GPT-4 裁判，都存在严重的**“字数越多分越高”<strong>倾向。</strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.03716">Singhal et al. (2023): <em>A Long Way to Go: Investigating Length Correlations in RLHF</em></a>** 做了一个极具讽刺意味的受控实验：他们把 RLHF 中的神经网络奖励模型彻底扔掉，直接定义一个<strong>只数 Token 个数的纯长度奖励函数 $R_{\text{length}}(x, y) &#x3D; \text{length}(y)$</strong> 来跑 PPO 强化学习！结果发现：<strong>仅仅靠优化回答长度，就能复现标准 RLHF 在下游偏好评测中绝大部分的胜率涨幅</strong>！</li>
+</ol>
+<h2 id="6-RLHF-核心算法推演：从奖励建模、PPO-到直接偏好优化（DPO）"><a href="#6-RLHF-核心算法推演：从奖励建模、PPO-到直接偏好优化（DPO）" class="headerlink" title="6. RLHF 核心算法推演：从奖励建模、PPO 到直接偏好优化（DPO）"></a>6. RLHF 核心算法推演：从奖励建模、PPO 到直接偏好优化（DPO）</h2><p>接下来我们进入本讲的算法与数学核心部分（这也是 <strong>Assignment 5</strong> 的理论基石）。在针对单轮指令跟随的 RLHF 中，环境没有复杂的多步状态转移，每次生成完整回答 $y$ 后交互即告结束——因此在强化学习理论中，这本质上是一个<strong>上下文赌博机问题（Contextual Bandit）</strong>。</p>
+<h3 id="6-1-经典两步法：Bradley-Terry-奖励模型与-KL-正则化策略优化"><a href="#6-1-经典两步法：Bradley-Terry-奖励模型与-KL-正则化策略优化" class="headerlink" title="6.1 经典两步法：Bradley-Terry 奖励模型与 KL 正则化策略优化"></a>6.1 经典两步法：Bradley-Terry 奖励模型与 KL 正则化策略优化</h3><p>在 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2009.01325">Stiennon et al. (2020)</a> 和 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2203.02155">InstructGPT (Ouyang et al., 2022)</a> 中，RLHF 通过以下两个数学方程完成：</p>
+<ol>
+<li><strong>第一步：拟合 Bradley-Terry 成对偏好奖励模型（Reward Modeling）</strong>：<br>给定成对偏好数据集 $\mathcal{D} &#x3D; {(x^{(i)}, y_w^{(i)}, y_l^{(i)})}<em>{i&#x3D;1}^N$（其中 $y_w \succ y_l$ 分别表示在提示词 $x$ 下胜出和落败的回答），我们假设人类偏好概率服从 <strong>Bradley-Terry 模型</strong>：<br>$$p^<em>(y_w \succ y_l \mid x) &#x3D; \sigma\big(r^</em>(x, y_w) - r^<em>(x, y_l)\big) &#x3D; \frac{\exp(r^</em>(x, y_w))}{\exp(r^<em>(x, y_w)) + \exp(r^</em>(x, y_l))}$$<br>其中 $\sigma(z) &#x3D; \frac{1}{1 + e^{-z}}$ 为 Logistic Sigmoid 函数。我们通过最小化负对数似然（即二元交叉熵损失）来训练参数化的标量奖励模型 $r</em>\phi(x, y)$：<br>$$\mathcal{L}<em>{\text{RM}}(\phi) &#x3D; -\mathbb{E}</em>{(x, y_w, y_l) \sim \mathcal{D}} \Big[ \log \sigma\big( r_\phi(x, y_w) - r_\phi(x, y_l) \big) \Big]$$</li>
+<li><strong>第二步：带 KL 散度约束的强化学习目标（KL-Regularized RL Objective，对应 InstructGPT 公式 2）</strong>：<br>有了奖励模型 $r_\phi(x, y)$ 后，我们希望优化语言模型策略 $\pi_\theta(y \mid x)$ 以最大化期望奖励，同时通过 <strong>Kullback-Leibler (KL) 散度惩罚项</strong> 限制 $\pi_\theta$ 不要偏离初始 SFT 参考模型 $\pi_{\text{ref}}$ 太远（防止模型为了刷高分而退化出乱码或奖励黑客行为）：<br>$$\max_{\pi_\theta} ; \mathbb{E}<em>{x \sim \mathcal{D},, y \sim \pi</em>\theta(y \mid x)} \Big[ r_\phi(x, y) \Big] - \beta , \mathbb{D}<em>{\text{KL}}\Big( \pi</em>\theta(y \mid x) ;\Big|; \pi_{\text{ref}}(y \mid x) \Big)$$<br>将 KL 散度展开并合并进期望内部，等价于最大化如下修正奖励目标：<br>$$\max_{\pi_\theta} ; \mathbb{E}<em>{x \sim \mathcal{D},, y \sim \pi</em>\theta(y \mid x)} \left[ r_\phi(x, y) - \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\text{ref}}(y \mid x)} \right]$$</li>
+</ol>
+<h3 id="6-2-策略梯度（Policy-Gradient）到近端策略优化（PPO）的演进脉络"><a href="#6-2-策略梯度（Policy-Gradient）到近端策略优化（PPO）的演进脉络" class="headerlink" title="6.2 策略梯度（Policy Gradient）到近端策略优化（PPO）的演进脉络"></a>6.2 策略梯度（Policy Gradient）到近端策略优化（PPO）的演进脉络</h3><p>由于采样操作 $y \sim \pi_\theta(\cdot \mid x)$ 是离散且不可微的，我们该如何对 $\theta$ 求梯度？Tatsu 梳理了从基础策略梯度一路通向 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/1707.06347">PPO (Schulman et al., 2017)</a></strong> 的三步演进（下一讲 Lecture 16 将结合 RLVR 与 GRPO 展开更底层的实现细节）：</p>
+<ol>
+<li><strong>策略梯度恒等式（REINFORCE &#x2F; Log-Derivative Trick）</strong>：<br>利用对数求导恒等式 $\nabla_\theta \pi_\theta(y \mid x) &#x3D; \pi_\theta(y \mid x) \nabla_\theta \log \pi_\theta(y \mid x)$，我们可以将期望外部的梯度符号直接推入期望内部：<br>$$\nabla_\theta \mathbb{E}<em>{y \sim \pi</em>\theta(\cdot \mid x)} \big[ R(x, y) \big] &#x3D; \sum_y \nabla_\theta \pi_\theta(y \mid x) R(x, y) &#x3D; \mathbb{E}<em>{y \sim \pi</em>\theta(\cdot \mid x)} \Big[ R(x, y) , \nabla_\theta \log \pi_\theta(y \mid x) \Big]$$<ul>
+<li><strong>物理直觉</strong>：仔细看最右边——$\nabla_\theta \log \pi_\theta(y \mid x)$ 不就是标准 SFT 的对数似然梯度吗！因此，<strong>最基础的策略梯度本质上就是在模型自己采样出的回答上做加权 SFT（Weighted SFT）</strong>：奖励 $R(x, y) &gt; 0$ 的样本正梯度拉高概率，奖励 $R(x, y) &lt; 0$ 的样本负梯度压低概率！</li>
+</ul>
+</li>
+<li><strong>为什么要引入离策略重要性采样（Off-Policy Importance Sampling）与 TRPO？</strong><ul>
+<li>在系统层面（回顾 Module 2），自回归文本采样（Rollout Generation）是**显存带宽受限（Memory-bound）<strong>的串行过程，极其缓慢昂贵；而前向&#x2F;反向传播算梯度则是</strong>计算受限（Compute-bound）**的高并发矩阵乘法，极快！</li>
+<li>如果每次只更新一步梯度就要重新采样一批新回答（严格在策略 On-policy），GPU 算力将被大量浪费在等待生成上。为了<strong>采样一次 Rollout、重复更新多步梯度（Off-policy Updates）</strong>，我们引入旧策略 $\pi_{\theta_{\text{old}}}$ 与重要性采样比率（Importance Weighting Ratio）$\rho_\theta(y) &#x3D; \frac{\pi_\theta(y \mid x)}{\pi_{\theta_{\text{old}}}(y \mid x)}$：<br>$$\mathbb{E}<em>{y \sim \pi</em>{\theta_{\text{old}}}} \left[ \frac{\pi_\theta(y \mid x)}{\pi_{\theta_{\text{old}}}(y \mid x)} A(x, y) \right]$$</li>
+<li>但如果 $\pi_\theta$ 走得太远，重要性比率 $\rho_\theta$ 的方差会爆炸。<strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/1502.05477">TRPO (Trust Region Policy Optimization, Schulman et al., 2015)</a></strong> 于是加上了硬性的二阶 KL 信赖域约束 $\mathbb{D}<em>{\text{KL}}(\pi</em>{\theta_{\text{old}}} \parallel \pi_\theta) \le \delta$。</li>
+</ul>
+</li>
+<li><strong>近端策略优化（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1707.06347">PPO, Schulman et al., 2017</a>）</strong>：<br>为了避开 TRPO 复杂的二阶共轭梯度求解，PPO 直接用一阶启发式截断（Clipping）将重要性比率钉死在 $[1-\epsilon, 1+\epsilon]$ 区间内：<br>$$\mathcal{L}<em>{\text{PPO}}(\theta) &#x3D; \mathbb{E}</em>{t} \left[ \min \left( \rho_t(\theta) \hat{A}_t, ; \text{clip}\big(\rho_t(\theta), 1-\epsilon, 1+\epsilon\big) \hat{A}_t \right) \right]$$</li>
+</ol>
+<h3 id="6-3-摆脱-PPO-的探索与直接偏好优化（DPO-Rafailov-et-al-2023）完整数学推导"><a href="#6-3-摆脱-PPO-的探索与直接偏好优化（DPO-Rafailov-et-al-2023）完整数学推导" class="headerlink" title="6.3 摆脱 PPO 的探索与直接偏好优化（DPO, Rafailov et al., 2023）完整数学推导"></a>6.3 摆脱 PPO 的探索与直接偏好优化（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.18290">DPO, Rafailov et al., 2023</a>）完整数学推导</h3><p>尽管 PPO 威力强大，但它在工程上极其笨重：训练时往往需要在显存中同时维护 <strong>4 个模型</strong>（当前策略 $\pi_\theta$、参考策略 $\pi_{\text{ref}}$、奖励模型 $r_\phi$、价值评估网络 $V_\psi$），且超参数极其脆弱。因此，多年来无数研究者都在追问：<strong>“我们能不能彻底干掉奖励模型训练和在线 RL 采样，只用类似 SFT 的简单交叉熵损失直接从偏好对 $(x, y_w, y_l)$ 中学出最优策略？”</strong></p>
+<p>Tatsu 先盘点了几种<strong>效果不佳的早期朴素尝试</strong>（提醒大家在科研中不要重复踩坑）：</p>
+<ul>
+<li>❌ <strong>条件控制符微调（如 <code>&lt;good&gt;</code> &#x2F; <code>&lt;bad&gt;</code> 条件 SFT）</strong>：给好回答前缀加上 <code>&lt;good&gt;</code> token、坏回答加上 <code>&lt;bad&gt;</code> token 做 SFT，测试时强制以 <code>&lt;good&gt;</code> 开头生成——实测效果很差。</li>
+<li>❌ <strong>只在胜出回答 $y_w$ 上做 SFT</strong>：完全丢弃了负样本 $y_l$ 的对比信息，性能平庸。</li>
+<li>⭕ <strong>拒绝采样微调（Rejection Sampling SFT &#x2F; Best-of-$N$）</strong>：先训奖励模型 $r_\phi$，对模型生成的 $N$ 个候选挑出最高分者做 SFT——虽然有效，但依然摆脱不了显式奖励模型与在线采样开销。</li>
+<li>❌ <strong>朴素正负梯度相减（Naive Unweighted Contrastive SFT，$\nabla \log \pi_\theta(y_w) - \nabla \log \pi_\theta(y_l)$）</strong>：直接对好回答做梯度上升、对坏回答做梯度下降（Unlikelihood）——如果不加精确的动态步长缩放，负梯度项会迅速导致模型语言分布崩溃！</li>
+</ul>
+<p>而在 2023 年，斯坦福团队（Tatsu、Percy、Chelsea Finn、Stefano Ermon 的学生们）提出了里程碑式的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.18290">Direct Preference Optimization (DPO, Rafailov et al., 2023)</a></strong>，通过<strong>四步精妙的代数恒等变换</strong>，证明了<strong>语言模型本身就是一个隐式的奖励模型</strong>！下面完整还原课堂上的四步数学推导：</p>
+<h4 id="第一步：求解-KL-正则化-RL-目标的非参数化闭式最优解（Closed-Form-Optimal-Policy）"><a href="#第一步：求解-KL-正则化-RL-目标的非参数化闭式最优解（Closed-Form-Optimal-Policy）" class="headerlink" title="第一步：求解 KL 正则化 RL 目标的非参数化闭式最优解（Closed-Form Optimal Policy）"></a>第一步：求解 KL 正则化 RL 目标的非参数化闭式最优解（Closed-Form Optimal Policy）</h4><p>考虑 6.1 节中的 KL 正则化 RL 目标。如果我们暂时忽略神经网络参数化的限制，假设策略 $\pi(y \mid x)$ 可以是所有合法条件概率分布空间中的任意非参数化分布（Non-parametric assumption），那么对于任意给定的奖励函数 $r(x, y)$，该优化问题：<br>$$\max_{\pi} ; \mathbb{E}<em>{y \sim \pi(y \mid x)} \left[ r(x, y) - \beta \log \frac{\pi(y \mid x)}{\pi</em>{\text{ref}}(y \mid x)} \right] &#x3D; -\beta , \min_{\pi} ; \mathbb{E}<em>{y \sim \pi(y \mid x)} \left[ \log \frac{\pi(y \mid x)}{\frac{1}{Z(x)} \pi</em>{\text{ref}}(y \mid x) \exp\left(\frac{1}{\beta} r(x, y)\right)} - \log Z(x) \right]$$<br>因为括号内正好是 $\pi(y \mid x)$ 与吉布斯分布之间的 KL 散度，当且仅当 KL 散度为 $0$ 时取得全局最优，从而直接写出<strong>闭式最优策略 $\pi_r(y \mid x)$（对参考策略做指数倾斜 Exponential Tilting）</strong>：<br>$$\pi_r(y \mid x) &#x3D; \frac{1}{Z(x)} , \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y) \right)$$<br>其中配分函数（Partition Function &#x2F; 归一化常数）为：<br>$$Z(x) &#x3D; \sum_{y} \pi_{\text{ref}}(y \mid x) \exp\left( \frac{1}{\beta} r(x, y) \right)$$</p>
+<blockquote>
+<p><em>注</em>：$Z(x)$ 需要对所有可能的输出序列 $y$ 求和，在计算上是完全不可解（Intractable）的——但请继续往下看第三步的奇迹！</p>
+</blockquote>
+<h4 id="第二步：反解隐式奖励函数（Solving-for-the-Implied-Reward-r-x-y-）"><a href="#第二步：反解隐式奖励函数（Solving-for-the-Implied-Reward-r-x-y-）" class="headerlink" title="第二步：反解隐式奖励函数（Solving for the Implied Reward $r(x, y)$）"></a>第二步：反解隐式奖励函数（Solving for the Implied Reward $r(x, y)$）</h4><p>对上面的最优策略公式两边取对数并移项，我们可以反过来用最优策略 $\pi_r$ 和参考策略 $\pi_{\text{ref}}$ 唯一表示出奖励函数 $r(x, y)$：<br>$$\frac{\pi_r(y \mid x)}{\pi_{\text{ref}}(y \mid x)} &#x3D; \frac{1}{Z(x)} \exp\left(\frac{1}{\beta} r(x, y)\right) \implies \boxed{ r(x, y) &#x3D; \beta \log \frac{\pi_r(y \mid x)}{\pi_{\text{ref}}(y \mid x)} + \beta \log Z(x) }$$</p>
+<h4 id="第三步：代入-Bradley-Terry-偏好模型，配分函数-Z-x-完美抵消！"><a href="#第三步：代入-Bradley-Terry-偏好模型，配分函数-Z-x-完美抵消！" class="headerlink" title="第三步：代入 Bradley-Terry 偏好模型，配分函数 $Z(x)$ 完美抵消！"></a>第三步：代入 Bradley-Terry 偏好模型，配分函数 $Z(x)$ 完美抵消！</h4><p>现在，将第二步反解出的奖励表达式代入 6.1 节的 Bradley-Terry 偏好似然模型中。由于 Bradley-Terry 只依赖于<strong>同一个提示词 $x$ 下两个回答 $y_w$ 与 $y_l$ 的奖励之差</strong> $r(x, y_w) - r(x, y_l)$，那个原本不可计算的 $\beta \log Z(x)$ <strong>在相减时被 100% 精确抵消了</strong>！<br>$$r(x, y_w) - r(x, y_l) &#x3D; \left( \beta \log \frac{\pi_r(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} + \cancel{\beta \log Z(x)} \right) - \left( \beta \log \frac{\pi_r(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} + \cancel{\beta \log Z(x)} \right)$$<br>将我们的参数化策略 $\pi_\theta$ 代入 $\pi_r$，直接得到<strong>无需训练独立奖励模型、无需在线强化学习采样</strong>的 <strong>DPO 损失函数（DPO Objective）</strong>：<br>$$\boxed{ \mathcal{L}<em>{\text{DPO}}(\pi</em>\theta; \pi_{\text{ref}}) &#x3D; -\mathbb{E}<em>{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta \log \frac{\pi</em>\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right) \right] }$$</p>
+<h4 id="第四步：DPO-的梯度透视-——-为什么它不会像朴素负梯度那样崩溃？"><a href="#第四步：DPO-的梯度透视-——-为什么它不会像朴素负梯度那样崩溃？" class="headerlink" title="第四步：DPO 的梯度透视 —— 为什么它不会像朴素负梯度那样崩溃？"></a>第四步：DPO 的梯度透视 —— 为什么它不会像朴素负梯度那样崩溃？</h4><p>为了看清 DPO 在训练时到底做了什么，记隐式奖励 $\hat{r}<em>\theta(x, y) &#x3D; \beta \log \frac{\pi</em>\theta(y \mid x)}{\pi_{\text{ref}}(y \mid x)}$，利用 $\nabla_z \log \sigma(z) &#x3D; 1 - \sigma(z) &#x3D; \sigma(-z)$，对 $\mathcal{L}<em>{\text{DPO}}$ 求关于参数 $\theta$ 的梯度：<br>$$\nabla</em>\theta \mathcal{L}<em>{\text{DPO}}(\pi</em>\theta; \pi_{\text{ref}}) &#x3D; -\beta , \mathbb{E}<em>{(x, y_w, y_l) \sim \mathcal{D}} \left[ \underbrace{\sigma\big( \hat{r}</em>\theta(x, y_l) - \hat{r}<em>\theta(x, y_w) \big)}</em>{\text{自适应步长权重：隐式奖励排错的程度}} \cdot \Big( \underbrace{\nabla_\theta \log \pi_\theta(y_w \mid x)}<em>{\text{拉高胜出回答 } y_w \text{ 的对数似然}} - \underbrace{\nabla</em>\theta \log \pi_\theta(y_l \mid x)}_{\text{压低落败回答 } y_l \text{ 的对数似然}} \Big) \right]$$</p>
+<ul>
+<li><strong>Tatsu 的核心直觉解读</strong>：<ol>
+<li>括号内部 $\nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x)$ 正是最符合直觉的“向好回答走一步正梯度、向坏回答走一步负梯度”。</li>
+<li><strong>点睛之笔在于前面的动态权重因子 $\sigma\big(\hat{r}<em>\theta(x, y_l) - \hat{r}</em>\theta(x, y_w)\big) \in (0, 1)$</strong>：<ul>
+<li>如果当前模型已经正确地给好回答赋予了远高于坏回答的隐式奖励（即 $\hat{r}<em>\theta(x, y_w) \gg \hat{r}</em>\theta(x, y_l)$），那么 $\hat{r}<em>\theta(y_l) - \hat{r}</em>\theta(y_w) \ll 0$，此时权重 $\sigma(\cdot) \to 0$，<strong>模型自动停止在该样本上继续猛推负梯度，从而彻底避免了分布崩塌</strong>！</li>
+<li>反之，如果当前模型排错了顺序（认为坏回答比好回答更好，即 $\hat{r}<em>\theta(x, y_l) &gt; \hat{r}</em>\theta(x, y_w)$），权重 $\sigma(\cdot) &gt; 0.5$ 甚至趋近于 $1$，模型就会迈出大步长强力纠偏！</li>
+</ul>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="6-4-工业界实践与-DPO-变体家族（Llama-3、SimPO、Length-Normalized-DPO）"><a href="#6-4-工业界实践与-DPO-变体家族（Llama-3、SimPO、Length-Normalized-DPO）" class="headerlink" title="6.4 工业界实践与 DPO 变体家族（Llama 3、SimPO、Length-Normalized DPO）"></a>6.4 工业界实践与 DPO 变体家族（Llama 3、SimPO、Length-Normalized DPO）</h3><ol>
+<li><strong>DPO 在旗舰模型中的成功应用 —— <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.21783">Llama 3 (Grattafiori et al., 2024)</a></strong>：<br>Tatsu 幽默地表示：“如果 DPO 对 Meta 训练 Llama 3 来说都够用了，那对我来说也绝对够用了（Good enough for Llama, good enough for me）！” 翻开 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.21783">Llama 3 技术报告</a>，你会看到 Meta 并未使用复杂的 PPO，而是采用了 <strong>多轮迭代式“SFT $\to$ 拒绝采样（Rejection Sampling） $\to$ DPO”外层循环</strong> 来完成全套人类偏好对齐。</li>
+<li><strong>DPO 的后续变体演进</strong>：<br>由于原版 DPO 中对数概率是按 Token 求和的（$\log \pi_\theta(y \mid x) &#x3D; \sum_{t&#x3D;1}^{|y|} \log \pi_\theta(y_t \mid x, y_{&lt;t})$），这会导致长回答的对数比值波动更大，容易引发长度膨胀（Length Hacking）。为此学术界提出了多种变体：<ul>
+<li><strong>长度归一化 DPO（Length-Normalized DPO）</strong>：将隐式奖励除以回答长度 $|y|$：<br>$$\mathcal{L}<em>{\text{LN-DPO}} &#x3D; -\log \sigma \left( \frac{\beta}{|y_w|} \log \frac{\pi</em>\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \frac{\beta}{|y_l|} \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right)$$</li>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.14734">SimPO (Simple Preference Optimization, Meng et al., 2024)</a></strong>：彻底去掉了参考模型 $\pi_{\text{ref}}$（省掉一半显存），直接用长度归一化的平均对数似然作为隐式奖励，并引入目标奖励间隔（Target Margin）$\gamma &gt; 0$：<br>$$\mathcal{L}<em>{\text{SimPO}}(\pi</em>\theta) &#x3D; -\mathbb{E}<em>{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \frac{\beta}{|y_w|} \log \pi</em>\theta(y_w \mid x) - \frac{\beta}{|y_l|} \log \pi_\theta(y_l \mid x) - \gamma \right) \right]$$</li>
+</ul>
+</li>
+<li><strong>关于“PPO vs. DPO 到底谁更强”的实证真相</strong>：<br>Tatsu 指出，深度学习论文中关于 PPO 和 DPO 孰优孰劣的结论高度依赖于具体实验细节：例如 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2404.10719">Xu et al. (2024)</a> 声称精心调优的 PPO 全面优于 DPO，而 AI2 的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.09279">Unpacking DPO and PPO (Ivison et al., 2024)</a></strong> 与 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2411.15124">Tülu 3 (Lambert et al., 2024)</a></strong> 则发现在通用对齐基准上，调好超参的 DPO 与 PPO 表现几乎持平（差距远小于更换偏好数据集带来的提升）！</li>
+</ol>
+<h2 id="7-RLHF-的三大系统性危机：过度优化、模式坍缩与校准丧失"><a href="#7-RLHF-的三大系统性危机：过度优化、模式坍缩与校准丧失" class="headerlink" title="7. RLHF 的三大系统性危机：过度优化、模式坍缩与校准丧失"></a>7. RLHF 的三大系统性危机：过度优化、模式坍缩与校准丧失</h2><p>在本讲的最后部分，Tatsu 深刻剖析了为什么我们不能仅靠“收集人类点赞&#x2F;点踩 + 狂跑 RLHF”就通往通用人工智能（AGI）——因为基于学习型奖励模型的 RLHF 存在三大内生危机：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│             RLHF 的三大系统性危机（以及为什么它们催生了下一讲的 RLVR 推理范式）                 │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [危机 1: 奖励模型过度优化 (Reward Overoptimization / Goodhart&#x27;s Law, Gao et al., 2022)]        │</span><br><span class="line">│    奖励分 ▲                                    ── 代理奖励 r_phi (Proxy RM: 一路虚高飙升!)      │</span><br><span class="line">│           │                          /```````  -- 真实金标 R_gold (先升后崩: R ≈ d(α - βd))     │</span><br><span class="line">│           │               _.-~&#x27;`&#x27;~-./                                                           │</span><br><span class="line">│           │          _.-~&#x27;    ▲      &#x27;~-._     ◄── 越过最优 KL 距离后，策略开始钻奖励模型漏洞! │</span><br><span class="line">│           └───────────────────┼──────────────► 与参考策略的距离 d = sqrt(KL(π_θ || π_ref))      │</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [危机 2: 熵坍缩与模式坍缩 (Entropy &amp; Mode Collapse, Kirk et al., 2023)]                        │</span><br><span class="line">│    • 策略分布坍缩到少数固定套路，丧失创造力与探索多样性 (在需要多步探索的数学/代码推理中致命!) │</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [危机 3: 概率校准丧失 (Probability Uncalibration, GPT-4 Technical Report, 2023)]               │</span><br><span class="line">│    • 预训练 GPT-4 基座的预测置信度完美贴合对角线 y = x (极度诚实校准)                           │</span><br><span class="line">│    • 经过 RLHF 后的 GPT-4 变得极度盲目自信 (置信度推向 0 或 1，校准曲线严重弯曲失真)            │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-1-危机一：奖励模型过度优化与古德哈特定律（Gao-et-al-2022）"><a href="#7-1-危机一：奖励模型过度优化与古德哈特定律（Gao-et-al-2022）" class="headerlink" title="7.1 危机一：奖励模型过度优化与古德哈特定律（Gao et al., 2022）"></a>7.1 危机一：奖励模型过度优化与古德哈特定律（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2210.10760">Gao et al., 2022</a>）</h3><p>当 InstructGPT 刚问世时，许多人幻想：“只要我们收集足够多的人类偏好数据，训一个奖励模型，然后投入无穷算力跑 RL，模型岂不是能无限变强？”<br><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2210.10760">Scaling Laws for Reward Model Overoptimization (Gao et al., 2022)</a></strong> 用严谨的扩展定律实验粉碎了这一幻想：</p>
+<ul>
+<li>无论你是用强化学习（PPO）还是用拒绝采样（Best-of-$N$），你手里优化的目标 $r_\phi(x, y)$ 都只是一个在有限人类数据上拟合出来的<strong>代理奖励模型（Proxy Reward Model）</strong>，它与真实的人类黄金偏好 $R_{\text{gold}}(x, y)$ 之间必然存在近似误差。</li>
+<li>记策略偏离初始参考策略的幅度为 $d :&#x3D; \sqrt{\mathbb{D}<em>{\text{KL}}(\pi</em>\theta \parallel \pi_{\text{ref}})}$。随着优化步数或采样数 $N$ 增加，$d$ 不断增大：<ul>
+<li><strong>代理奖励 $r_\phi(d)$</strong> 会随着 $d$ 呈线性单调增长；</li>
+<li>但<strong>真实黄金奖励 $R_{\text{gold}}(d)$</strong> 在越过一个峰值拐点后就会<strong>急剧掉头向下崩溃</strong>，并服从精确的经验定律：<br>$$R_{\text{gold}}^{\text{RL}}(d) \approx d(\alpha - \beta d), \qquad R_{\text{gold}}^{\text{BoN}}(d) \approx d(\alpha - \beta \log d)$$</li>
+</ul>
+</li>
+<li>这正是经济学与控制论中著名的<strong>古德哈特定律（Goodhart’s Law）</strong>——<em>“当一个近似指标变成被强力优化的目标时，它就不再是一个好指标。”</em> 如果没有 KL 散度正则项 $\beta \mathbb{D}<em>{\text{KL}}(\pi</em>\theta \parallel \pi_{\text{ref}})$ 强行拉住策略，RL 算法会迅速找到奖励模型中的对抗性漏洞（Reward Hacking，例如疯狂堆砌无意义的排比句和套话），输出人类根本没法看的退化文本。</li>
+</ul>
+<h3 id="7-2-危机二与危机三：模式坍缩（Mode-Collapse）与概率失校准（Uncalibration）"><a href="#7-2-危机二与危机三：模式坍缩（Mode-Collapse）与概率失校准（Uncalibration）" class="headerlink" title="7.2 危机二与危机三：模式坍缩（Mode Collapse）与概率失校准（Uncalibration）"></a>7.2 危机二与危机三：模式坍缩（Mode Collapse）与概率失校准（Uncalibration）</h3><ol>
+<li><strong>多样性丧失与熵坍缩（Entropy &#x2F; Mode Collapse，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.06452">Kirk et al., 2023</a>；<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.04292">O’Mahony et al., 2024</a>）</strong>：<br>正因为 5.1 节指出的“RLHF 是在最大化标量奖励而非拟合概率分布”，经过 RLHF 训练后的模型输出分布的香农熵（Shannon Entropy）会大幅萎缩。哪怕用户只问一个简单的是非题，模型也会坍缩到千篇一律的“八股文列表腔调”中；在创意写作或头脑风暴任务中，即使调高采样温度，模型翻来覆去生成的也是高度雷同的几个点子。</li>
+<li><strong>概率失校准（Probability Uncalibration）—— <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2303.08774">GPT-4 Technical Report (OpenAI, 2023)</a> 的经典未解难题</strong>：<br>Tatsu 展示了 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2303.08774">GPT-4 技术报告图 8</a></strong>（以及 Anthropic 的 <strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2207.05221">Kadavath et al., 2022</a></strong>）：<ul>
+<li>在 MMLU 多选题测试集上，<strong>预训练后的 Base GPT-4 模型</strong>具备惊人的天然校准度（Calibration）：当它对某个选项赋予 $60%$ 的对数概率时，它答对的实际准确率就恰好是 $60%$（散点完美落在对角线 $y &#x3D; x$ 上）！</li>
+<li>然而，一旦经过 <strong>PPO 后训练（Post-trained GPT-4）</strong>，由于强化学习将高奖励动作的概率推向极端（接近 $100%$），模型的校准曲线发生严重扭曲——即使在它实际上只有 $50%$ 把握答对的题目上，它输出的预测概率也高达 $90%$ 以上（极度盲目自信）！</li>
+</ul>
+</li>
+<li><strong>通向 Lecture 16（RLVR）的桥梁</strong>：<br>Tatsu 在本讲结尾抛出了一个极具启发性的悬念：<ul>
+<li>既然在学习型人类偏好奖励模型 $r_\phi$ 上跑 RL 会因为<strong>过度优化（Reward Hacking）<strong>而撞墙，那么</strong>是否存在一类永远无法被“钻空子过度优化”的奖励信号，让我们能够像预训练一样无限倾倒算力，让模型智能单调上升？</strong></li>
+<li>答案就是下一讲（Lecture 16）的主角——<strong>基于可验证奖励的强化学习（RLVR：数学精确答案核验与代码单元测试）</strong>！而在 RLVR 中，本节提到的**防止熵坍缩（Maintaining Entropy &amp; Exploration）**将成为决定模型能否探索出复杂多步推理路径的生死命门！</li>
+</ul>
+</li>
+</ol>
+<h2 id="8-课后思考与自测练习（Review-Self-Check）"><a href="#8-课后思考与自测练习（Review-Self-Check）" class="headerlink" title="8. 课后思考与自测练习（Review &amp; Self-Check）"></a>8. 课后思考与自测练习（Review &amp; Self-Check）</h2><ol>
+<li><p><strong>DPO（直接偏好优化）完整数学推导与梯度动态分析（Assignment 5 核心必考题）</strong>：<br>考虑带 KL 散度正则化的 RLHF 目标函数：<br>$$\max_{\pi_\theta} ; \mathbb{E}<em>{x \sim \mathcal{D},, y \sim \pi</em>\theta(y \mid x)} \Big[ r(x, y) \Big] - \beta , \mathbb{D}<em>{\text{KL}}\Big( \pi</em>\theta(y \mid x) ;\Big|; \pi_{\text{ref}}(y \mid x) \Big)$$</p>
+<ul>
+<li>(a) 假设策略 $\pi(y \mid x)$ 为非参数化的任意合法条件概率分布（满足 $\sum_y \pi(y \mid x) &#x3D; 1$）。请通过构造吉布斯分布与 KL 散度（或使用拉格朗日乘子法），严格推导使上述目标最大化的闭式最优策略 $\pi_r(y \mid x)$，并写出配分函数 $Z(x)$ 的表达式。</li>
+<li>(b) 由 (a) 的结果反解出奖励函数 $r(x, y)$ 关于 $\pi_r(y \mid x)$、$\pi_{\text{ref}}(y \mid x)$ 和 $Z(x)$ 的表达式，并将其代入 Bradley-Terry 成对偏好模型 $p(y_w \succ y_l \mid x) &#x3D; \sigma(r(x, y_w) - r(x, y_l))$，写出最终的 <strong>DPO 损失函数 $\mathcal{L}<em>{\text{DPO}}(\pi</em>\theta; \pi_{\text{ref}})$</strong>。为什么不可计算的配分函数 $Z(x)$ 无需近似就能消失？</li>
+<li>(c) 设某条偏好样本 $(x, y_w, y_l)$ 在参考模型下的对数概率为 $\log \pi_{\text{ref}}(y_w \mid x) &#x3D; -10.0$，$\log \pi_{\text{ref}}(y_l \mid x) &#x3D; -8.0$；在当前策略模型 $\pi_\theta$ 下的对数概率为 $\log \pi_\theta(y_w \mid x) &#x3D; -9.0$，$\log \pi_\theta(y_l \mid x) &#x3D; -6.0$。取 $\beta &#x3D; 0.5$，请计算当前模型的隐式奖励 $\hat{r}<em>\theta(x, y_w)$ 与 $\hat{r}</em>\theta(x, y_l)$，以及该样本在 DPO 梯度更新公式中的自适应缩放权重 $w &#x3D; \sigma(\hat{r}<em>\theta(x, y_l) - \hat{r}</em>\theta(x, y_w))$（已知 $\sigma(0.5) \approx 0.6225$）。为什么此处 $w &gt; 0.5$？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 将原最大化目标除以 $\beta &gt; 0$ 并加负号转化为等价的最小化问题：<br>$$\min_{\pi} ; \mathbb{E}<em>{y \sim \pi(y \mid x)} \left[ \log \frac{\pi(y \mid x)}{\pi</em>{\text{ref}}(y \mid x)} - \frac{1}{\beta} r(x, y) \right] &#x3D; \min_{\pi} ; \mathbb{E}<em>{y \sim \pi(y \mid x)} \left[ \log \frac{\pi(y \mid x)}{\frac{1}{Z(x)} \pi</em>{\text{ref}}(y \mid x) \exp\left(\frac{1}{\beta} r(x, y)\right)} - \log Z(x) \right]$$<br>定义配分函数 $Z(x) &#x3D; \sum_{y} \pi_{\text{ref}}(y \mid x) \exp\left(\frac{1}{\beta} r(x, y)\right)$，则分母 $\pi_r(y \mid x) :&#x3D; \frac{1}{Z(x)} \pi_{\text{ref}}(y \mid x) \exp\left(\frac{1}{\beta} r(x, y)\right)$ 是关于 $y$ 的合法概率分布（非负且求和为 1）。由于 $Z(x)$ 与 $\pi$ 无关，上述优化等价于 $\min_{\pi} \mathbb{D}<em>{\text{KL}}\big(\pi(\cdot \mid x) \parallel \pi_r(\cdot \mid x)\big)$。由 KL 散度的非负性（Gibbs 不等式），当且仅当 **$\pi(y \mid x) &#x3D; \pi_r(y \mid x) &#x3D; \frac{1}{Z(x)} \pi</em>{\text{ref}}(y \mid x) \exp\left(\frac{1}{\beta} r(x, y)\right)$** 时取得唯一全局最优。</li>
+<li>(b) 对闭式解两边取对数并乘以 $\beta$，反解得：<br>$$r(x, y) &#x3D; \beta \log \frac{\pi_r(y \mid x)}{\pi_{\text{ref}}(y \mid x)} + \beta \log Z(x)$$<br>由于配分函数 $Z(x)$ <strong>仅依赖于提示词 $x$，而与具体回答 $y$ 无关</strong>，在计算同一提示词 $x$ 下两个回答的奖励差 $r(x, y_w) - r(x, y_l)$ 时，两项中的 $+\beta \log Z(x)$ 精确相消，从而得到：<br>$$\mathcal{L}<em>{\text{DPO}}(\pi</em>\theta; \pi_{\text{ref}}) &#x3D; -\mathbb{E}<em>{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta \log \frac{\pi</em>\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right) \right]$$</li>
+<li>(c) 代入数值计算隐式奖励：<ul>
+<li>$\hat{r}<em>\theta(x, y_w) &#x3D; \beta \big(\log \pi</em>\theta(y_w \mid x) - \log \pi_{\text{ref}}(y_w \mid x)\big) &#x3D; 0.5 \times (-9.0 - (-10.0)) &#x3D; \mathbf{+0.5}$；</li>
+<li>$\hat{r}<em>\theta(x, y_l) &#x3D; \beta \big(\log \pi</em>\theta(y_l \mid x) - \log \pi_{\text{ref}}(y_l \mid x)\big) &#x3D; 0.5 \times (-6.0 - (-8.0)) &#x3D; \mathbf{+1.0}$。<br>因此自适应梯度缩放权重为：<br>$$w &#x3D; \sigma\big(\hat{r}<em>\theta(x, y_l) - \hat{r}</em>\theta(x, y_w)\big) &#x3D; \sigma(1.0 - 0.5) &#x3D; \sigma(0.5) \approx \mathbf{0.6225}$$<br>之所以 $w &gt; 0.5$，是因为相对于参考模型 $\pi_{\text{ref}}$，当前策略 $\pi_\theta$ 给落败回答 $y_l$ 提升的对数概率幅度（$+2.0$）反而大于给胜出回答 $y_w$ 提升的幅度（$+1.0$），导致隐式奖励排错了顺序（$\hat{r}<em>\theta(y_l) &gt; \hat{r}</em>\theta(y_w)$），因此 DPO 自动赋予大于 $0.5$ 的大权重进行强力纠偏。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>SFT 知识注入与幻觉放大机制辨析（Gekhman et al., 2024 &amp; John Schulman 论点）</strong>：</p>
+<ul>
+<li>(a) 假设你在构建医疗或法律领域的 SFT 数据集时，要求人类医学&#x2F;法学专家在每个回答末尾都附上真实的罕见病例编号或冷门判例引用（例如 <code>Case Reference: Smith v. Jones, 1984</code>），而这些冷门判例并未出现在基座模型的预训练语料中。请结合 SFT 的交叉熵训练机制，解释为什么在这批“100% 事实准确”的专家数据上做 SFT，反而会导致模型在测试集上疯狂捏造假判例？</li>
+<li>(b) 为什么将上述流程改为在模型自身采样生成的结果上运行强化学习（RL，对真实引用给正奖励、对编造引用给负惩罚），能够有效遏制幻觉并恢复模型的认知校准（Epistemic Calibration）？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 在 SFT 中，标准交叉熵损失将“输出 <code>Case Reference: ...</code> 这一格式模板（Format）”与“输出 <code>Smith v. Jones, 1984</code> 这一具体事实内容（Content）”捆绑在一起进行无条件强迫拟合。因为预训练基座内部并不认识该冷门判例（其内部激活状态处于“我不知道该事实”区域），SFT 实际上教会了模型一条有害的泛化规则：<strong>“即便你的内部表征明确显示你不知道答案，也要无视该无知信号，强行按照模板输出一个看起来像判例引用的字符串”</strong>。到了测试阶段，面对任何未知的法律问题，模型都会忠实执行这一表面模板规则，从而产生严重的幻觉。</li>
+<li>(b) “模型知道什么”是策略内生的（Policy-dependent）。在强化学习（RL）中，回答是由模型自己采样生成的：当模型内部“我知道该判例”的激活特征较强时，它输出引用的准确率高，从而获得正奖励；当它内部处于“我不知道”状态却强行输出引用时，必然生成错误引用并遭到负奖励惩罚。通过这种策略内生的奖惩反馈，RL 能够将模型内部原本存在的“自知之明（I-know-something activation direction）”成功桥接到输出层策略上，使模型学会在确知时引用、在未知时克制或拒答。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>奖励模型过度优化定律（Gao et al., 2022）与生成式模型 vs. 策略优化的本质差异</strong>：</p>
+<ul>
+<li>(a) 根据 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2210.10760">Gao et al. (2022)</a> 的奖励模型过度优化扩展定律，设策略与参考模型的距离为 $d &#x3D; \sqrt{\mathbb{D}<em>{\text{KL}}(\pi</em>\theta \parallel \pi_{\text{ref}})}$，在强化学习下真实黄金分数近似服从 $R_{\text{gold}}(d) &#x3D; d(\alpha - \beta d)$（其中 $\alpha, \beta &gt; 0$ 为常数）。请对 $d$ 求导，计算使真实黄金分数 $R_{\text{gold}}(d)$ 达到最大值的<strong>最优 KL 散度预算 $\mathbb{D}_{\text{KL}}^*$</strong> 以及此时的最高黄金得分 $R_{\text{gold}}^{\max}$。</li>
+<li>(b) 从优化目标的数学本质出发，解释为什么预训练&#x2F;SFT 模型天然具有较高的输出多样性和良好的概率校准（Calibration），而经过 RLHF 优化的模型却普遍面临“模式坍缩（Mode Collapse）”和“概率失校准（過度自信）”？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 对 $R_{\text{gold}}(d) &#x3D; \alpha d - \beta d^2$ 关于 $d$ 求一阶导数并令其为 $0$：<br>$$\frac{\mathrm{d} R_{\text{gold}}}{\mathrm{d} d} &#x3D; \alpha - 2\beta d &#x3D; 0 \implies d^* &#x3D; \frac{\alpha}{2\beta}$$<br>由于 $d &#x3D; \sqrt{\mathbb{D}<em>{\text{KL}}}$，对应的最优 KL 散度预算为：<br>$$\mathbb{D}</em>{\text{KL}}^* &#x3D; (d^<em>)^2 &#x3D; \mathbf{\frac{\alpha^2}{4\beta^2}}$$<br>代入 $d^</em>$ 可得最高黄金得分为：<br>$$R_{\text{gold}}^{\max} &#x3D; \frac{\alpha}{2\beta}\left(\alpha - \beta \frac{\alpha}{2\beta}\right) &#x3D; \mathbf{\frac{\alpha^2}{4\beta}}$$<br>一旦优化推过的 KL 距离超过 $\frac{\alpha^2}{4\beta^2}$，继续增大算力只会让真实表现加速恶化（当 $d &gt; \frac{\alpha}{\beta}$ 时甚至低于初始 SFT 模型！）。</li>
+<li>(b) 预训练和 SFT 最小化的是数据分布与模型分布之间的前向 KL 散度 $\mathbb{D}<em>{\text{KL}}(p</em>{\text{data}} \parallel \pi_\theta)$，这是一个**拟合分布（Distribution Matching &#x2F; Mode-covering）<strong>问题——只要训练集中某个回答有非零概率，模型就必须分配相应的概率质量去覆盖它，因此预测概率直接对应经验频率（天然校准且多样）。相反，RLHF 是在求解 $\max_{\pi_\theta} \mathbb{E}<em>{y \sim \pi</em>\theta}[R(x, y)]$，这是一个</strong>最大化期望回报（Reward Maximization &#x2F; Mode-seeking）*<em>问题——在没有强 KL 约束的情况下，最优策略是一个将 $100%$ 概率全部押在最高分单点 $y^</em> &#x3D; \arg\max_y R(x,y)$ 上的退化狄拉克分布（Dirac delta），因此天然倾向于抹杀次优解的多样性并将输出概率推向极端的 $0$ 或 $1$。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/10/26/cs336_lecture_15_notes/">https://kanosa0101.github.io/2026/10/26/cs336_lecture_15_notes/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/CS336/">CS336</a><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a><a class="post-meta__tags" href="/tags/%E5%90%8E%E8%AE%AD%E7%BB%83/">后训练</a><a class="post-meta__tags" href="/tags/SFT/">SFT</a><a class="post-meta__tags" href="/tags/%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95/">对齐算法</a><a class="post-meta__tags" href="/tags/RLHF/">RLHF</a><a class="post-meta__tags" href="/tags/DPO/">DPO</a><a class="post-meta__tags" href="/tags/%E7%9F%A5%E8%AF%86%E5%B9%BB%E8%A7%89/">知识幻觉</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/10/26/cs336_lecture_16_notes/" title="Stanford CS336 (Spring 2026) Lecture 16 深度课程笔记：Post-Training (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 16 深度课程笔记：Post-Training (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 16 深度课程笔记：Post-Training (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 16 YouTube 视频 | 官方幻灯片 (lecture_16.pdf) | 课件仓库 (stanford-cs336/lectures) | Assignment 5 指导手册与代码库 (assignment5-alignment)  1. 引言：从 RLHF 的过度优化死胡同走向可验证奖励强化学习（RLVR）在上一讲（Lecture 15）中，我们走完了从预训练基座（GPT-3）到通用对话助手（ChatGPT / GPT-3.5）的第一步后训练旅程：通过监督微调（SFT）和基于人类&#x2F;AI 偏好的强化学习（RLHF &#x2F; DPO），让模型学会遵循复杂指令并对齐人类偏好。然而，我们在上一讲结尾留下了一个令...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_14_notes/" title="Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 14 YouTube 视频 | 交互式执行轨迹 (lecture_14.py) | 源码仓库 (stanford-cs336/lectures) | Assignment 4 指导手册与代码库 (assignment4-data)  1. 引言：从原始数据矿藏到高纯度训练燃料的全链路工程（main）在上一讲（Lecture 13: Data Part 1）中，我们探讨了训练数据的宏观生态与演进历史：从在线实时服务（Live Services，如 GitHub、Wikipedia、互联网服务器）出发，通过网络爬虫（Crawling）或官方全量镜像（Dumps）获取原始数据，并剖析了服务条款（ToS）、版权法（许可证与合理使用 Fair Use）以及从 2018 年的 BERT ...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/10/25/cs336_lecture_08_notes/" title="Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Tatsunori Hashimoto (Tatsu)课程视频与讲义：Lecture 8 YouTube 视频 | 官方幻灯片 (lecture_08.pdf) | 配套参考：Google《How to Scale Your Model》关联作业：Assignment 2 — Systems &amp; Parallelism（实现 DDP 梯度分桶重叠、实现 ZeRO-1 优化器分片 &#x2F; FSDP、推导多维并行最佳拓扑配置） 1. 课程全景导读：当整个数据中心成为“基本计算单元”在 Lecture 7（分布式通信原语与 PyTorch 实战） 中，Percy Liang 带领我们从代码层面认识了 All-Reduce、All-Gather、...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_11_notes/" title="Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 11 YouTube 视频 | 官方幻灯片 (lecture_11.pdf) | Assignment 3 指导手册与代码库  1. 引言：从经典 Chinchilla 到前沿开源大模型的实战扩展工程在两讲之前的 Lecture 9（Scaling Laws Part 1）中，Tatsu 带我们系统梳理了以 Hestness et al. (2017)、Kaplan et al. (2020) 和 Hoffmann et al. (2022, Chinchilla) 为代表的“经典扩展定律法典（Classical Scaling Laws Canon）”。然而，经典文献截止于 2022 年前后，主要回答了宏观算力分配问题（即给定...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_07_notes/" title="Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Percy Liang课程视频与代码讲义：Lecture 7 YouTube 视频 | Executable Lecture 源码 (lecture_07.py &#x2F; Trace)关联作业：Assignment 2 — Systems &amp; Parallelism（从零手写 Distributed Data Parallel (DDP)、通信与计算重叠、优化器状态分片 ZeRO-1）  课程编排说明（Spring 2026 vs. Spring 2025 课表顺序对调）：在 Spring 2026 学期中，课程组将两节并行课的顺序做了优化调整——Lecture 7（本讲，Percy Liang 主讲） 率先通过纯可执行代码 lecture_07.py 从底...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_10_notes/" title="Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 10 YouTube 视频 | 交互式执行轨迹 (lecture_10.py) | 源码仓库 (spring2025-lectures/lecture_10.py) | Google《How to Scale Your Model》Inference 章节  1. 引言：为什么大模型推理系统（Inference Systems）如此重要？在上一讲（Lecture 9）中，Tatsu 带我们探讨了预训练的扩展定律（Scaling Laws），并在结尾指出：现代工业界为了压低部署成本，纷纷放弃 Chinchilla 的 20:1 比例，转而通过“蓄意过训练（Overtraining）”打造小巧强悍的模型。本讲（Lecture 10）作为纯代码交互式讲义（lecture_10.py），由 ...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_13_notes/" title="Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 13 YouTube 视频 | 交互式执行轨迹 (lecture_13.py) | 源码仓库 (stanford-cs336/lectures) | Assignment 4 指导手册与代码库 (assignment4-data)  1. 引言：为什么数据（Data）是决定大模型上限的“第一核心商业机密”？（motivation）在前面的 12 讲中，我们已经掌握了给定数据如何高效训练一个大模型（Lectures 1–11：分词器、Transformer 架构、优化器、GPU 算子、分布式并行、扩展定律与高效推理），并在上一讲（Lecture 12：Evaluation）明确了如何科学定义与测量什么是“好模型”。从本讲开始，课程正式进入第四大核心模块（第 13–14 讲，对应...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_14_notes/" title="Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 14 YouTube 视频 | 交互式执行轨迹 (lecture_14.py) | 源码仓库 (stanford-cs336/lectures) | Assignment 4 指导手册与代码库 (assignment4-data)  1. 引言：从原始数据矿藏到高纯度训练燃料的全链路工程（main）在上一讲（Lecture 13: Data Part 1）中，我们探讨了训练数据的宏观生态与演进历史：从在线实时服务（Live Services，如 GitHub、Wikipedia、互联网服务器）出发，通过网络爬虫（Crawling）或官方全量镜像（Dumps）获取原始数据，并剖析了服务条款（ToS）、版权法（许可证与合理使用 Fair Use）以及从 2018 年的 BERT ...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">19</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">91</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Stanford-CS336-Spring-2026-Lecture-15-%E6%B7%B1%E5%BA%A6%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9APost-Training-Part-1"><span class="toc-number">1.</span> <span class="toc-text">Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%BC%95%E8%A8%80%EF%BC%9A%E4%BB%8E%E9%A2%84%E8%AE%AD%E7%BB%83%E2%80%9C%E5%8E%9F%E5%A7%8B%E6%B1%A4%E2%80%9D%E5%88%B0%E5%8F%AF%E4%BA%A4%E4%BA%92%E6%99%BA%E8%83%BD%E5%8A%A9%E6%89%8B%E7%9A%84%E8%B7%A8%E8%B6%8A"><span class="toc-number">1.1.</span> <span class="toc-text">1. 引言：从预训练“原始汤”到可交互智能助手的跨越</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%AF%B4%E5%90%8E%E8%AE%AD%E7%BB%83%E6%98%AF%E4%B8%80%E9%97%A8%E2%80%9C%E9%AB%98%E5%BA%A6%E6%89%8B%E5%B7%A5%E8%89%BA%E5%8C%96%EF%BC%88Artisanal%EF%BC%89%E2%80%9D%E4%B8%94%E9%AB%98%E5%BA%A6%E4%BF%9D%E5%AF%86%E7%9A%84%E5%B7%A5%E7%A8%8B%EF%BC%9F"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 为什么说后训练是一门“高度手工艺化（Artisanal）”且高度保密的工程？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BB%8F%E5%85%B8%E5%90%8E%E8%AE%AD%E7%BB%83%E7%9A%84%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%A0%87%E5%87%86%E9%85%8D%E6%96%B9%EF%BC%88The-Two-Part-Recipe%EF%BC%89"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 经典后训练的两阶段标准配方（The Two-Part Recipe）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E7%AC%AC%E4%B8%80%E9%98%B6%E6%AE%B5%EF%BC%9A%E7%9B%91%E7%9D%A3%E5%BE%AE%E8%B0%83%EF%BC%88SFT%EF%BC%89%E6%95%B0%E6%8D%AE%E9%9B%86%E7%9A%84%E5%9B%9B%E4%BB%A3%E6%BC%94%E8%BF%9B%E5%8F%B2"><span class="toc-number">1.2.</span> <span class="toc-text">2. 第一阶段：监督微调（SFT）数据集的四代演进史</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%AC%AC%E4%B8%80%E4%BB%A3%EF%BC%9A%E4%BC%A0%E7%BB%9F-NLP-%E6%95%B0%E6%8D%AE%E9%9B%86%E6%A8%A1%E6%9D%BF%E5%8C%96%E6%8B%BC%E6%8E%A5-%E2%80%94%E2%80%94-%E4%BB%A5-FLAN-Wei-et-al-2021-%E4%B8%BA%E4%BE%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 第一代：传统 NLP 数据集模板化拼接 —— 以 FLAN (Wei et al., 2021) 为例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E7%AC%AC%E4%BA%8C%E4%BB%A3%E4%B8%8E%E7%AC%AC%E4%B8%89%E4%BB%A3%EF%BC%9A%E4%BB%8E-Self-Instruct-Alpaca-%E8%92%B8%E9%A6%8F%E5%88%B0-OpenAssistant-%E4%BC%97%E5%8C%85"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 第二代与第三代：从 Self-Instruct &#x2F; Alpaca 蒸馏到 OpenAssistant 众包</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E7%AC%AC%E5%9B%9B%E4%BB%A3%EF%BC%9A%E9%9D%A2%E5%90%91%E6%99%BA%E8%83%BD%E4%BD%93%E4%B8%8E%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8%E7%9A%84%E7%BB%93%E6%9E%84%E5%8C%96-SFT%EF%BC%88Agentic-Tool-Use-SFT%EF%BC%89"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 第四代：面向智能体与工具调用的结构化 SFT（Agentic &amp; Tool-Use SFT）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-SFT-%E6%95%B0%E6%8D%AE%E5%B7%A5%E7%A8%8B%E7%9A%84%E4%B8%89%E5%A4%A7%E6%B7%B1%E6%B0%B4%E5%8C%BA%E9%99%B7%E9%98%B1%EF%BC%9A%E9%A3%8E%E6%A0%BC%E6%B7%B7%E6%B7%86%E3%80%81%E9%95%BF%E5%B0%BE%E7%9F%A5%E8%AF%86%E5%B9%BB%E8%A7%89%E4%B8%8E%E5%AE%89%E5%85%A8%E5%B8%95%E7%B4%AF%E6%89%98"><span class="toc-number">1.3.</span> <span class="toc-text">3. SFT 数据工程的三大深水区陷阱：风格混淆、长尾知识幻觉与安全帕累托</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E9%99%B7%E9%98%B1%E4%B8%80%EF%BC%9A%E9%95%BF%E5%BA%A6%E4%B8%8E%E6%8E%92%E7%89%88%E9%A3%8E%E6%A0%BC%E5%81%8F%E7%BD%AE%EF%BC%88Style-Length-Confounding%EF%BC%89vs-%E7%9C%9F%E5%AE%9E%E8%83%BD%E5%8A%9B"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 陷阱一：长度与排版风格偏置（Style &amp; Length Confounding）vs. 真实能力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E9%99%B7%E9%98%B1%E4%BA%8C%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E5%9C%A8-SFT-%E4%B8%AD%E6%95%99%E6%A8%A1%E5%9E%8B%E2%80%9C%E5%AE%83%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84%E6%AD%A3%E7%A1%AE%E4%BA%8B%E5%AE%9E%E2%80%9D%E5%8F%8D%E8%80%8C%E4%BC%9A%E8%AF%B1%E5%8F%91%E4%B8%A5%E9%87%8D%E5%B9%BB%E8%A7%89%EF%BC%9F"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 陷阱二：为什么在 SFT 中教模型“它不知道的正确事实”反而会诱发严重幻觉？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E9%99%B7%E9%98%B1%E4%B8%89%EF%BC%9A%E5%AE%89%E5%85%A8%E5%BE%AE%E8%B0%83%EF%BC%88Safety-SFT%EF%BC%89%E2%80%94%E2%80%94-%E8%BF%9D%E8%A7%84%E7%8E%87%E4%B8%8E%E8%AF%AF%E6%8B%92%E7%8E%87%E7%9A%84%E5%B8%95%E7%B4%AF%E6%89%98%E5%8D%9A%E5%BC%88"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 陷阱三：安全微调（Safety SFT）—— 违规率与误拒率的帕累托博弈</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%89%93%E7%A0%B4%E9%A2%84%E8%AE%AD%E7%BB%83%E4%B8%8E%E5%BE%AE%E8%B0%83%E7%9A%84%E8%BE%B9%E7%95%8C%EF%BC%9AMid-Training%EF%BC%88%E9%80%80%E7%81%AB%E6%9C%9F%E6%B7%B7%E5%85%A5%E6%8C%87%E4%BB%A4%E6%95%B0%E6%8D%AE%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">4. 打破预训练与微调的边界：Mid-Training（退火期混入指令数据）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%A1%88%E4%BE%8B%E5%89%96%E6%9E%90%EF%BC%9AMiniCPM-Hu-et-al-2024-%E7%9A%84%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%95%B0%E6%8D%AE%E9%85%8D%E6%AF%94%E5%88%87%E6%8D%A2"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 案例剖析：MiniCPM (Hu et al., 2024) 的两阶段数据配比切换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-Mid-Training-%E7%9A%84%E4%B8%89%E5%A4%A7%E5%B7%A5%E7%A8%8B%E4%BC%98%E5%8A%BF%E4%B8%8E%E8%AF%BE%E5%A0%82%E9%97%AE%E7%AD%94%EF%BC%88Q-A%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 Mid-Training 的三大工程优势与课堂问答（Q&amp;A）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E7%AC%AC%E4%BA%8C%E9%98%B6%E6%AE%B5%EF%BC%9ARLHF-%E8%8C%83%E5%BC%8F%E8%BD%AC%E5%9E%8B%E4%B8%8E%E5%81%8F%E5%A5%BD%E6%95%B0%E6%8D%AE%E5%B7%A5%E7%A8%8B%EF%BC%88Human-vs-AI-Feedback%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">5. 第二阶段：RLHF 范式转型与偏好数据工程（Human vs. AI Feedback）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%A0%B8%E5%BF%83%E8%A7%82%E5%BF%B5%E5%B7%A8%E5%8F%98%EF%BC%9A%E4%BB%8E%E2%80%9C%E7%94%9F%E6%88%90%E5%BC%8F%E5%88%86%E5%B8%83%E6%8B%9F%E5%90%88%E2%80%9D%E5%88%B0%E2%80%9C%E7%AD%96%E7%95%A5%E5%A5%96%E5%8A%B1%E6%9C%80%E5%A4%A7%E5%8C%96%E2%80%9D"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 核心观念巨变：从“生成式分布拟合”到“策略奖励最大化”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E4%BA%BA%E7%B1%BB%E5%81%8F%E5%A5%BD%E6%95%B0%E6%8D%AE%E9%87%87%E9%9B%86%EF%BC%9A%E6%A0%87%E6%B3%A8%E6%8C%87%E5%8D%97%E3%80%81%E8%96%AA%E8%B5%84%E9%87%91%E5%AD%97%E5%A1%94%E4%B8%8E%E9%9A%90%E5%BC%8F%E5%81%8F%E8%A7%81%E4%BC%A0%E9%80%92"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 人类偏好数据采集：标注指南、薪资金字塔与隐式偏见传递</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-AI-%E5%8F%8D%E9%A6%88%EF%BC%88RLAIF%EF%BC%89%E7%9A%84%E5%85%A8%E9%9D%A2%E5%B4%9B%E8%B5%B7%E4%B8%8E%E9%95%BF%E5%BA%A6%E9%BB%91%E5%AE%A2%EF%BC%88Length-Hacking%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 AI 反馈（RLAIF）的全面崛起与长度黑客（Length Hacking）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-RLHF-%E6%A0%B8%E5%BF%83%E7%AE%97%E6%B3%95%E6%8E%A8%E6%BC%94%EF%BC%9A%E4%BB%8E%E5%A5%96%E5%8A%B1%E5%BB%BA%E6%A8%A1%E3%80%81PPO-%E5%88%B0%E7%9B%B4%E6%8E%A5%E5%81%8F%E5%A5%BD%E4%BC%98%E5%8C%96%EF%BC%88DPO%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">6. RLHF 核心算法推演：从奖励建模、PPO 到直接偏好优化（DPO）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E7%BB%8F%E5%85%B8%E4%B8%A4%E6%AD%A5%E6%B3%95%EF%BC%9ABradley-Terry-%E5%A5%96%E5%8A%B1%E6%A8%A1%E5%9E%8B%E4%B8%8E-KL-%E6%AD%A3%E5%88%99%E5%8C%96%E7%AD%96%E7%95%A5%E4%BC%98%E5%8C%96"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 经典两步法：Bradley-Terry 奖励模型与 KL 正则化策略优化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E7%AD%96%E7%95%A5%E6%A2%AF%E5%BA%A6%EF%BC%88Policy-Gradient%EF%BC%89%E5%88%B0%E8%BF%91%E7%AB%AF%E7%AD%96%E7%95%A5%E4%BC%98%E5%8C%96%EF%BC%88PPO%EF%BC%89%E7%9A%84%E6%BC%94%E8%BF%9B%E8%84%89%E7%BB%9C"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 策略梯度（Policy Gradient）到近端策略优化（PPO）的演进脉络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E6%91%86%E8%84%B1-PPO-%E7%9A%84%E6%8E%A2%E7%B4%A2%E4%B8%8E%E7%9B%B4%E6%8E%A5%E5%81%8F%E5%A5%BD%E4%BC%98%E5%8C%96%EF%BC%88DPO-Rafailov-et-al-2023%EF%BC%89%E5%AE%8C%E6%95%B4%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 摆脱 PPO 的探索与直接偏好优化（DPO, Rafailov et al., 2023）完整数学推导</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E6%B1%82%E8%A7%A3-KL-%E6%AD%A3%E5%88%99%E5%8C%96-RL-%E7%9B%AE%E6%A0%87%E7%9A%84%E9%9D%9E%E5%8F%82%E6%95%B0%E5%8C%96%E9%97%AD%E5%BC%8F%E6%9C%80%E4%BC%98%E8%A7%A3%EF%BC%88Closed-Form-Optimal-Policy%EF%BC%89"><span class="toc-number">1.6.3.1.</span> <span class="toc-text">第一步：求解 KL 正则化 RL 目标的非参数化闭式最优解（Closed-Form Optimal Policy）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E5%8F%8D%E8%A7%A3%E9%9A%90%E5%BC%8F%E5%A5%96%E5%8A%B1%E5%87%BD%E6%95%B0%EF%BC%88Solving-for-the-Implied-Reward-r-x-y-%EF%BC%89"><span class="toc-number">1.6.3.2.</span> <span class="toc-text">第二步：反解隐式奖励函数（Solving for the Implied Reward $r(x, y)$）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E4%BB%A3%E5%85%A5-Bradley-Terry-%E5%81%8F%E5%A5%BD%E6%A8%A1%E5%9E%8B%EF%BC%8C%E9%85%8D%E5%88%86%E5%87%BD%E6%95%B0-Z-x-%E5%AE%8C%E7%BE%8E%E6%8A%B5%E6%B6%88%EF%BC%81"><span class="toc-number">1.6.3.3.</span> <span class="toc-text">第三步：代入 Bradley-Terry 偏好模型，配分函数 $Z(x)$ 完美抵消！</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9ADPO-%E7%9A%84%E6%A2%AF%E5%BA%A6%E9%80%8F%E8%A7%86-%E2%80%94%E2%80%94-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AE%83%E4%B8%8D%E4%BC%9A%E5%83%8F%E6%9C%B4%E7%B4%A0%E8%B4%9F%E6%A2%AF%E5%BA%A6%E9%82%A3%E6%A0%B7%E5%B4%A9%E6%BA%83%EF%BC%9F"><span class="toc-number">1.6.3.4.</span> <span class="toc-text">第四步：DPO 的梯度透视 —— 为什么它不会像朴素负梯度那样崩溃？</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-%E5%B7%A5%E4%B8%9A%E7%95%8C%E5%AE%9E%E8%B7%B5%E4%B8%8E-DPO-%E5%8F%98%E4%BD%93%E5%AE%B6%E6%97%8F%EF%BC%88Llama-3%E3%80%81SimPO%E3%80%81Length-Normalized-DPO%EF%BC%89"><span class="toc-number">1.6.4.</span> <span class="toc-text">6.4 工业界实践与 DPO 变体家族（Llama 3、SimPO、Length-Normalized DPO）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-RLHF-%E7%9A%84%E4%B8%89%E5%A4%A7%E7%B3%BB%E7%BB%9F%E6%80%A7%E5%8D%B1%E6%9C%BA%EF%BC%9A%E8%BF%87%E5%BA%A6%E4%BC%98%E5%8C%96%E3%80%81%E6%A8%A1%E5%BC%8F%E5%9D%8D%E7%BC%A9%E4%B8%8E%E6%A0%A1%E5%87%86%E4%B8%A7%E5%A4%B1"><span class="toc-number">1.7.</span> <span class="toc-text">7. RLHF 的三大系统性危机：过度优化、模式坍缩与校准丧失</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E5%8D%B1%E6%9C%BA%E4%B8%80%EF%BC%9A%E5%A5%96%E5%8A%B1%E6%A8%A1%E5%9E%8B%E8%BF%87%E5%BA%A6%E4%BC%98%E5%8C%96%E4%B8%8E%E5%8F%A4%E5%BE%B7%E5%93%88%E7%89%B9%E5%AE%9A%E5%BE%8B%EF%BC%88Gao-et-al-2022%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 危机一：奖励模型过度优化与古德哈特定律（Gao et al., 2022）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%8D%B1%E6%9C%BA%E4%BA%8C%E4%B8%8E%E5%8D%B1%E6%9C%BA%E4%B8%89%EF%BC%9A%E6%A8%A1%E5%BC%8F%E5%9D%8D%E7%BC%A9%EF%BC%88Mode-Collapse%EF%BC%89%E4%B8%8E%E6%A6%82%E7%8E%87%E5%A4%B1%E6%A0%A1%E5%87%86%EF%BC%88Uncalibration%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 危机二与危机三：模式坍缩（Mode Collapse）与概率失校准（Uncalibration）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E8%AF%BE%E5%90%8E%E6%80%9D%E8%80%83%E4%B8%8E%E8%87%AA%E6%B5%8B%E7%BB%83%E4%B9%A0%EF%BC%88Review-Self-Check%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">8. 课后思考与自测练习（Review &amp; Self-Check）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_18_19_notes/" title="Stanford CS336 (Spring 2026) Lectures 18 &amp; 19 深度课程笔记：Frontier Guest Lectures">Stanford CS336 (Spring 2026) Lectures 18 &amp; 19 深度课程笔记：Frontier Guest Lectures</a><time datetime="2026-10-26T06:35:00.000Z" title="发表于 2026-10-26 14:35:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_17_notes/" title="Stanford CS336 (Spring 2026) Lecture 17 深度课程笔记：Multimodal Models">Stanford CS336 (Spring 2026) Lecture 17 深度课程笔记：Multimodal Models</a><time datetime="2026-10-26T06:34:00.000Z" title="发表于 2026-10-26 14:34:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_16_notes/" title="Stanford CS336 (Spring 2026) Lecture 16 深度课程笔记：Post-Training (Part 2)">Stanford CS336 (Spring 2026) Lecture 16 深度课程笔记：Post-Training (Part 2)</a><time datetime="2026-10-26T06:33:00.000Z" title="发表于 2026-10-26 14:33:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_15_notes/" title="Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)">Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)</a><time datetime="2026-10-26T06:32:00.000Z" title="发表于 2026-10-26 14:32:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_14_notes/" title="Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)">Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)</a><time datetime="2026-10-26T06:31:00.000Z" title="发表于 2026-10-26 14:31:00">2026-10-26</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>
