@@ -1,0 +1,870 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="全面解析 Stanford CS336 Lecture 10，攻克大模型推理核心痛点：算术强度与显存带宽瓶颈、Prefill 与 Decode 阶段显存拆解、KV Cache 压缩算法、模型量化（PTQ&#x2F;QAT）、投机采样与动态批处理服务架构。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/10/26/cs336_lecture_10_notes/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="全面解析 Stanford CS336 Lecture 10，攻克大模型推理核心痛点：算术强度与显存带宽瓶颈、Prefill 与 Decode 阶段显存拆解、KV Cache 压缩算法、模型量化（PTQ&#x2F;QAT）、投机采样与动态批处理服务架构。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-10-26T00:51:00.000Z">
+<meta property="article:modified_time" content="2026-10-26T01:01:12.207Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="CS336">
+<meta property="article:tag" content="KV Cache">
+<meta property="article:tag" content="大模型">
+<meta property="article:tag" content="大模型推理">
+<meta property="article:tag" content="投机采样">
+<meta property="article:tag" content="模型量化">
+<meta property="article:tag" content="算力密度">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference",
+  "url": "https://kanosa0101.github.io/2026/10/26/cs336_lecture_10_notes/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-10-26T00:51:00.000Z",
+  "dateModified": "2026-10-26T01:01:12.207Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/10/26/cs336_lecture_10_notes/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">13</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">56</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-26T00:51:00.000Z" title="发表于 2026-10-26 08:51:00">2026-10-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-26T01:01:12.207Z" title="更新于 2026-10-26 09:01:12">2026-10-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/">笔记</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/CS336/">CS336</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Stanford-CS336-Spring-2026-Lecture-10-深度课程笔记：Inference"><a href="#Stanford-CS336-Spring-2026-Lecture-10-深度课程笔记：Inference" class="headerlink" title="Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference"></a>Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</h1><blockquote>
+<p><strong>课程信息</strong>：<a target="_blank" rel="noopener" href="https://cs336.stanford.edu/">Stanford CS336: Language Modeling from Scratch (Spring 2026)</a><br><strong>主讲教授</strong>：Percy Liang<br><strong>本讲资源</strong>：<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=EfM546A79aM">Lecture 10 YouTube 视频</a> | <a target="_blank" rel="noopener" href="https://cs336.stanford.edu/lectures/?trace=lecture_10">交互式执行轨迹 (<code>lecture_10.py</code>)</a> | <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/spring2025-lectures/blob/main/lecture_10.py">源码仓库 (<code>spring2025-lectures/lecture_10.py</code>)</a> | <a target="_blank" rel="noopener" href="https://jax-ml.github.io/scaling-book/inference/">Google《How to Scale Your Model》Inference 章节</a></p>
+</blockquote>
+<h2 id="1-引言：为什么大模型推理系统（Inference-Systems）如此重要？"><a href="#1-引言：为什么大模型推理系统（Inference-Systems）如此重要？" class="headerlink" title="1. 引言：为什么大模型推理系统（Inference Systems）如此重要？"></a>1. 引言：为什么大模型推理系统（Inference Systems）如此重要？</h2><p>在上一讲（Lecture 9）中，Tatsu 带我们探讨了预训练的扩展定律（Scaling Laws），并在结尾指出：现代工业界为了压低部署成本，纷纷放弃 Chinchilla 的 20:1 比例，转而通过“蓄意过训练（Overtraining）”打造小巧强悍的模型。本讲（Lecture 10）作为纯代码交互式讲义（<code>lecture_10.py</code>），由 Percy Liang 全面拆解大模型生命周期中消耗算力与资金最庞大的环节——<strong>Inference（推理与在线服务系统）</strong>。</p>
+<h3 id="1-1-推理无处不在：一次性训练成本-vs-永不停歇的推理账单"><a href="#1-1-推理无处不在：一次性训练成本-vs-永不停歇的推理账单" class="headerlink" title="1.1 推理无处不在：一次性训练成本 vs. 永不停歇的推理账单"></a>1.1 推理无处不在：一次性训练成本 vs. 永不停歇的推理账单</h3><p>给定一个训练好的语言模型和一个输入提示词（Prompt），推理（Inference）的目标是<strong>尽可能快速、准确且低成本地生成响应序列</strong>。它绝不仅仅发生在用户和网页聊天机器人对话的时刻，而是贯穿了现代 AI 研发的三大核心场景：</p>
+<ol>
+<li><strong>实际生产应用（Actual Use）</strong>：对话助手（Chatbots）、代码自动补全（Code Completion）、自主智能体（Agents）以及海量离线批处理数据清洗（Batch Data Processing，如用小模型过滤或合成数万亿预训练语料）。</li>
+<li><strong>模型评测（Model Evaluation）</strong>：在 MMLU、GSM8K、MATH、SWE-bench 等生成式基准上评估模型时，瓶颈往往不在于打分，而在于自回归生成成千上万条长回答的速度。</li>
+<li><strong>强化学习后训练（Reinforcement Learning &#x2F; Post-Training）</strong>：在训练如 DeepSeek-R1 或 OpenAI o1&#x2F;o3 等推理模型（对应 Assignment 5 的 GRPO）时，每个训练步都要先让当前策略模型自回归采样生成（Rollout）大量长思维链轨迹，再交由验证器打分更新权重——<strong>在现代 RL 训练中，80%～90% 的时间与算力实际上都消耗在推理生成（Rollout Generation）上</strong>！</li>
+</ol>
+<ul>
+<li><strong>为什么推理效率是关乎生死的商业命脉？</strong><br>训练（Training）虽然昂贵，但它是<strong>一次性固定成本（One-time Cost）</strong>；而推理（Inference）是<strong>每天每秒都在重复累加的持续可变成本（Repeated Ongoing Cost）</strong>！<ul>
+<li><strong>震撼的工业界数据对比</strong>：据估算，<a target="_blank" rel="noopener" href="https://www.theinformation.com/">OpenAI 每天处理的推理生成量高达约 <strong>8.6 万亿（8.6T）Tokens</strong></a>；作为参照，2026 年 4 月刚发布的百万上下文旗舰模型 <strong>DeepSeek-V4</strong> 的整个预训练过程总共也才训练了 <strong>32T Tokens</strong>！这意味着<strong>仅仅不到 4 天的日常推理流量，所消耗的 Token 处理规模就已经追平了一次顶级旗舰基座模型的全量预训练</strong>！</li>
+</ul>
+</li>
+</ul>
+<h3 id="1-2-从-Chatbot-到-Agent-时代的工作负载质变"><a href="#1-2-从-Chatbot-到-Agent-时代的工作负载质变" class="headerlink" title="1.2 从 Chatbot 到 Agent 时代的工作负载质变"></a>1.2 从 Chatbot 到 Agent 时代的工作负载质变</h3><p>Percy 指出，在过去一年里，推理优化的战略地位又上了一个新台阶，原因在于应用范式从 <strong>Chatbots（对话机器人）</strong> 转向了 <strong>Agents（自主智能体）</strong>：</p>
+<ul>
+<li><strong>在 Chatbot 时代（人类阅读速度是瓶颈）</strong>：用户输入一句提问，模型吐出一段回复供人类直接阅读。由于人类的阅读速度只有每秒几个到十几个词，一旦单流生成速度超过 $30 \sim 50\text{ tokens&#x2F;sec}$，继续压低单用户延迟的边际感知就不明显了。</li>
+<li><strong>在 Agent 时代（<code>Tokens Generated = Compute Spent</code>，无人类阅读瓶颈！）</strong>：<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[Chatbot 模式]: 用户 Query ──► 模型生成回答 (数百 Tokens, 受限于人类阅读速度) ──► 人类阅读</span><br><span class="line">[Agent   模式]: 用户 Query ──► [内部思考 Reasoning ──► 调用工具 Tool Call ──► 读代码/修 Bug ──► 自我反思 ...] (数万~百万内部 Tokens!) ──► 最终结果</span><br></pre></td></tr></table></figure>
+在 Agent 工作流中，模型生成的绝大部分 Token 是<strong>内部思维链与环境交互轨迹（Internal Trace）</strong>，根本不需要人类实时盯着读！你解决的问题越宏大，Agent 需要消耗的推理 Token 就越多（生成 Token 的数量直接等价于投入的测试时算力 Test-Time Compute）。此时，推理速度慢 2 倍就意味着任务完成时间翻倍、推理算力成本翻倍，<strong>压榨推理性能再也没有“够快就行”的天花板</strong>！</li>
+</ul>
+<h3 id="1-3-工业界推理生态与四大开源推理框架对比"><a href="#1-3-工业界推理生态与四大开源推理框架对比" class="headerlink" title="1.3 工业界推理生态与四大开源推理框架对比"></a>1.3 工业界推理生态与四大开源推理框架对比</h3><p>目前围绕大模型推理已经形成了庞大的商业与开源生态：一类是服务闭源自有模型的厂商（OpenAI、Anthropic、Google），另一类是专门为开放权重模型提供高速推理云服务的厂商（Together AI、Fireworks、Baseten、DeepInfra，以及采用定制全 SRAM 晶圆级&#x2F;LPU 芯片的 Groq 与 Cerebras）。而在开源引擎层，以下四大框架统治了不同的应用场景：</p>
+<table>
+<thead>
+<tr>
+<th align="left">开源推理框架</th>
+<th align="left">核心研发机构</th>
+<th align="left">首创核心技术 &#x2F; 架构特点</th>
+<th align="left">最适用工作负载与场景定位</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://github.com/vllm-project/vllm">vLLM</a></strong></td>
+<td align="left">UC Berkeley</td>
+<td align="left">首创 <strong>PagedAttention</strong>（借鉴操作系统虚拟内存分页管理 KV Cache）</td>
+<td align="left"><strong>工业界最流行的通用默认首选</strong>，生态最完善，高吞吐在线服务标杆</td>
+</tr>
+<tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://github.com/sgl-project/sglang">SGLang</a></strong></td>
+<td align="left">UC Berkeley &#x2F; LMSYS</td>
+<td align="left">首创 <strong>RadixAttention</strong>（基于基数树自动跨请求复用共享前缀 KV Cache）与结构化输出加速</td>
+<td align="left"><strong>专为多轮 Agent 工作流、树搜索与复杂控制流优化</strong>，近年在工业界与 RL 训练中增速极快</td>
+</tr>
+<tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://github.com/NVIDIA/TensorRT-LLM">TensorRT-LLM</a></strong></td>
+<td align="left">NVIDIA 官方</td>
+<td align="left">深度绑定 NVIDIA GPU 底层 Tensor Core、FP8&#x2F;FP4 算子与自定义通信内核</td>
+<td align="left">在特定 NVIDIA 硬件上追求<strong>极致单卡&#x2F;多卡压榨性能</strong>（但灵活性与跨平台性较窄）</td>
+</tr>
+<tr>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://github.com/ggml-org/llama.cpp">llama.cpp</a></strong></td>
+<td align="left">Georgi Gerganov 及社区</td>
+<td align="left">纯 C&#x2F;C++ 无依赖实现（GGUF 格式），极致优化低比特量化与 CPU&#x2F;Apple Silicon 推理</td>
+<td align="left"><strong>本地终端设备（MacBook &#x2F; 消费级显卡 &#x2F; 边缘端 CPU）</strong> 离线部署的绝对霸主</td>
+</tr>
+</tbody></table>
+<h3 id="1-4-衡量推理“快慢”的三大核心指标与根本矛盾"><a href="#1-4-衡量推理“快慢”的三大核心指标与根本矛盾" class="headerlink" title="1.4 衡量推理“快慢”的三大核心指标与根本矛盾"></a>1.4 衡量推理“快慢”的三大核心指标与根本矛盾</h3><p>当我们说“要让推理变快”时，“快”在系统工程中对应三个截然不同、甚至互相冲突的量化指标：</p>
+<ol>
+<li><strong>首字延迟（Time-to-First-Token, <code>TTFT</code>，单位：ms 或 s）</strong>：<br>从用户发出请求，到屏幕上蹦出<strong>第一个生成 Token</strong> 所经历的等待时间（本质上等于处理输入 Prompt 的 <strong>Prefill 预填充耗时</strong> + 网络排队开销）。在交互式应用中，用户盯着空白屏幕干等的挫败感最强，因此 <code>TTFT</code> 直接决定了第一印象体验。</li>
+<li><strong>生成延迟（Latency &#x2F; Time-per-Output-Token, <code>TPOT</code>，单位：seconds&#x2F;token 或 ms&#x2F;token）</strong>：<br>从单个用户的视角看，首字出现后，后续每个 Token 依次流式蹦出的时间间隔。交互式对话与实时代码补全要求极低的单 Token 延迟。</li>
+<li><strong>系统总吞吐率（Throughput，单位：tokens&#x2F;second）</strong>：<br>从服务商数据中心视角看，每秒钟为<strong>所有并发请求合计生成的总 Token 数量</strong>。在离线批处理（比如处理 1 PB 文档）或高并发 API 服务中，总吞吐率直接决定了每百万 Token 的硬件折旧与电费成本（$&#x2F;1M Tokens）。</li>
+</ol>
+<blockquote>
+<p><strong>全讲第一性原理基石：为什么推理（Inference）比训练（Training）难优化得多？</strong></p>
+<ul>
+<li><strong>在监督训练（Training）或预填充（Prefill）时</strong>：你一次性看到了整条序列的所有 $S$ 个 Token！因此你可以沿着序列维度 $S$ 完全并行化，把激活张量拼成大矩阵送入 Transformer 执行高算术强度的<strong>矩阵-矩阵乘法（MatMul）</strong>，轻松喂饱 GPU。</li>
+<li><strong>在自回归生成（Generation &#x2F; Decode）时</strong>：由于第 $t+1$ 个 Token 的输入依赖于第 $t$ 个 Token 的采样结果，你<strong>被迫沿着生成序列维度一步接一步串行执行（Sequential Generation，$T &#x3D; 1$）</strong>！无法在单条序列的长度维度上并行，导致计算退化为极度访存受限（Memory-bound）的瘦长张量操作。</li>
+</ul>
+</blockquote>
+<h2 id="2-Part-I：推理工作负载剖析-——-算术强度、KV-Cache-与吞吐-延迟权衡"><a href="#2-Part-I：推理工作负载剖析-——-算术强度、KV-Cache-与吞吐-延迟权衡" class="headerlink" title="2. Part I：推理工作负载剖析 —— 算术强度、KV Cache 与吞吐-延迟权衡"></a>2. Part I：推理工作负载剖析 —— 算术强度、KV Cache 与吞吐-延迟权衡</h2><p>为了用数学精确推演推理瓶颈，Percy 引入了 <a target="_blank" rel="noopener" href="https://jax-ml.github.io/scaling-book/transformers/">Google《How to Scale Your Model》</a> 中的张量收缩记号体系，并用 <code>SymPy</code> 编写了完整的符号推导引擎。</p>
+<h3 id="2-1-张量维度约定与-Transformer-Block-完整数据流图解"><a href="#2-1-张量维度约定与-Transformer-Block-完整数据流图解" class="headerlink" title="2.1 张量维度约定与 Transformer Block 完整数据流图解"></a>2.1 张量维度约定与 Transformer Block 完整数据流图解</h3><p>我们在 <code>lecture_10.py</code> 中定义如下正实数符号来表示 Transformer 的形状超参数与运行维度：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> sympy <span class="keyword">import</span> symbols, oo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义代表 Transformer 模型形状与运行维度的正符号变量</span></span><br><span class="line">B, S, T, D, F, N, K, H, L, V = symbols(<span class="string">&quot;B S T D F N K H L V&quot;</span>, positive=<span class="literal">True</span>)</span><br><span class="line">c = symbols(<span class="string">&quot;c&quot;</span>, positive=<span class="literal">True</span>)                        <span class="comment"># 用于辅助求渐近极限 (c -&gt; oo) 的比例常数</span></span><br><span class="line">memory_bandwidth = symbols(<span class="string">&quot;memory_bandwidth&quot;</span>, positive=<span class="literal">True</span>)</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th align="left">符号</th>
+<th align="left">物理含义</th>
+<th align="left">架构标准恒等关系与说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong><code>B</code></strong></td>
+<td align="left"><strong>Batch Size（并发序列数）</strong></td>
+<td align="left">当前同时处理的独立请求&#x2F;序列条数</td>
+</tr>
+<tr>
+<td align="left"><strong><code>S</code></strong></td>
+<td align="left"><strong>Conditioning Sequence Length（上下文历史长度）</strong></td>
+<td align="left">注意力机制所依赖的已存在&#x2F;已缓存的上下文 Token 数量</td>
+</tr>
+<tr>
+<td align="left"><strong><code>T</code></strong></td>
+<td align="left"><strong>Target &#x2F; Query Sequence Length（当前步待生成位置数）</strong></td>
+<td align="left">当前一次前向传播同时处理的输入 Token 数（<strong>训练&#x2F;Prefill 时 $T &#x3D; S$；Decode 生成时 $T &#x3D; 1$！</strong>）</td>
+</tr>
+<tr>
+<td align="left"><strong><code>D</code></strong></td>
+<td align="left"><strong>Model Dimension（模型隐藏层主维度 $d_{\text{model}}$）</strong></td>
+<td align="left">恒满足 $D &#x3D; N \cdot H$</td>
+</tr>
+<tr>
+<td align="left"><strong><code>F</code></strong></td>
+<td align="left"><strong>Feed-Forward Dimension（MLP 中间升维维度 $d_{\text{ff}}$）</strong></td>
+<td align="left">常规约定 $F \approx 4 D$（SwiGLU 下约为 $\frac{8}{3}D \sim 3.5D$）</td>
+</tr>
+<tr>
+<td align="left"><strong><code>N</code></strong></td>
+<td align="left"><strong>Number of Query Heads（Query 注意力头总数）</strong></td>
+<td align="left">在 GQA 下满足 $N &#x3D; K \cdot G$</td>
+</tr>
+<tr>
+<td align="left"><strong><code>K</code></strong></td>
+<td align="left"><strong>Number of KV Heads &#x2F; Groups（Key&#x2F;Value 注意力头数）</strong></td>
+<td align="left">标准 MHA 下 $K &#x3D; N$；MQA 下 $K &#x3D; 1$；GQA 下 $1 &lt; K &lt; N$</td>
+</tr>
+<tr>
+<td align="left"><strong><code>G</code></strong></td>
+<td align="left"><strong>Group Size（每个 KV 头对应的 Query 头数）</strong></td>
+<td align="left">$G &#x3D; N &#x2F; K$（<em>注：课堂上学生敏锐指出了讲义注释笔误，Percy 现场确认 $K$ 为 KV 组数、$G$ 为每组内的 Query 头数</em>）</td>
+</tr>
+<tr>
+<td align="left"><strong><code>H</code></strong></td>
+<td align="left"><strong>Head Dimension（单个注意力头的维度 $d_{\text{head}}$）</strong></td>
+<td align="left">通常固定为 <code>64</code> 或 <code>128</code></td>
+</tr>
+<tr>
+<td align="left"><strong><code>L</code>, <code>V</code></strong></td>
+<td align="left"><strong>Layers（层数）与 Vocabulary Size（词表大小）</strong></td>
+<td align="left">全网共堆叠 $L$ 个 Transformer Block，词表含 $V$ 个 Token</td>
+</tr>
+</tbody></table>
+<h4 id="张量乘法的三类维度角色（review-transformer）"><a href="#张量乘法的三类维度角色（review-transformer）" class="headerlink" title="张量乘法的三类维度角色（review_transformer）"></a>张量乘法的三类维度角色（<code>review_transformer</code>）</h4><p>当我们书写广义张量缩并（类似 <code>einops.einsum</code>）时，参与运算的维度可分为三类：</p>
+<ol>
+<li><strong>缩并维度（Contracting Dimensions，原图红色）</strong>：同时出现在左右两个操作数中，但在相乘求和后<strong>从结果中消失</strong>。例如矩阵乘 <code>BTD x DH -&gt; BTH</code> 中的 <strong><code>D</code></strong>。</li>
+<li><strong>常规自由维度（Regular Dimensions，原图黑色）</strong>：仅出现在其中一个操作数中，并<strong>原样保留在结果中</strong>。例如 <code>BTD x DH -&gt; BTH</code> 中的 <strong><code>B</code>, <code>T</code>, <code>H</code></strong>。</li>
+<li><strong>批处理维度（Batching Dimensions，原图蓝色 —— 理解 Attention 瓶颈的关键！）</strong>：同时出现在左右两个操作数中，但<strong>不发生跨元素交互，而是各自独立配对并保留在结果中</strong>！例如批量向量点积 <code>BD x BD -&gt; B</code> 中的 <strong><code>B</code></strong>。<ul>
+<li><strong>致命预警</strong>：只要一个算子中的维度 <code>B</code> 是蓝色的 Batching 维度（两个操作数都带着 <code>B</code>），那么增大批大小 <code>B</code> <strong>就绝不可能提高算术强度</strong>！因为你只是把 <code>B</code> 个独立的向量点积摆在一起跑，没有任何权重复用！</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[单层 Transformer Block 张量形状与缩并全景图 (Conditioning 长 S, 当前输入长 T)]</span><br><span class="line">  输入激活 X [B, T, D]</span><br><span class="line">     │</span><br><span class="line">     ├──► [Attention 分支]</span><br><span class="line">     │      ├─► X [B,T,D] @ W_Q [D, N, H] ──► Q [B, T, K, G, H]  (将 N 拆为 K 组 x 每组 G 头)</span><br><span class="line">     │      ├─► X [B,T,D] @ W_K [D, K, H] ──► K_new ──► (拼接历史 KV Cache) ──► K [B, S, K, H]</span><br><span class="line">     │      ├─► X [B,T,D] @ W_V [D, K, H] ──► V_new ──► (拼接历史 KV Cache) ──► V [B, S, K, H]</span><br><span class="line">     │      ├─► Q [B,T,K,G,H] @ K [B,S,K,H] (沿 H 缩并, B 和 K 为蓝色独立批处理维!) ──► Softmax ──► A [B, S, T, K, G]</span><br><span class="line">     │      ├─► A [B,S,T,K,G] @ V [B,S,K,H] (沿 S 缩并, B 和 K 为蓝色独立批处理维!) ──► Z [B, T, N, H]</span><br><span class="line">     │      └─► Z [B,T,N,H] @ W_O [N, H, D] ──► Attn_Out [B, T, D] ──► (+ 残差 X)</span><br><span class="line">     │</span><br><span class="line">     └──► [MLP (SwiGLU) 分支] (注意: 权重 W_up, W_gate, W_down 均不含 B 维，所有 B 个请求完全共享同一份权重!)</span><br><span class="line">            ├─► U = X [B,T,D] @ W_up   [D, F] ──► [B, T, F]</span><br><span class="line">            ├─► G = X [B,T,D] @ W_gate [D, F] ──► GeLU(G) * U [B, T, F]</span><br><span class="line">            └─► Y = (GeLU(G)*U) [B,T,F] @ W_down [F, D] ──► MLP_Out [B, T, D] ──► (+ 残差)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-矩阵乘法算术强度复习与-B-1-退化极限（review-of-arithmetic-intensity）"><a href="#2-2-矩阵乘法算术强度复习与-B-1-退化极限（review-of-arithmetic-intensity）" class="headerlink" title="2.2 矩阵乘法算术强度复习与 $B&#x3D;1$ 退化极限（review_of_arithmetic_intensity）"></a>2.2 矩阵乘法算术强度复习与 $B&#x3D;1$ 退化极限（<code>review_of_arithmetic_intensity</code>）</h3><p>回顾 Lecture 2，在 <code>bf16</code>（每元素 2 Bytes）下将激活矩阵 $X \in \mathbb{R}^{B \times D}$ 乘以权重矩阵 $W \in \mathbb{R}^{D \times F}$ 得到 $Y \in \mathbb{R}^{B \times F}$：</p>
+<ul>
+<li><strong>总浮点计算量（FLOPs）</strong>：$\text{flops} &#x3D; 2 B D F$（三次项）；</li>
+<li><strong>总 HBM 显存读写字节数（Bytes Transferred）</strong>：读 $X (2BD)$ + 读 $W (2DF)$ + 写 $Y (2BF) &#x3D; 2BD + 2DF + 2BF$（二次项）。</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 源自 lecture_10.py (Lines 123-155): 用 SymPy 推导非方阵 MatMul 的渐近算术强度</span></span><br><span class="line">flops = <span class="number">2</span> * B * D * F</span><br><span class="line">bytes_transferred = <span class="number">2</span> * B * D + <span class="number">2</span> * D * F + <span class="number">2</span> * B * F</span><br><span class="line">intensity = (flops / bytes_transferred).simplify()</span><br><span class="line"></span><br><span class="line"><span class="comment"># 假设批大小 B 远小于模型隐藏维度 D 和 F (令 D = c*B, F = c*B，取极限 c -&gt; oo)：</span></span><br><span class="line">intensity_asymptotic = intensity.subs(D, c * B).subs(F, c * B).limit(c, oo).simplify()</span><br><span class="line"><span class="keyword">assert</span> intensity_asymptotic == B  <span class="comment"># 算术强度直接等于批大小 B！</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 对比 NVIDIA H100 (BF16 Dense) 的硬件加速器强度 (Ridge Point):</span></span><br><span class="line">flops_per_second = <span class="number">989e12</span></span><br><span class="line">memory_bandwidth = <span class="number">3.35e12</span></span><br><span class="line">accelerator_intensity = flops_per_second / memory_bandwidth</span><br><span class="line"><span class="keyword">assert</span> <span class="built_in">round</span>(accelerator_intensity) == <span class="number">295</span>  <span class="comment"># 充要条件：当且仅当 B &gt; 295 时进入 Compute-bound！</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>极端退化情况（$B &#x3D; 1$，单请求单步推理）</strong>：<br>当只有一个请求每次生成 1 个 Token 时，$B &#x3D; 1$，矩阵乘法退化为<strong>矩阵-向量乘法（Matrix-Vector Product）</strong>。此时你大费周章地从 HBM 读出了 $2DF$ 字节的庞大权重矩阵，却只做了 $2DF$ 次浮点运算，<strong>算术强度恒等于 $\mathbf{1 \ll 295}$</strong>！H100 接近 99.7% 的计算潜力都在空转等待显存读取！</li>
+</ul>
+<h3 id="2-3-为什么必须引入-KV-Cache？从-O-T-3-朴素推理到两阶段解耦"><a href="#2-3-为什么必须引入-KV-Cache？从-O-T-3-朴素推理到两阶段解耦" class="headerlink" title="2.3 为什么必须引入 KV Cache？从 $O(T^3)$ 朴素推理到两阶段解耦"></a>2.3 为什么必须引入 KV Cache？从 $O(T^3)$ 朴素推理到两阶段解耦</h3><p>如果把训练好的 Transformer 当成一个黑盒：给定提示词 <code>&quot;never gonna give&quot;</code>，最朴素的自回归生成（Naive Inference）是：</p>
+<ol>
+<li>喂入 <code>&quot;never gonna give&quot;</code>（长 3） $\rightarrow$ 跑一遍完整前向传播 $\rightarrow$ 采样出 <code>&quot;you&quot;</code>；</li>
+<li>拼接得到 <code>&quot;never gonna give you&quot;</code>（长 4） $\rightarrow$ <strong>把这 4 个词从头再跑一遍完整前向传播</strong> $\rightarrow$ 采样出 <code>&quot;up&quot;</code>；</li>
+<li>如此循环生成 $T$ 个 Token：由于单次前向传播复杂度为 $O(t^2)$，<strong>生成 $T$ 个 Token 的总计算复杂度竟然高达 $\sum_{t&#x3D;1}^T O(t^2) &#x3D; \mathbf{O(T^3)}$</strong>！</li>
+</ol>
+<ul>
+<li><strong>破局洞察：因果掩码（Causal Masking）下的前缀不变性</strong><br>因为解码器采用因果掩码（前方的 Token 看不到后方新追加的 Token），当我们在序列末尾追加新词 <code>&quot;you&quot;</code> 时，前方旧词 <code>&quot;never&quot;</code>, <code>&quot;gonna&quot;</code>, <code>&quot;give&quot;</code> 在每一层算出的激活值、Key 向量和 Value 向量<strong>与上一步相比连一个比特都不会变</strong>！</li>
+<li><strong>解决方案：在 HBM 显存中维护 KV Cache（键值缓存）</strong><br>我们将所有已处理位置在每一层（$L$）、每个 KV 头（$K$）算出的 $H$ 维 Key 向量和 Value 向量全部保存在显存中（总形状为 $B \times S \times L \times K \times H \times 2$），从而将推理拆分为物理特性截然不同的<strong>两个阶段</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">[阶段 1: Prefill (预填充阶段 —— 并行编码整个 Prompt, T = S)]</span><br><span class="line">  输入 Prompt: [&quot;never&quot;, &quot;gonna&quot;, &quot;give&quot;] (一次性并行输入 T = S 个 Token)</span><br><span class="line">       │</span><br><span class="line">       ▼ (穿过 Transformer, 算子形态为大矩阵乘 MatMul, 高算术强度 Compute-Bound!)</span><br><span class="line">  1. 初始化填满 KV Cache: 存入 [&quot;never&quot;, &quot;gonna&quot;, &quot;give&quot;] 在全部 L 层的 K 和 V 向量</span><br><span class="line">  2. 输出末尾位置 Logits ──► 采样出第 1 个新词 &quot;you&quot; (耗时即为首字延迟 TTFT!)</span><br><span class="line"></span><br><span class="line">[阶段 2: Generation / Decode (自回归生成阶段 —— 每次仅输入 1 个新词, T = 1)]</span><br><span class="line">  第 1 步: 仅喂入单个新词 [&quot;you&quot;] (T = 1) + 读取 HBM 中的历史 KV Cache (长 S)</span><br><span class="line">           ──► 仅算 &quot;you&quot; 的新 q_t, k_t, v_t ──► 将 (k_t, v_t) 追加写入 KV Cache (长度变为 S+1)</span><br><span class="line">           ──► 用单个 q_t 与全部 S+1 个历史 K, V 做注意力 ──► 采样出下一个词 &quot;up&quot;</span><br><span class="line">  第 2 步: 仅喂入单个新词 [&quot;up&quot;] (T = 1) + 读取更新后的 KV Cache (长 S+1) ──► ... (串行循环, 极度 Memory-Bound!)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-核心数学推导：MLP-层与-Attention-层的推理算术强度（arithmetic-intensity-of-inference）"><a href="#2-4-核心数学推导：MLP-层与-Attention-层的推理算术强度（arithmetic-intensity-of-inference）" class="headerlink" title="2.4 核心数学推导：MLP 层与 Attention 层的推理算术强度（arithmetic_intensity_of_inference）"></a>2.4 核心数学推导：MLP 层与 Attention 层的推理算术强度（<code>arithmetic_intensity_of_inference</code>）</h3><p>现在我们在引入 KV Cache 的前提下，用 <code>lecture_10.py</code>（Lines 178–261）严格推导单层 <strong>MLP</strong> 与单层 <strong>Attention</strong> 的算术强度。设当前历史上下文（KV Cache）长度为 $S$，当前步一次喂入的新 Token 数为 $T$（之后分别代入 <strong>Prefill: $T &#x3D; S$</strong> 与 <strong>Generation: $T &#x3D; 1$</strong>）。</p>
+<h4 id="1-MLP-层（SwiGLU-三矩阵）的算术强度推导"><a href="#1-MLP-层（SwiGLU-三矩阵）的算术强度推导" class="headerlink" title="1. MLP 层（SwiGLU 三矩阵）的算术强度推导"></a>1. MLP 层（SwiGLU 三矩阵）的算术强度推导</h4><p>在单层 SwiGLU MLP 中，输入激活 $X$ 形状为 $(B, T, D)$，三个权重矩阵分别为 $W_{\text{up}} \in \mathbb{R}^{D \times F}$、$W_{\text{gate}} \in \mathbb{R}^{D \times F}$、$W_{\text{down}} \in \mathbb{R}^{F \times D}$：</p>
+<ul>
+<li><strong>HBM 读写字节数</strong>：<ol>
+<li>读输入 $X$：$2 B T D\text{ Bytes}$；</li>
+<li>读三个权重矩阵 $W_{\text{up}}, W_{\text{gate}}, W_{\text{down}}$：$3 \times (2 D F) &#x3D; 6 D F\text{ Bytes}$；</li>
+<li>写出中间结果 $U &#x3D; X W_{\text{up}}$ 与 $G &#x3D; X W_{\text{gate}}$：$2 B T F + 2 B T F &#x3D; 4 B T F\text{ Bytes}$；</li>
+<li>写出最终结果 $Y &#x3D; (\text{GeLU}(G) \odot U) W_{\text{down}}$：$2 B T D\text{ Bytes}$。<br>$$\text{Bytes}_{\text{MLP}} &#x3D; 4 B T D + 4 B T F + 6 D F$$</li>
+</ol>
+</li>
+<li><strong>总浮点计算量（FLOPs）</strong>：三次矩阵乘法合计：<br>$$\text{FLOPs}_{\text{MLP}} &#x3D; 2 B T D F + 2 B T D F + 2 B T D F &#x3D; 6 B T D F$$</li>
+<li><strong>取渐近极限（当总 Token 数 $B \cdot T \ll D, F$ 时，权重读取项 $6DF$ 占绝对主导）</strong>：<br>$$I_{\text{MLP}} &#x3D; \frac{6 B T D F}{4 B T D + 4 B T F + 6 D F} \xrightarrow{D, F \gg B T} \frac{6 B T D F}{6 D F} &#x3D; \mathbf{B \cdot T}$$<ul>
+<li><strong>Prefill 阶段（$T &#x3D; S$）</strong>：$I_{\text{MLP}}^{\text{prefill}} &#x3D; \mathbf{B \cdot S}$。只要单条 Prompt 长度 $S &gt; 295$（哪怕 $B&#x3D;1$），或者批次总 Token 数 $BS &gt; 295$，就能轻松进入 <strong>Compute-bound</strong>！</li>
+<li><strong>Generation 阶段（$T &#x3D; 1$）</strong>：$I_{\text{MLP}}^{\text{gen}} &#x3D; \mathbf{B}$。因为每次只生成 1 个词（$T&#x3D;1$），算术强度完全等于<strong>并发请求数 $B$</strong>！如果只有 1 个用户在线（$B&#x3D;1$），算术强度为 1（极度受限）；但如果能把 <strong>300 个并发用户的请求拼成一个大 Batch（$B \ge 295$）</strong> 一起过 MLP，MLP 层依然能满血跑进 Compute-bound！</li>
+</ul>
+</li>
+</ul>
+<h4 id="2-Attention-层（FlashAttention-核心乘加）的算术强度推导"><a href="#2-Attention-层（FlashAttention-核心乘加）的算术强度推导" class="headerlink" title="2. Attention 层（FlashAttention 核心乘加）的算术强度推导"></a>2. Attention 层（FlashAttention 核心乘加）的算术强度推导</h4><p>现在看致命的 Attention 核心步（已通过投影得到当前步查询 $Q \in \mathbb{R}^{B \times T \times D}$，并从 HBM 缓存中读取长度为 $S$ 的历史键值 $K, V \in \mathbb{R}^{B \times S \times D}$，为简化记先按 MHA $K \cdot H &#x3D; D$ 推导）：</p>
+<ul>
+<li><strong>HBM 读写字节数（使用 FlashAttention，不写回中间注意力矩阵 $A$）</strong>：<ol>
+<li>从 HBM 读取 $Q (2BTD)$、读取历史缓存 $K (2BSD)$、读取历史缓存 $V (2BSD)$；</li>
+<li>将注意力输出 $Y \in \mathbb{R}^{B \times T \times D}$ 写回 HBM $(2BTD)$。<br>$$\text{Bytes}_{\text{Attn}} &#x3D; 4 B S D + 4 B T D &#x3D; 4 B D (S + T)$$</li>
+</ol>
+</li>
+<li><strong>总浮点计算量（FLOPs）</strong>：<br>计算 $A &#x3D; Q K^\top$ 消耗 $2 B S T D$ FLOPs；计算 $Y &#x3D; \text{Softmax}(A) V$ 消耗 $2 B S T D$ FLOPs：<br>$$\text{FLOPs}_{\text{Attn}} &#x3D; 4 B S T D$$</li>
+<li><strong>精确算术强度（分子分母中的 $4 B D$ 被完全约掉了！）</strong>：<br>$$I_{\text{Attn}} &#x3D; \frac{4 B S T D}{4 B D (S + T)} &#x3D; \mathbf{\frac{S \cdot T}{S + T}}$$<ul>
+<li><strong>Prefill 阶段（$T &#x3D; S$）</strong>：<br>$$I_{\text{Attn}}^{\text{prefill}} &#x3D; \frac{S \cdot S}{S + S} &#x3D; \mathbf{\frac{S}{2}}$$<br>非常棒！只要 Prompt 长度 $S \ge 590$，Attention 在 Prefill 阶段也是 <strong>Compute-bound</strong>！</li>
+<li><strong>Generation 阶段（$T &#x3D; 1$）</strong>：<br>$$I_{\text{Attn}}^{\text{gen}} &#x3D; \frac{S \cdot 1}{S + 1} &#x3D; \mathbf{\frac{S}{S + 1} &lt; 1}$$<br><strong>晴天霹雳！</strong> 在自回归生成阶段（$T&#x3D;1$），无论你的序列长度 $S$ 有多长，<strong>更加致命的是无论你把并发批大小 $B$ 调到多大（因为公式里根本没有 $B$！）</strong>，标准 Attention 的算术强度<strong>永远严格小于 $1$</strong>！</li>
+</ul>
+</li>
+</ul>
+<h4 id="3-深度思辨：为什么增大-Batch-Size-B-能拯救-MLP，却完全救不了-Attention？"><a href="#3-深度思辨：为什么增大-Batch-Size-B-能拯救-MLP，却完全救不了-Attention？" class="headerlink" title="3. 深度思辨：为什么增大 Batch Size $B$ 能拯救 MLP，却完全救不了 Attention？"></a>3. 深度思辨：为什么增大 Batch Size $B$ 能拯救 MLP，却完全救不了 Attention？</h4><p>这是理解现代大模型推理架构演进最核心的一道分水岭：</p>
+<ul>
+<li><strong>在 MLP 层中</strong>：所有 $B$ 条不同的用户请求，撞击的都是<strong>同一份共享的模型权重矩阵</strong>（$W_{\text{up}}, W_{\text{gate}}, W_{\text{down}}$ 的形状是 $D \times F$，<strong>不依赖于 $B$</strong>）！因此，当你把 $B$ 条请求打包在一起时，权重只需要从慢速 HBM 读进片上 SRAM <strong>1 次</strong>，就能被全部 $B$ 条序列共同复用，从而将算术强度放大 $B$ 倍！</li>
+<li><strong>在 Attention 层中</strong>：每一条用户请求都有它<strong>自己独立的历史上下文与独立的 KV Cache</strong>（$K$ 和 $V$ 的形状是 $B \times S \times D$，<strong>强依赖于蓝色批处理维度 $B$</strong>）！请求 1 的 Query 只能去点乘请求 1 自己的 KV Cache，绝不能去点乘请求 2 的 KV Cache。因此，把 $B$ 条请求打包在一起，你需要从 HBM 读取的 KV Cache 字节数也同步放大了 $B$ 倍（分子分母同乘 $B$ 直接抵消），<strong>Batching 对提升独立上下文 Attention 的算术强度毫无帮助</strong>！（<em>唯一例外是后文将讲到的：多个请求共享相同的 System Prompt 前缀</em>）。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">算子模块</th>
+<th align="left">通用算术强度公式</th>
+<th align="left">Prefill 阶段 ($T &#x3D; S$)</th>
+<th align="left">Generation 阶段 ($T &#x3D; 1$)</th>
+<th align="left">核心工程瓶颈定性结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>MLP 层</strong></td>
+<td align="left">$\approx B \cdot T$ (当 $BT \ll D$)</td>
+<td align="left"><strong>$B \cdot S$</strong> (极易 Compute-bound)</td>
+<td align="left"><strong>$B$</strong> (需靠高并发大 Batch 摊薄权重读取)</td>
+<td align="left">受限于<strong>模型参数权重大小</strong>，靠大并发 Batch $B$ 可转入计算受限</td>
+</tr>
+<tr>
+<td align="left"><strong>Attention 层</strong></td>
+<td align="left">$\frac{S \cdot T}{S + T}$</td>
+<td align="left"><strong>$\frac{S}{2}$</strong> (长序列下 Compute-bound)</td>
+<td align="left"><strong>$\frac{S}{S + 1} &lt; 1$</strong> (<strong>与 $B$ 无关！</strong>)</td>
+<td align="left">受限于 <strong>KV Cache 大小</strong>，在 $T&#x3D;1$ 下永远是死忠的 <strong>Memory-bound</strong>！</td>
+</tr>
+</tbody></table>
+<h3 id="2-5-吞吐量与延迟定量建模：Llama-2-13B-在-H100-上的-SymPy-实算（throughput-and-latency）"><a href="#2-5-吞吐量与延迟定量建模：Llama-2-13B-在-H100-上的-SymPy-实算（throughput-and-latency）" class="headerlink" title="2.5 吞吐量与延迟定量建模：Llama 2 13B 在 H100 上的 SymPy 实算（throughput_and_latency）"></a>2.5 吞吐量与延迟定量建模：Llama 2 13B 在 H100 上的 SymPy 实算（<code>throughput_and_latency</code>）</h3><p>既然确立了 Generation 阶段是彻头彻尾的 <strong>Memory-bound（访存受限）</strong>，在理想计算-访存重叠假设下，<strong>生成 1 个 Token 的耗时（Latency）就严格等于把全部模型参数和全部 $B$ 条序列的 KV Cache 从 HBM 读一遍所需的时间</strong>！</p>
+<p>让我们跟随 <code>lecture_10.py</code>（Lines 263–369），用代码精确算出 <strong>Llama 2 13B</strong> 在单张 <strong>NVIDIA H100（80GB HBM，带宽 $3.35\text{ TB&#x2F;s}$）</strong> 上的显存、延迟与吞吐率方程：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@dataclass(<span class="params">frozen=<span class="literal">True</span></span>)</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">TransformerPerformanceStats</span>:</span><br><span class="line">    num_params: <span class="built_in">int</span>     <span class="comment"># 模型总参数量 (个)</span></span><br><span class="line">    memory: <span class="built_in">int</span>         <span class="comment"># 推理总显存占用 = 参数显存 + KV Cache 显存 (Bytes)</span></span><br><span class="line">    latency: <span class="built_in">float</span>      <span class="comment"># 单步生成延迟 (seconds / token)</span></span><br><span class="line">    throughput: <span class="built_in">float</span>   <span class="comment"># 系统总吞吐率 (tokens / second)</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">compute_transformer_performance_stats</span>(<span class="params">config</span>) -&gt; TransformerPerformanceStats:</span><br><span class="line">    <span class="comment"># 1. 模型总参数量: 词嵌入与输出头 (2VD) + L层 SwiGLU MLP (3DFL) + L层 GQA QKV与O投影 ((2DNH + 2DKH)L)</span></span><br><span class="line">    num_params = <span class="number">2</span> * V * D + D * F * <span class="number">3</span> * L + (<span class="number">2</span> * D * N * H + <span class="number">2</span> * D * K * H) * L</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 模型参数占用的字节数 (bf16 占 2 Bytes/param)</span></span><br><span class="line">    parameter_size = <span class="number">2</span> * num_params</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3. 单条序列的 KV Cache 字节数 (长 S, K 个 KV 头, 头维 H, L 层, Key+Value 2份, bf16 2 Bytes)</span></span><br><span class="line">    kv_cache_size_per_seq = S * (K * H) * L * <span class="number">2</span> * <span class="number">2</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 4. 推理总显存占用 (也是每生成一个新 Token 必须从 HBM 完整读取一次的总字节数!)</span></span><br><span class="line">    memory = B * kv_cache_size_per_seq + parameter_size</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 5. 单步延迟 Latency (seconds/token): 受限于 HBM 显存带宽 IO</span></span><br><span class="line">    latency = memory / memory_bandwidth</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 6. 系统总吞吐率 Throughput (tokens/second): 耗时 latency 并行生成了 B 个 Token</span></span><br><span class="line">    throughput = B / latency</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">llama2_13b_config</span>(<span class="params">args=&#123;&#125;</span>):</span><br><span class="line">    <span class="keyword">return</span> &#123;</span><br><span class="line">        S: <span class="number">1024</span>, D: <span class="number">5120</span>, F: <span class="number">13824</span>, N: <span class="number">40</span>, K: <span class="number">40</span>, H: <span class="number">128</span>, L: <span class="number">40</span>, V: <span class="number">32000</span>,</span><br><span class="line">        memory_bandwidth: <span class="number">3.35e12</span>, **args</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="代入-Llama-2-13B-配置后的符号方程解析"><a href="#代入-Llama-2-13B-配置后的符号方程解析" class="headerlink" title="代入 Llama 2 13B 配置后的符号方程解析"></a>代入 Llama 2 13B 配置后的符号方程解析</h4><p>将 <code>llama2_13b_config()</code> 代入上述函数，我们得到关于并发批大小 $B$ 的精确闭式解：</p>
+<ol>
+<li><strong>总参数量</strong>：$\text{num\_params} &#x3D; \mathbf{13,015,449,600}$ ($\approx 13.02\text{B}$)，参数显存 $\text{parameter\_size} &#x3D; \mathbf{26.03\text{ GB}}$。</li>
+<li><strong>单条序列 KV Cache 大小（$S &#x3D; 1024$）</strong>：<br>$$\text{kv\_cache\_per\_seq} &#x3D; 1024 \times (40 \times 128) \times 40 \times 2 \times 2 &#x3D; \mathbf{838,860,800\text{ Bytes}} \approx \mathbf{0.839\text{ GB &#x2F; seq}}$$</li>
+<li><strong>总显存占用与单步读取量</strong>：$\text{Memory}(B) &#x3D; \mathbf{0.839 B + 26.03\text{ (GB)}}$。</li>
+<li><strong>单步生成延迟（随 $B$ 线性恶化！）</strong>：<br>$$\text{Latency}(B) &#x3D; \frac{0.839\text{ GB} \cdot B + 26.03\text{ GB}}{3350\text{ GB&#x2F;s}} &#x3D; \mathbf{0.2504 B + 7.7704\text{ (ms&#x2F;token)}}$$</li>
+<li><strong>系统总吞吐率（随 $B$ 呈饱和双曲线增长！）</strong>：<br>$$\text{Throughput}(B) &#x3D; \frac{B}{\text{Latency}(B)} &#x3D; \mathbf{\frac{B}{0.0002504 B + 0.0077704}\text{ (tokens&#x2F;sec)}}$$<ul>
+<li><strong>注意吞吐率的渐近天花板</strong>：即使 GPU 显存无限大（令 $B \to \infty$），吞吐率也绝不可能趋于无穷大，而是被 KV Cache 的读取带宽死死封顶在 $\lim_{B\to\infty} \text{Throughput}(B) &#x3D; \frac{1}{0.0002504} \approx \mathbf{3,993.5\text{ tokens&#x2F;sec}}$！</li>
+</ul>
+</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th align="left">实验配置 (Llama 2 13B @ 单卡 H100 80GB, $S&#x3D;1024$)</th>
+<th align="left">并发批大小 $B$</th>
+<th align="left">总显存占用 (<code>memory</code>)</th>
+<th align="left">单 Token 延迟 (<code>latency</code>)</th>
+<th align="left">系统总吞吐率 (<code>throughput</code>)</th>
+<th align="left">系统状态与工程权衡解读</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. 单用户交互 (<code>b1</code>, MHA $K&#x3D;40$)</strong></td>
+<td align="left">$B &#x3D; 1$</td>
+<td align="left"><strong><code>26.87 GB</code></strong></td>
+<td align="left"><strong><code>8.02 ms/tok</code></strong></td>
+<td align="left"><strong><code>124.7 tok/s</code></strong></td>
+<td align="left"><strong>延迟极佳</strong>（每秒单流 125 词），但 97% 带宽花在反复读 26GB 权重上，吞吐极低</td>
+</tr>
+<tr>
+<td align="left"><strong>2. 中等批处理 (<code>b64</code>, MHA $K&#x3D;40$)</strong></td>
+<td align="left">$B &#x3D; 64$</td>
+<td align="left"><strong><code>79.72 GB</code></strong></td>
+<td align="left"><strong><code>23.80 ms/tok</code></strong></td>
+<td align="left"><strong><code>2,689.5 tok/s</code></strong></td>
+<td align="left">吞吐暴涨 <strong>$21.6\times$</strong>，但延迟慢了 $3\times$，且 <code>79.72 GB</code> 已逼近 80GB 显存悬崖！</td>
+</tr>
+<tr>
+<td align="left"><strong>3. 大批处理 (<code>b256</code>, MHA $K&#x3D;40$)</strong></td>
+<td align="left">$B &#x3D; 256$</td>
+<td align="left"><strong><code>240.78 GB</code></strong> ❌</td>
+<td align="left"><code>71.87 ms/tok</code></td>
+<td align="left"><code>3,561.8 tok/s</code></td>
+<td align="left"><strong>直接爆显存（OOM &gt; 80GB）</strong>！且因为逼近双曲线渐近线，吞吐边际收益已显著衰减</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>Percy 的“等公交车”比喻与并行策略选择</strong>：<ul>
+<li><strong>Batch Size $B$ 是延迟与吞吐的拉锯战支点</strong>：小 Batch 就像打出租车（不用等别人，个人延迟极低，但道路总运力吞吐极差）；大 Batch 就像坐大巴车（要把所有人的 KV Cache 都搬一遍，每个人等待延迟变长，但把读取 26GB 模型权重的固定成本分摊给了 64 个人，系统总吞吐率大幅跃升）。</li>
+<li><strong>针对 TTFT vs. Generation 的动态策略</strong>：因为 <code>TTFT</code> 取决于 Prefill（本身已接近 Compute-bound），Prefill 阶段应采用<strong>较小的 Batch Size</strong> 以保证极速首字响应；而在 Generation 阶段则应采用<strong>尽可能大的 Batch Size</strong> 以拉高总吞吐率！</li>
+<li><strong>多卡推理并行</strong>：如果单卡放得下模型，最简单的扩展是启动 $M$ 个独立的模型副本（Replica Parallelism：延迟不变，总吞吐直接乘以 $M$）；如果单卡放不下模型或想降低单步延迟，则需使用张量并行（TP）同时切分模型权重与 KV Cache。</li>
+</ul>
+</li>
+</ul>
+<h2 id="3-Part-II：有损捷径（Lossy-Shortcuts）——-压缩-KV-Cache、量化与模型剪枝蒸馏"><a href="#3-Part-II：有损捷径（Lossy-Shortcuts）——-压缩-KV-Cache、量化与模型剪枝蒸馏" class="headerlink" title="3. Part II：有损捷径（Lossy Shortcuts）—— 压缩 KV Cache、量化与模型剪枝蒸馏"></a>3. Part II：有损捷径（Lossy Shortcuts）—— 压缩 KV Cache、量化与模型剪枝蒸馏</h2><p>既然推理受制于显存容量与显存带宽（$\text{Memory} &#x3D; B \cdot \text{KV\_Cache} + \text{Params}$），最直接的提速思路就是<strong>在不显著牺牲模型准确率的前提下，把 KV Cache 或模型权重砍小</strong>！这类会轻微改变模型数学输出的方法被称为**“有损捷径（Lossy Shortcuts）”**。</p>
+<h3 id="3-1-削减-KV-Cache-体积的四大架构利器（reduce-kv-cache-size）"><a href="#3-1-削减-KV-Cache-体积的四大架构利器（reduce-kv-cache-size）" class="headerlink" title="3.1 削减 KV Cache 体积的四大架构利器（reduce_kv_cache_size）"></a>3.1 削减 KV Cache 体积的四大架构利器（<code>reduce_kv_cache_size</code>）</h3><h4 id="1-分组查询注意力（GQA-Grouped-Query-Attention，Ainslie-et-al-2023）"><a href="#1-分组查询注意力（GQA-Grouped-Query-Attention，Ainslie-et-al-2023）" class="headerlink" title="1. 分组查询注意力（GQA, Grouped-Query Attention，Ainslie et al., 2023）"></a>1. 分组查询注意力（GQA, Grouped-Query Attention，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.13245">Ainslie et al., 2023</a>）</h4><p>我们在 Lecture 3 已介绍过 GQA 的原理：保留 $N$ 个 Query 头不变，但将 Key 和 Value 头数从 $N$ 缩减为 $K$（每 $G &#x3D; N &#x2F; K$ 个 Query 头共享一组 KV 头），从而<strong>直接将 KV Cache 体积缩减为原来的 $\frac{K}{N}$</strong>！<br>让我们在 <code>lecture_10.py</code>（Lines 390–402）中验证将 Llama 2 13B 的 MHA（$K&#x3D;40$）改为 <strong>$1:5$ 的 GQA（$K&#x3D;8$）</strong> 后发生的奇迹：</p>
+<table>
+<thead>
+<tr>
+<th align="left">模型配置 ($S&#x3D;1024$, 单卡 H100 80GB)</th>
+<th align="left">KV 头数 $K$</th>
+<th align="left">批大小 $B$</th>
+<th align="left">总显存占用 (<code>memory</code>)</th>
+<th align="left">单 Token 延迟 (<code>latency</code>)</th>
+<th align="left">系统总吞吐率 (<code>throughput</code>)</th>
+<th align="left">核心改善效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>原始 MHA @ $B&#x3D;64$ (<code>k40_b64</code>)</strong></td>
+<td align="left">$K &#x3D; 40$</td>
+<td align="left">$64$</td>
+<td align="left"><code>79.72 GB</code> (濒临 OOM)</td>
+<td align="left"><code>23.80 ms/tok</code></td>
+<td align="left"><code>2,689.5 tok/s</code></td>
+<td align="left">KV Cache 占了 <code>53.69 GB</code>，成为绝对瓶颈</td>
+</tr>
+<tr>
+<td align="left"><strong>GQA (1:5) @ $B&#x3D;64$ (<code>k8_b64</code>)</strong></td>
+<td align="left"><strong>$K &#x3D; 8$</strong></td>
+<td align="left">$64$</td>
+<td align="left"><strong><code>33.41 GB</code></strong> ✅</td>
+<td align="left"><strong><code>9.97 ms/tok</code></strong></td>
+<td align="left"><strong><code>6,416.7 tok/s</code></strong></td>
+<td align="left"><strong>延迟降低 $2.4\times$，吞吐提升 $2.4\times$</strong>，显存省下一大半！</td>
+</tr>
+<tr>
+<td align="left"><strong>GQA (1:5) @ $B&#x3D;256$ (<code>k8_b256</code>)</strong></td>
+<td align="left"><strong>$K &#x3D; 8$</strong></td>
+<td align="left"><strong>$256$</strong></td>
+<td align="left"><strong><code>65.63 GB</code></strong> ✅</td>
+<td align="left"><strong><code>19.59 ms/tok</code></strong></td>
+<td align="left"><strong><code>13,068.2 tok/s</code></strong></td>
+<td align="left"><strong>原本 OOM 的 256 大 Batch 轻松装入单卡，吞吐率相比原始 MHA 飙升近 $5\times$！</strong></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>关键洞察</strong>：虽然调节 Batch Size $B$ 会让延迟和吞吐反向拉锯，但<strong>通过 GQA&#x2F;MLA 缩小 KV Cache 体积，是在固定 $B$ 下让延迟（Latency）和吞吐（Throughput）同时双赢的纯正帕累托改进</strong>！更重要的是，省下的显存允许我们将最大 Batch Size 从 64 推高到 256，从而解锁了 <code>13,068 tok/s</code> 的超高吞吐。</p>
+</blockquote>
+<h4 id="2-多头潜在注意力（MLA-Multi-Head-Latent-Attention，DeepSeek-V2-2024）"><a href="#2-多头潜在注意力（MLA-Multi-Head-Latent-Attention，DeepSeek-V2-2024）" class="headerlink" title="2. 多头潜在注意力（MLA, Multi-Head Latent Attention，DeepSeek-V2, 2024）"></a>2. 多头潜在注意力（MLA, Multi-Head Latent Attention，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.04434">DeepSeek-V2, 2024</a>）</h4><p><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.04434">DeepSeek-V2</a> 的消融实验（论文 Table 8 &amp; Table 9）指出，在大规模下 GQA 相比完整 MHA 依然存在不可忽视的精度折损。为此，MLA 不再简单粗暴地砍掉 KV 头数，而是对所有头的 KV 联合进行<strong>低秩潜在向量压缩</strong>：</p>
+<ul>
+<li>标准 MHA 需要缓存 $N \cdot H &#x3D; 128 \times 128 &#x3D; 16,384$ 维的键值向量；</li>
+<li><strong>MLA</strong> 将隐状态投影并缓存为仅 <strong>$C &#x3D; 512$ 维</strong>的压缩潜在向量 $c_t^{KV} &#x3D; W_c h_t$，外加为了兼容旋转位置编码而单独解耦出的 <strong>$64$ 维共享 RoPE 键向量</strong>，合计每 Token 每层只需缓存 <strong>$512 + 64 &#x3D; 576$ 维</strong>（相比 MHA 削减了 <strong>93.3% 的 KV Cache</strong>，最大生成吞吐率提升 <strong>5.76 倍</strong>，且实测下游准确率甚至略优于完整 MHA！）。</li>
+</ul>
+<blockquote>
+<p><strong>课堂问答：MLA 把 KV 投影压缩到更低维度，这和直接把整个模型的隐藏层维度 $D$（<code>d_model</code>）调小相比有什么本质区别？</strong></p>
+<ul>
+<li><strong>Percy 的解答</strong>：如果无差别地把整个模型的维度 $D$ 砍小，模型的 MLP 容量、残差流带宽和表达能力会全面退化；而架构设计的精髓正是**“精准寻找模型中信息冗余度最高、最能被挤压（Squeeze）而又不伤及主干表达力的部位”**——KV Cache 恰好具有极高的低秩冗余性，定向压缩它能以最小的精度代价换取最大的显存带宽红利。</li>
+</ul>
+</blockquote>
+<h4 id="3-跨层注意力（CLA-Cross-Layer-Attention，Brandon-et-al-2024）"><a href="#3-跨层注意力（CLA-Cross-Layer-Attention，Brandon-et-al-2024）" class="headerlink" title="3. 跨层注意力（CLA, Cross-Layer Attention，Brandon et al., 2024）"></a>3. 跨层注意力（CLA, Cross-Layer Attention，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.12981">Brandon et al., 2024</a>）</h4><p>如果说 GQA 是在**同一层的不同注意力头之间（Across Heads）**共享 KV，那么 MIT 团队提出的 <strong>Cross-Layer Attention (CLA)</strong> 则是顺理成章的下一步——<strong>在相邻的不同 Transformer 层之间（Across Layers）共享 KV Cache</strong>！</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[标准 MHA / GQA: 每层独立计算并存储自己的 K_l, V_l]</span><br><span class="line">  Layer l:   h_l   ──► 计算 Q_l, K_l, V_l (存入第 l 层 KV Cache)</span><br><span class="line">  Layer l+1: h_&#123;l+1&#125; ──► 计算 Q_&#123;l+1&#125;, K_&#123;l+1&#125;, V_&#123;l+1&#125; (存入第 l+1 层 KV Cache)</span><br><span class="line"></span><br><span class="line">[Cross-Layer Attention (CLA-2): 每两层共享同一份 KV Cache!]</span><br><span class="line">  Layer l:   h_l   ──► 计算 Q_l, K_l, V_l (存入共享 KV Cache) ──┐</span><br><span class="line">  Layer l+1: h_&#123;l+1&#125; ──► 仅计算 Q_&#123;l+1&#125; ! 直接复用上一层的 K_l, V_l ◄─┘ (KV Cache 体积再砍一半!)</span><br></pre></td></tr></table></figure>
+<p>将 GQA 与 CLA 结合（每隔 2 层计算一次 KV），可以在几乎不损失精度的情况下将 KV Cache 体积在 GQA&#x2F;MQA 的基础上<strong>再缩减 2 倍</strong>。</p>
+<h4 id="4-局部滑动窗口注意力（SWA）、线性注意力与-DeepSeek-V4-百万上下文稀疏压缩注意力"><a href="#4-局部滑动窗口注意力（SWA）、线性注意力与-DeepSeek-V4-百万上下文稀疏压缩注意力" class="headerlink" title="4. 局部滑动窗口注意力（SWA）、线性注意力与 DeepSeek-V4 百万上下文稀疏压缩注意力"></a>4. 局部滑动窗口注意力（SWA）、线性注意力与 DeepSeek-V4 百万上下文稀疏压缩注意力</h4><p>前面的 GQA、MLA、CLA 都是沿着“头或特征维度（$K \cdot H$）”做常数倍压缩，但它们的 KV Cache 依然随着序列长度 $S$ 呈 $O(S)$ 线性增长。要想让 KV Cache 彻底摆脱对超长序列 $S$ 的依赖，有以下三条路径：</p>
+<ol>
+<li><strong>局部滑动窗口注意力（Local &#x2F; Sliding Window Attention, SWA，源自 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1904.10509">Sparse Transformer, Child et al., 2019</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2004.05150">Longformer, Beltagy et al., 2020</a>、<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.06825">Mistral 7B, Jiang et al., 2023</a>）</strong>：<br>每个 Token 只关注最近窗口大小 $W$（如 $W&#x3D;4096$）内的历史 Token。这样单层 KV Cache 被死死封顶在 $W$ 个 Token（<strong>与总序列长度 $S$ 无关，$O(1)$ 显存</strong>），且通过 $L$ 层堆叠，顶层感受野依然能按 $L \times W$ 线性扩展。为了防止长距离精确检索能力下降，现代模型普遍采用 <strong>Local SWA 与 Global Full Attention 交替堆叠（Hybrid Interleaving）</strong> 的策略。</li>
+<li><strong>状态空间与线性注意力（Mamba-2 &#x2F; Gated DeltaNet，见 Lecture 4）</strong>：用固定大小的状态矩阵 $S_t \in \mathbb{R}^{d_k \times d_v}$ 递归压缩全部历史。</li>
+<li><strong>2026 前沿案例：DeepSeek-V4 的三级稀疏与重度压缩注意力（支持 1M 百万上下文）</strong>：<br>Percy 展示了 2026 年 4 月最新发布的 <strong>DeepSeek-V4</strong> 架构图，它集成了三种互补的注意力压缩机制：<ul>
+<li><strong>CSA（Compressed Sparse Attention）</strong>：将每连续 $m$ 个历史 Token 的 KV 聚合成 1 个压缩代表块；</li>
+<li><strong>DSA（DeepSeek Sparse Attention）</strong>：用极轻量的 Lightning Indexer 快速打分，动态挑出得分最高的 Top-$k$ 个关键历史 Token 保留全分辨率；</li>
+<li><strong>HCA（Heavily Compressed Attention）</strong>：对更久远的历史上下文施加更高倍率的极限压缩。</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p><strong>课堂深度探讨：在混合架构（Hybrid Architectures，保留少量全局 Full Attention 层）中，其余非全局层究竟该选“滑动窗口（SWA）”还是“线性注意力（Mamba &#x2F; Gated DeltaNet）”？</strong></p>
+<ul>
+<li><strong>Percy 的剖析</strong>：这两类机制捕捉的是不同维度的历史信息——<strong>滑动窗口（SWA）</strong> 对窗口内的近期 Token 保留了 <strong>100% 的全分辨率精确细节</strong>，但对窗口外的远古信息是“一刀切”的彻底遗忘（除非靠层间传递）；而 <strong>Mamba &#x2F; Gated DeltaNet</strong> 则把从头到尾的所有远古信息做了一份<strong>有损的全局摘要（Broad Summary）</strong>。如果单做大海捞针（Needle-in-a-Haystack），纯线性状态压缩必然丢失细节，这也是为什么必须穿插少量全局 Full Attention 的原因。而在已经有全局 Full Attention 兜底的前提下，Gated DeltaNet &#x2F; Mamba 在理论上比死板的滑动窗口更具表达潜力（因为它不仅能选择性聚焦近期状态以模拟滑动窗口，还能跨长距离保留宏观状态记忆）。</li>
+</ul>
+</blockquote>
+<h3 id="3-2-数值精度量化（Quantization：从-bf16-到-int8-int4-int3）"><a href="#3-2-数值精度量化（Quantization：从-bf16-到-int8-int4-int3）" class="headerlink" title="3.2 数值精度量化（Quantization：从 bf16 到 int8&#x2F;int4&#x2F;int3）"></a>3.2 数值精度量化（Quantization：从 <code>bf16</code> 到 <code>int8</code>&#x2F;<code>int4</code>&#x2F;<code>int3</code>）</h3><p>既然每步 Decode 都要把庞大的模型参数从 HBM 读一遍，如果能把每个参数从 16 bits（<code>bf16</code>，2 Bytes）压缩到 8 bits（1 Byte）甚至 4 bits（0.5 Byte），显存占用和读取耗时就能立竿见影地砍半或降为 1&#x2F;4！</p>
+<h4 id="1-线性非对称量化的基本数学机制（quantization）"><a href="#1-线性非对称量化的基本数学机制（quantization）" class="headerlink" title="1. 线性非对称量化的基本数学机制（quantization）"></a>1. 线性非对称量化的基本数学机制（<code>quantization</code>）</h4><p>如 <code>lecture_10.py</code>（Lines 454–460）所示，将连续浮点数 $x$ 映射到低比特整数网格 $x_{\text{quant}}$ 只涉及一个缩放因子 <code>scale</code> 和一个零点偏移 <code>zero_point</code>：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 源自 lecture_10.py: 线性量化 (Quantize) 与反量化 (Dequantize) 极简示例</span></span><br><span class="line">x = <span class="number">5.2342</span></span><br><span class="line">scale = <span class="number">0.1</span></span><br><span class="line">zero_point = <span class="number">4</span></span><br><span class="line"></span><br><span class="line">x_quant = <span class="built_in">round</span>(x / scale) + zero_point       <span class="comment"># 量化存储: round(52.342) + 4 = 56 (存为低比特整数 INT8/INT4)</span></span><br><span class="line">x_approx = (x_quant - zero_point) * scale     <span class="comment"># 计算时反量化还原: (56 - 4) * 0.1 = 5.2 (产生 0.0342 的量化舍入误差)</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>推理常用精度谱系</strong>：<ul>
+<li><strong><code>fp32</code>（4 Bytes）</strong>：仅训练时的优化器状态与主权重需要，推理彻底不用；</li>
+<li><strong><code>bf16</code>（2 Bytes）</strong>：现代大模型推理的<strong>无损默认基线</strong>；</li>
+<li><strong><code>fp8</code>（1 Byte，如 H100 上的 <code>E4M3</code> 范围 <code>[-240, 240]</code> 或 <code>[-448, 448]</code>）</strong>：既可用于激进的 FP8 训练（如 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.18313">FP8-LM, Peng et al., 2023</a> 及 DeepSeek-V3），也可用于高速推理；</li>
+<li><strong><code>int8</code>（1 Byte，<code>[-128, 127]</code>）与 <code>int4</code>（0.5 Byte，<code>[-8, 7]</code>）</strong>：专为推力量身定制的均匀整数格点（如 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2303.17951">van Baalen et al., 2023</a> 所示，整数乘加单元在专用边缘硬件上的面积与功耗效率比浮点单元高 50%～180%，但位数越低精度挑战越大）。</li>
+</ul>
+</li>
+</ul>
+<h4 id="2-量化感知训练（QAT）vs-训练后量化（PTQ：GPTQ-与-AWQ）"><a href="#2-量化感知训练（QAT）vs-训练后量化（PTQ：GPTQ-与-AWQ）" class="headerlink" title="2. 量化感知训练（QAT）vs. 训练后量化（PTQ：GPTQ 与 AWQ）"></a>2. 量化感知训练（QAT）vs. 训练后量化（PTQ：GPTQ 与 AWQ）</h4><p>如何防止量化到 4-bit 或 3-bit 时模型变傻？</p>
+<ol>
+<li><strong>量化感知训练（Quantization-Aware Training, QAT）</strong>：在预训练或微调的前向传播中插入伪量化算子（Quantize-and-Dequantize）模拟舍入噪声，让权重在训练中自适应量化网格。效果好，但需要昂贵的大规模训练。</li>
+<li><strong>训练后量化（Post-Training Quantization, PTQ —— 工业界绝对主流）</strong>：拿训练好的 <code>bf16</code> 模型，仅用几百条校准样本（Calibration Data）在一张 GPU 上跑几小时即可完成量化：<ul>
+<li><strong>代表作一：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2210.17323">GPTQ (Frantar et al., 2022)</a></strong><br>基于二阶海森矩阵信息（Optimal Brain Quantization 思想）逐层、逐列对权重进行量化：当把某一列权重进行四舍五入量化产生误差 $\delta w$ 后，<strong>利用逆海森矩阵 $H^{-1}$ 动态调整后面尚未被量化的其余权重列</strong>，以精确抵消该列带来的层输出误差 $|WX - \hat{W}X|_2^2$！GPTQ 仅需约 4 个 GPU 小时就能把 175B 模型无损压进 3～4 bits，首次实现单张 80GB GPU 跑 175B 模型。</li>
+<li><strong>代表作二：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2306.00978">AWQ (Activation-aware Weight Quantization, Lin et al., 2023)</a></strong><br>MIT 韩松团队发现了一个极其重要的现象：<strong>大语言模型在推理时，激活值（Activations $X$）的少数特定通道（约 $0.1% \sim 1%$）数值幅度永远异常巨大（Outlier Salient Channels）</strong>！<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[普通无差别 RTN 量化 (误差极大)]                 [AWQ 激活感知量化 (保护 1% 显著激活通道对应的权重行!)]</span><br><span class="line">  激活 X (含极大离群通道!)   权重 W (全压成 INT3)     激活 X                  权重 W</span><br><span class="line">  [  0.2,  0.1, -0.3 ]     [ INT3, INT3, INT3 ]   [  0.2,  0.1, -0.3 ]    [ INT3, INT3, INT3 ]</span><br><span class="line">  [ 85.0, 92.0, 78.0 ]  @  [ INT3, INT3, INT3 ]   [ 85.0, 92.0, 78.0 ] @  [ FP16, FP16, FP16 ] &lt;-- 关键行保持高精度(或放大s倍)!</span><br><span class="line">  [ -0.1,  0.4,  0.2 ]     [ INT3, INT3, INT3 ]   [ -0.1,  0.4,  0.2 ]    [ INT3, INT3, INT3 ]</span><br></pre></td></tr></table></figure>
+既然输出 $Y &#x3D; W X$，那些与<strong>巨型激活通道</strong>相乘的权重行&#x2F;列一旦发生微小的量化舍入误差，乘上 <code>85.0</code> 后就会被放大近百倍！因此，AWQ <strong>根据校准集上的激活值大小（而非权重本身的大小）挑出最重要的 $0.1% \sim 1%$ 权重通道予以重点保护</strong>（在概念上相当于保留为 FP16，而在工程实现中为了避免硬件低效的混合精度读取，AWQ 对该权重通道乘以放大系数 $s &gt; 1$ 后再统一量化为 INT3&#x2F;INT4，同时把对应输入激活除以 $s$，从而在数学等价的前提下大幅压低了显著通道的相对量化误差！）。实测从 <code>fp16</code> 压至 <code>int3</code> 可节省 <strong>4 倍显存</strong>并带来 <strong>3.2 倍推理加速</strong>。</li>
+</ul>
+</li>
+</ol>
+<h3 id="3-3-模型结构化剪枝与蒸馏修复（Model-Pruning-Distillation，model-pruning）"><a href="#3-3-模型结构化剪枝与蒸馏修复（Model-Pruning-Distillation，model-pruning）" class="headerlink" title="3.3 模型结构化剪枝与蒸馏修复（Model Pruning &amp; Distillation，model_pruning）"></a>3.3 模型结构化剪枝与蒸馏修复（Model Pruning &amp; Distillation，<code>model_pruning</code>）</h3><p>除了压比特数，能不能直接拿起手术刀，把一个已经训练好的大模型（如 15B）里的某些层（Layers）、某些注意力头（Heads）或某些隐藏维度（Hidden Channels）直接硬生生切掉（Rip out），变成一个 8B 或 4B 的小模型？</p>
+<ul>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.14679">NVIDIA Minitron 配方 (Muralidharan et al., 2024, <em>Compact Language Models via Pruning and Knowledge Distillation</em>)</a></strong>：<ol>
+<li><strong>第一步：在小校准集（1024 个样本）上评估各组件重要性（Importance Scoring）</strong>：<br>将样本喂入原始 15B 大模型，统计每一层、每个注意力头、每个 MLP 神经元通道的激活值幅度（Activation Magnitude）或遮挡影响。</li>
+<li><strong>第二步：结构化裁剪（Structured Pruning）</strong>：<br>直接删掉最不重要的层、头或通道，拼装出一个目标尺寸（如 8B 或 4B）的“科学怪人（Frankenstein）”紧凑架构，并用保留下来的原始权重直接初始化它。</li>
+<li><strong>第三步：用知识蒸馏修复伤口（Healing via Knowledge Distillation）</strong>：<br>刚被切掉一截的剪枝模型准确率肯定会受损，但此时只需用原始 15B 模型作为教师（Teacher），在极少量数据（<strong>不到原始预训练数据量的 3%</strong>！）上对剪枝后的 8B&#x2F;4B 模型做蒸馏续训，模型就能迅速“愈合”！</li>
+</ol>
+<ul>
+<li><strong>惊人收益</strong>：用这套“剪枝 + 蒸馏”流水线从 Nemotron-4 15B 衍生出 8B 和 4B 模型，所需的训练 Token 数比从零训练 8B&#x2F;4B 少 <strong>40 倍</strong>（全家族总训练算力节省 $1.8\times$），且蒸馏出的 Minitron 8B 在 MMLU 上比从零训练高出 <strong>16%</strong>！</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p><strong>课堂敏锐提问：如果某个神经元在所有校准样本上的激活值恒定为 <code>100</code>（幅度极大，但方差为 <code>0</code>），按激活幅度剪枝岂不是会把它当成最重要神经元保留下来？但它其实没有任何信息量！</strong></p>
+<ul>
+<li><strong>Percy 的解答</strong>：非常棒的洞察！如果一个神经元恒为常数 <code>100</code>，你确实不能直接把它一刀切掉置零（否则下游层相当于突然少了一个巨大的固定偏置，输出会彻底坏掉）；但因为它没有方差（不随输入变化），你在剪枝时完全可以<strong>结合方差指标（Variance）把它识别出来，直接将它的常数值 <code>100 * w</code> 吸收合并到下一层的静态偏置项（Bias）中，然后安全地把这个神经元通道裁掉</strong>！</li>
+</ul>
+</blockquote>
+<h4 id="小结：构建高速推理模型的两条核心工程配方"><a href="#小结：构建高速推理模型的两条核心工程配方" class="headerlink" title="小结：构建高速推理模型的两条核心工程配方"></a>小结：构建高速推理模型的两条核心工程配方</h4><ol>
+<li><strong>从零训练配方（From-Scratch Recipe）</strong>：定义更快、更省 KV Cache 的模型架构（如 GQA &#x2F; MLA &#x2F; Hybrid SWA） $\rightarrow$ 从头预训练该高效模型。</li>
+<li><strong>改造蒸馏配方（Distillation &#x2F; Surgery Recipe）</strong>：定义更快的目标架构 $\rightarrow$ 从现有的昂贵大模型中提取&#x2F;裁剪权重进行初始化 $\rightarrow$ 用少量算力做知识蒸馏（Distillation）修复精度。</li>
+</ol>
+<h2 id="4-Part-III：无损捷径（Lossless-Shortcut）——-投机采样（Speculative-Sampling-Decoding）"><a href="#4-Part-III：无损捷径（Lossless-Shortcut）——-投机采样（Speculative-Sampling-Decoding）" class="headerlink" title="4. Part III：无损捷径（Lossless Shortcut）—— 投机采样（Speculative Sampling &#x2F; Decoding）"></a>4. Part III：无损捷径（Lossless Shortcut）—— 投机采样（Speculative Sampling &#x2F; Decoding）</h2><p>前面讲的 GQA、量化、剪枝全都是“有损的（Lossy）”——它们改变了模型结构或权重精度，你总得提心吊胆地去跑评测看准确率有没有掉。<br><strong>有没有一种方法，能够在数学上 100% 保证最终采样生成的每一个 Token 的概率分布，与原始全精度巨型目标模型 $q(x)$ 逐比特完全一致（Lossless &#x2F; Exact Sampling），却能让解码速度凭空快上 2～3 倍？</strong><br>这就是借鉴了 CPU 硬件“分支预测与投机执行（Speculative Execution）”思想的杰作——<strong>投机采样（Speculative Sampling &#x2F; Speculative Decoding，由 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2211.17192">Leviathan et al., 2022 (Google)</a> 与 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2302.01318">Chen et al., 2023 (DeepMind)</a> 独立提出）</strong>！</p>
+<h3 id="4-1-第一性原理：利用“验证（Checking）远快于生成（Generation）”的不对称性"><a href="#4-1-第一性原理：利用“验证（Checking）远快于生成（Generation）”的不对称性" class="headerlink" title="4.1 第一性原理：利用“验证（Checking）远快于生成（Generation）”的不对称性"></a>4.1 第一性原理：利用“验证（Checking）远快于生成（Generation）”的不对称性</h3><p>回顾第 2 节的核心结论：</p>
+<ul>
+<li>让 70B 的目标大模型 $q$ <strong>逐个串行生成</strong> $K&#x3D;4$ 个 Token（调用 4 次 $T&#x3D;1$ 的 Generation），每次都要把 140GB 权重从 HBM 读一遍，耗时为 $4 \times t_{\text{big}}$；</li>
+<li>但是，如果已经有人事先帮我们把这 $K&#x3D;4$ 个候选 Token 写好了，我们把这 4 个 Token <strong>一次性打包并行喂给 70B 大模型 $q$ 做验证（相当于 $T&#x3D;4$ 的 Mini-Prefill 模式）</strong>！因为读取一次 140GB 权重就能同时算完 4 个位置的 Logits，且 GPU 算力在 $T&#x3D;1$ 时本就严重闲置，所以<strong>大模型并行验证 4 个 Token 的耗时，几乎与它单独生成 1 个 Token 的耗时 $1 \times t_{\text{big}}$ 完全一样</strong>！</li>
+</ul>
+<blockquote>
+<p><strong>一句话核心秘诀</strong>：<strong>对于大模型而言，批改作业（Parallel Checking）比自己从头写作业（Sequential Generation）快得多！</strong></p>
+</blockquote>
+<h3 id="4-2-投机采样完整算法与修正拒绝采样（Modified-Rejection-Sampling）"><a href="#4-2-投机采样完整算法与修正拒绝采样（Modified-Rejection-Sampling）" class="headerlink" title="4.2 投机采样完整算法与修正拒绝采样（Modified Rejection Sampling）"></a>4.2 投机采样完整算法与修正拒绝采样（Modified Rejection Sampling）</h3><p>我们引入两个模型：</p>
+<ul>
+<li><strong>草稿模型（Draft Model $p$）</strong>：体积极小、极快的轻量模型（例如用 8B 甚至 1B 模型作为 70B 的 Draft Model）；</li>
+<li><strong>目标模型（Target Model $q$）</strong>：我们真正想要采样的高精度巨型模型（如 70B）。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[Speculative Sampling 单轮迭代流水线 (以猜 K = 4 个 Token 为例)]</span><br><span class="line">  当前前缀: &quot;The capital of France&quot;</span><br><span class="line">     │</span><br><span class="line">     ▼ 1. [Draft 阶段]: 小模型 p 快速串行自回归猜出 K=4 个草稿词 (耗时极短!)</span><br><span class="line">          猜出序列: x_1=&quot;is&quot;, x_2=&quot;Paris&quot;, x_3=&quot;and&quot;, x_4=&quot;sunny&quot;  (记录草稿概率 p(x_1)...p(x_4))</span><br><span class="line">     │</span><br><span class="line">     ▼ 2. [Verify 阶段]: 大模型 q 一次性并行前向传播 (T=5, 耗时 ≈ 单步耗时!), 算出所有位置的真实分布 q(x)</span><br><span class="line">          位置 1: q(&quot;is&quot;) ≥ p(&quot;is&quot;)     ──► 接受率 min(1, q/p) = 100% ──► ✅ 接受 &quot;is&quot;!</span><br><span class="line">          位置 2: q(&quot;Paris&quot;) ≥ p(&quot;Paris&quot;)──► 接受率 min(1, q/p) = 100% ──► ✅ 接受 &quot;Paris&quot;!</span><br><span class="line">          位置 3: q(&quot;and&quot;) = 0.7 p(&quot;and&quot;)──► 随机数 u &lt; 0.7            ──► ✅ 接受 &quot;and&quot;!</span><br><span class="line">          位置 4: q(&quot;sunny&quot;) ≪ p(&quot;sunny&quot;)──► 随机数 u &gt; q/p (被拒绝!)   ──► ❌ 拒绝 &quot;sunny&quot;!</span><br><span class="line">                                                                             立即从残差分布 norm(max(0, q - p))</span><br><span class="line">                                                                             重采样出修正词 &quot;which&quot; ✅!</span><br><span class="line">     │</span><br><span class="line">     ▼ 本轮战果: 大模型只跑了 1 次前向传播, 却一口气合法生成了 4 个精确服从 q 分布的 Token (&quot;is Paris and which&quot;)!</span><br></pre></td></tr></table></figure>
+
+<h4 id="标准投机采样单轮算法步骤（给定前缀，前瞻步长-K-）："><a href="#标准投机采样单轮算法步骤（给定前缀，前瞻步长-K-）：" class="headerlink" title="标准投机采样单轮算法步骤（给定前缀，前瞻步长 $K$）："></a>标准投机采样单轮算法步骤（给定前缀，前瞻步长 $K$）：</h4><ol>
+<li><strong>草稿串行生成</strong>：用小模型 $p$ 从当前前缀出发，自回归采样生成 $K$ 个草稿 Token $\tilde{x}_1, \dots, \tilde{x}_K$，并保存它们在各步的草稿分布 $p_1(\cdot), \dots, p_K(\cdot)$。</li>
+<li><strong>目标并行评估</strong>：将前缀拼接上这 $K$ 个草稿 Token，<strong>一次性并行送入目标大模型 $q$</strong>，在单次前向传播中同时算出 $K+1$ 个位置的真实目标分布 $q_1(\cdot), \dots, q_K(\cdot), q_{K+1}(\cdot)$。</li>
+<li><strong>顺序拒绝采样与残差重采样（Modified Rejection Sampling）</strong>：<br>对 $i &#x3D; 1, 2, \dots, K$ 依次检验：<ul>
+<li>生成均匀随机数 $u \sim \text{Uniform}(0, 1)$；</li>
+<li><strong>接受准则</strong>：若 $u \le \min\left(1, ; \frac{q_i(\tilde{x}_i)}{p_i(\tilde{x}_i)}\right)$，则<strong>接受（Accept）</strong> 草稿词 $\tilde{x}_i$，继续检验下一个位置 $i+1$；</li>
+<li><strong>拒绝与残差修正准则</strong>：一旦在某个位置 $i$ 发生 $u &gt; \frac{q_i(\tilde{x}_i)}{p_i(\tilde{x}_i)}$，则<strong>拒绝（Reject）</strong> $\tilde{x}_i$ 及之后的所有草稿词，并<strong>立即从如下截断残差分布 $q’_i(x)$ 中采样一个修正 Token $x_i$ 作为本轮的最后一个输出</strong>，随后跳出循环开启下一轮：<br>$$\mathbf{q’<em>i(x) &#x3D; \text{normalize}\Big(\max\big(0, ; q_i(x) - p_i(x)\big)\Big) &#x3D; \frac{\max(0, ; q_i(x) - p_i(x))}{\sum</em>{v \in V} \max(0, ; q_i(v) - p_i(v))}}$$</li>
+<li><strong>满贯奖励（All Accepted Bonus）</strong>：如果全部 $K$ 个草稿词都被顺利接受了，我们手头还白白握着大模型算出的第 $K+1$ 个位置的分布 $q_{K+1}(\cdot)$！直接从 $q_{K+1}(\cdot)$ 中再采样出第 $K+1$ 个词！</li>
+<li><strong>吞吐保底与上限</strong>：无论草稿模型猜得多烂，每跑 1 次大模型前向传播，<strong>至少保证精确产出 $1$ 个 Token，最多可产出 $K+1$ 个 Token</strong>！</li>
+</ul>
+</li>
+</ol>
+<h3 id="4-3-为什么它是-100-严格无损的？——-课堂二元词表-A-B-数学证明"><a href="#4-3-为什么它是-100-严格无损的？——-课堂二元词表-A-B-数学证明" class="headerlink" title="4.3 为什么它是 100% 严格无损的？—— 课堂二元词表 ${A, B}$ 数学证明"></a>4.3 为什么它是 100% 严格无损的？—— 课堂二元词表 ${A, B}$ 数学证明</h3><p>为什么经过上面这套“以 $\min(1, q&#x2F;p)$ 接受 + 拒绝后从 $\max(q-p, 0)$ 重采样”的操作后，最终输出的 Token 分布不多不少、刚好严格等于目标大模型分布 $q(x)$？<br>Percy 在 <code>lecture_10.py</code>（Lines 524–533）中给出了一个极其清晰、人人都能一眼看懂的<strong>二元词表证明（Proof by Two-Element Vocabulary ${A, B}$）</strong>：</p>
+<ul>
+<li><strong>设定</strong>：假设词表中只有两个词 $V &#x3D; {A, B}$。<ul>
+<li>目标大模型概率为 $\big[q(A), ; q(B)\big]$（满足 $q(A) + q(B) &#x3D; 1$）；</li>
+<li>草稿小模型概率为 $\big[p(A), ; p(B)\big]$（满足 $p(A) + p(B) &#x3D; 1$）。</li>
+</ul>
+</li>
+<li><strong>不妨设草稿模型高估了 $A$（Oversamples $A$）</strong>：即 <strong>$p(A) &gt; q(A)$</strong>。<br>由于概率和为 1，这必然意味着草稿模型<strong>低估了 $B$（Undersamples $B$）</strong>：即 <strong>$p(B) &lt; q(B)$</strong>。</li>
+<li><strong>计算残差重采样分布 $q’(x) \propto \max(q(x) - p(x), 0)$</strong>：<ul>
+<li>对于被高估的 $A$：因为 $q(A) - p(A) &lt; 0$，所以 $\max(q(A) - p(A), 0) &#x3D; \mathbf{0}$；</li>
+<li>对于被低估的 $B$：因为 $q(B) - p(B) &gt; 0$，归一化后的残差分布把 <strong>100% 的概率质量全部赋予了 $B$</strong>：即 <strong>$q’(A) &#x3D; 0, ; q’(B) &#x3D; 1$</strong>！（也就是说：一旦拒绝发生，重采样必定 100% 抽中 $B$！）。</li>
+</ul>
+</li>
+<li><strong>现在计算投机采样最终输出 $A$ 和 $B$ 的总概率</strong>：<ol>
+<li><strong>最终输出 $A$ 的概率 $\mathbb{P}[\text{Output} &#x3D; A]$</strong>：<br>由于拒绝后的残差分布 $q’(A) &#x3D; 0$ 不可能产生 $A$，要想输出 $A$，唯一途径是<strong>草稿先抽中 $A$（概率 $p(A)$），且在接受检验中通过（因 $q(A) &lt; p(A)$，接受概率为 $\frac{q(A)}{p(A)}$）</strong>：<br>$$\mathbb{P}[\text{Output} &#x3D; A] &#x3D; p(A) \cdot \frac{q(A)}{p(A)} + p(B) \cdot 1 \cdot 0 &#x3D; \mathbf{q(A)}$$</li>
+<li><strong>最终输出 $B$ 的概率 $\mathbb{P}[\text{Output} &#x3D; B]$</strong>：<br>有两种互斥途径可以得到 $B$：<ul>
+<li><strong>途径一</strong>：草稿直接抽中了 $B$（概率 $p(B)$），此时因为 $q(B) &gt; p(B)$，接受概率为 $\min(1, q(B)&#x2F;p(B)) &#x3D; \mathbf{1}$（100% 直接通过）；</li>
+<li><strong>途径二</strong>：草稿抽中了 $A$（概率 $p(A)$），但在检验中以 $1 - \frac{q(A)}{p(A)}$ 的概率<strong>被拒绝</strong>，随后从残差分布 $q’$ 中以 $q’(B) &#x3D; \mathbf{1}$ 的概率重采样得到 $B$！<br>将两条途径相加：<br>$$\mathbb{P}[\text{Output} &#x3D; B] &#x3D; p(B) \cdot 1 + p(A) \cdot \left(1 - \frac{q(A)}{p(A)}\right) \cdot 1 &#x3D; p(B) + p(A) - q(A) &#x3D; 1 - q(A) &#x3D; \mathbf{q(B)}$$<br><strong>证毕（Q.E.D.）！</strong> 草稿模型高估 $A$ 的那部分溢出概率 $p(A) - q(A)$，被拒绝机制精准拦截并 100% 转移补贴给了被低估的 $B$，使得最终边际分布与目标模型 $q$ <strong>分毫不差</strong>！（对于任意词表大小 $|V|$ 的一般证明完全同理）。</li>
+</ul>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="4-4-工程权衡与前沿草稿模型演进（Medusa-EAGLE）"><a href="#4-4-工程权衡与前沿草稿模型演进（Medusa-EAGLE）" class="headerlink" title="4.4 工程权衡与前沿草稿模型演进（Medusa &amp; EAGLE）"></a>4.4 工程权衡与前沿草稿模型演进（Medusa &amp; EAGLE）</h3><ul>
+<li><strong>前瞻步长 $K$ 的甜点（Sweet Spot）</strong>：如果 $K$ 太小（如 $K&#x3D;1$），无法充分利用大模型的并行验证吞吐；如果 $K$ 太大（如 $K&#x3D;20$），不仅小模型串行跑 20 步耗时变长，而且越往后的 Token 累积被拒概率呈指数上升，算力白白浪费。实测最佳甜点通常在 <strong>$K &#x3D; 3 \sim 5$</strong> 之间，端到端可实现 <strong>2x～3x 的无损推理加速</strong>。</li>
+<li><strong>如何打造更好的草稿模型（Draft Model）？</strong><ol>
+<li><strong>同家族小模型 + 知识蒸馏</strong>：例如用 8B 辅助 70B，或用 1B 辅助 8B；用第 3 节的所有有损压缩技巧（剪枝、量化、GQA）造出的极速模型如果精度不够直接上线，拿来做投机采样的 Draft Model 简直是天作之合！</li>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2401.10774">Medusa (Cai et al., 2024)</a>（多解码头并行猜测）</strong>：为了免去维护独立小模型的麻烦，直接在原始大模型顶层挂载多个轻量级附加预测头（Decoding Heads），同时预测未来第 $+1, +2, +3, +4$ 个位置，并利用树状注意力（Tree Attention）一次性并行验证多条候选分支（与 DeepSeek-V3 的 <strong>MTP 多 Token 预测头</strong> 异曲同工）。</li>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2401.15077">EAGLE (Li et al., 2024)</a>（特征层自回归外推）</strong>：不仅输入历史 Token，还直接将目标大模型**倒数第二层的高阶隐藏状态特征（Second-to-top-layer Features）**喂给一个极轻量的单层草稿网络，在特征空间做自回归外推，大幅提升了草稿接受率，在 Llama-2 70B 上实现了 <strong>2.7x～3.5x</strong> 的无损提速。</li>
+</ol>
+</li>
+</ul>
+<h2 id="5-Part-IV：动态在线工作负载系统优化-——-Continuous-Batching-与-PagedAttention"><a href="#5-Part-IV：动态在线工作负载系统优化-——-Continuous-Batching-与-PagedAttention" class="headerlink" title="5. Part IV：动态在线工作负载系统优化 —— Continuous Batching 与 PagedAttention"></a>5. Part IV：动态在线工作负载系统优化 —— Continuous Batching 与 PagedAttention</h2><p>在实验室跑 Benchmark 时，所有序列长度整齐划一、同时开始同时结束；但在真实的生产服务器（Live Traffic）中，情况完全是混乱的动态流：</p>
+<ol>
+<li><strong>请求到达与结束时间各不相同</strong>（不能让先算完的短回复干等长篇大论的请求）；</li>
+<li><strong>序列长度参差不齐（Ragged Arrays）</strong>（如果按最长序列做 Padding 会浪费海量显存与计算）；</li>
+<li><strong>请求之间存在大量共享前缀</strong>（如所有用户共用同一段长达数千字的 System Prompt，或者在代码生成&#x2F;RL 中对同一个 Prompt 采样多条回复）。</li>
+</ol>
+<p>现代推理服务器（如 Orca、vLLM、SGLang）通过将<strong>操作系统（Operating Systems）的经典调度与内存管理思想</strong>引入 GPU，完美化解了这三大难题。</p>
+<h3 id="5-1-Continuous-Batching-与-Selective-Batching（Orca-Yu-et-al-OSDI-2022）"><a href="#5-1-Continuous-Batching-与-Selective-Batching（Orca-Yu-et-al-OSDI-2022）" class="headerlink" title="5.1 Continuous Batching 与 Selective Batching（Orca, Yu et al., OSDI 2022）"></a>5.1 Continuous Batching 与 Selective Batching（<a target="_blank" rel="noopener" href="https://www.usenix.org/conference/osdi22/presentation/yu">Orca, Yu et al., OSDI 2022</a>）</h3><h4 id="1-连续批处理-迭代级调度（Continuous-Batching-Iteration-Level-Scheduling）"><a href="#1-连续批处理-迭代级调度（Continuous-Batching-Iteration-Level-Scheduling）" class="headerlink" title="1. 连续批处理 &#x2F; 迭代级调度（Continuous Batching &#x2F; Iteration-Level Scheduling）"></a>1. 连续批处理 &#x2F; 迭代级调度（Continuous Batching &#x2F; Iteration-Level Scheduling）</h4><ul>
+<li><strong>传统静态批处理（Request-Level &#x2F; Static Batching）的痛点</strong>：凑齐 $B&#x3D;4$ 个请求一起开始生成。如果请求 S2 只生成了 2 个词就遇到了 <code>&lt;EOS&gt;</code> 结束符，而请求 S1 要生成 500 个词，静态批处理被迫让 S2 在槽位里继续空转填充 498 步，直到整批全部结束才能放入新请求 S5！</li>
+<li><strong>Orca 的迭代级调度（Iteration-Level Scheduling）</strong>：将调度粒度从“整个请求生命周期”细化到**“每一个单步 Decode 迭代（Every Single Token Step）”**！</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[传统静态批处理 (Static Batching): 早完成的请求被迫空转等待整批最慢者!]</span><br><span class="line">  时间步 t ──►  t1    t2    t3    t4    t5    t6</span><br><span class="line">  Slot 1 (S1): [P1]  [P1]  [G1]  [G2]  [G3]  [G4] (长回复，一直占着整批)</span><br><span class="line">  Slot 2 (S2): [P1]  [G1]  [EOS] [空转] [空转] [空转] ❌ (早已完成，但无法释放槽位也无法返回!)</span><br><span class="line"></span><br><span class="line">[连续批处理 (Continuous Batching): 单步粒度动态换血，槽位 100% 满载!]</span><br><span class="line">  时间步 t ──►  t1    t2    t3    t4    t5    t6</span><br><span class="line">  Slot 1 (S1): [P1]  [P1]  [G1]  [G2]  [G3]  [G4]</span><br><span class="line">  Slot 2 (S2): [P1]  [G1]  [EOS] ──► (t3结束立即剔除返回!) ──► [新请求 S3 Prefill] [S3 G1] [S3 G2] ✅</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-选择性批处理（Selective-Batching）：彻底消灭不等长序列的-Padding-浪费"><a href="#2-选择性批处理（Selective-Batching）：彻底消灭不等长序列的-Padding-浪费" class="headerlink" title="2. 选择性批处理（Selective Batching）：彻底消灭不等长序列的 Padding 浪费"></a>2. 选择性批处理（Selective Batching）：彻底消灭不等长序列的 Padding 浪费</h4><p>当同一个 Batch 里的请求处于不同阶段或拥有不同长度时（例如请求 1 有 <code>3</code> 个 Token、请求 2 有 <code>9</code> 个 Token、请求 3 有 <code>5</code> 个 Token），它们构成了一个参差不齐的锯齿数组（Ragged Tensor）：<code>[3, H]</code>, <code>[9, H]</code>, <code>[5, H]</code>。没有统一的序列维度 $S$，怎么一起做矩阵乘法？</p>
+<ul>
+<li><strong>Orca 的 Selective Batching 解法</strong>：根据算子是否跨 Token 交互，采取不同策略：<ol>
+<li><strong>对于非 Attention 层（MLP 线性层、QKV&#x2F;O 线性投影、RMSNorm、激活函数 —— 占绝大部分 FLOPs！）</strong>：<br>这些算子对每一个 Token 都是<strong>完全逐位置独立的（Position-wise Independent）</strong>！它们根本不关心某个 Token 属于第几条序列。因此，直接把所有请求的 Token <strong>首尾拼接展平（Concatenate &#x2F; Flatten）成一个形状为 <code>[3 + 9 + 5, H] = [17, H]</code> 的紧凑二维大矩阵</strong>，一次性喂给 GPU 算完，完了再按 <code>[3, 9, 5]</code> 切分开！<strong>零 Padding，100% 有效算力利用率！</strong></li>
+<li><strong>仅对于 Attention 核心计算层</strong>：<br>因为每条序列有各自不同的历史长度 $S_i$，仅在算 Attention 时按各自真实长度分别调用算子（或使用支持变长索引 <code>cu_seqlens</code> 的 FlashAttention Varlen 内核）。</li>
+</ol>
+</li>
+</ul>
+<h3 id="5-2-PagedAttention-与-vLLM（Kwon-et-al-SOSP-2023）：虚拟内存分页管理-KV-Cache"><a href="#5-2-PagedAttention-与-vLLM（Kwon-et-al-SOSP-2023）：虚拟内存分页管理-KV-Cache" class="headerlink" title="5.2 PagedAttention 与 vLLM（Kwon et al., SOSP 2023）：虚拟内存分页管理 KV Cache"></a>5.2 PagedAttention 与 vLLM（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2309.06180">Kwon et al., SOSP 2023</a>）：虚拟内存分页管理 KV Cache</h3><p>即便有了 Continuous Batching，早期的推理系统依然面临一个致命瓶颈：<strong>HBM 显存被严重的碎片化（Fragmentation）吃光了，导致实际能开出的并发 Batch Size 极小</strong>！</p>
+<h4 id="1-传统连续显存预分配的两大碎片灾难"><a href="#1-传统连续显存预分配的两大碎片灾难" class="headerlink" title="1. 传统连续显存预分配的两大碎片灾难"></a>1. 传统连续显存预分配的两大碎片灾难</h4><p>在传统系统中，为了把一条序列的 KV Cache 存成一个连续的张量，每当一个新请求进来，系统不知道它最终会生成多少个词，只能按照最大长度上限（如 <code>max_tokens = 2048</code>）在 HBM 中<strong>预先划出一整块连续的显存空间</strong>：</p>
+<ul>
+<li><strong>内部碎片（Internal Fragmentation）</strong>：预留了 2048 个槽位，结果用户只生成了 100 个词就结束了，剩下的 1948 个预留槽位在生成期间完全闲置，任何其他请求都不能用；</li>
+<li><strong>外部碎片（External Fragmentation）</strong>：随着不同长度的请求不断分配与释放，显存中留下了大量七零八落的小空隙（就像老式机械硬盘碎片一样），虽然剩余总显存还很多，但已经找不出一块足够大的连续空间来容纳新请求了！实测表明，传统系统中<strong>真正存有有效 KV 数据的显存往往不到分配总量的 20%～40%</strong>！</li>
+</ul>
+<h4 id="2-PagedAttention-的核心机制：非连续物理块（Blocks）与块表映射"><a href="#2-PagedAttention-的核心机制：非连续物理块（Blocks）与块表映射" class="headerlink" title="2. PagedAttention 的核心机制：非连续物理块（Blocks）与块表映射"></a>2. PagedAttention 的核心机制：非连续物理块（Blocks）与块表映射</h4><p>UC Berkeley 团队直接搬来了**操作系统虚拟内存分页（Virtual Memory Paging）**的经典设计：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[逻辑视图 (Logical KV Blocks): 每个请求看到的都是连续增长的 Token 槽位 (设每块 Block Size = 4 Tokens)]</span><br><span class="line">  Request A 逻辑块:  [ Logical Block 0: &quot;Four score and seven&quot; ] ──► [ Logical Block 1: &quot;years ago our ____&quot; ]</span><br><span class="line">                                │                                                   │</span><br><span class="line">                                ▼ (通过进程级 Block Table 指针映射)                  ▼</span><br><span class="line">[物理显存 (Physical KV Blocks in HBM): 无需连续! 按需一页一页动态分配, 彻底消除内外部碎片!]</span><br><span class="line">  HBM 物理块池:  | Phys Block 0 (Req B) | Phys Block 1 (Req A, LB0) | Phys Block 2 (空闲) | Phys Block 3 (Req A, LB1) |</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><strong>固定大小分块（Fixed-Size KV Blocks）</strong>：将整块 HBM 中的 KV Cache 空间划分为固定大小的小物理块（Physical Blocks，例如每个块固定存放 $B_{\text{block}} &#x3D; 16$ 个 Token 的 Key 和 Value）。</li>
+<li><strong>按需动态分配（On-Demand Allocation）</strong>：请求进来时绝不预留最大长度！用满一个 16-Token 的块后，才从空闲物理块池中随便拎出下一个空闲物理块（物理地址无需相邻），并在该请求的**块表（Block Table &#x2F; Page Table）**中记录 <code>逻辑块号 -&gt; 物理块号</code> 的映射。</li>
+<li><strong>近乎零碎片浪费</strong>：外部碎片被彻底清零（因为所有块大小完全相同）；内部碎片最多只发生在每条序列的<strong>最后一个未填满的物理块</strong>上（最多浪费 $15$ 个 Token 槽位），使 KV Cache 显存利用率直接飙升至 <strong>96% 以上</strong>，从而可将并发 Batch Size 扩大 <strong>2～4 倍</strong>！</li>
+</ol>
+<h4 id="3-块级前缀共享与写时复制（Prefix-Sharing-Copy-on-Write-CoW）"><a href="#3-块级前缀共享与写时复制（Prefix-Sharing-Copy-on-Write-CoW）" class="headerlink" title="3. 块级前缀共享与写时复制（Prefix Sharing &amp; Copy-on-Write, CoW）"></a>3. 块级前缀共享与写时复制（Prefix Sharing &amp; Copy-on-Write, CoW）</h4><p>PagedAttention 还顺带解锁了极其强大的<strong>跨请求 KV Cache 共享机制</strong>（就像 Linux 中 <code>fork()</code> 子进程共享物理内存页一样）：</p>
+<ul>
+<li><strong>场景一：共享系统提示词（Shared System Prompt）</strong>：成千上万个用户请求都带有相同的长篇 System Prompt 或文档背景。只需将这段公共前缀的物理 KV 块计算并存储 <strong>1 份</strong>，所有用户的 Block Table 前几项直接指向这几个相同的物理块即可，完全省去了重复 Prefill 计算与重复显存占用！（SGLang 进一步将其发展为全自动的 <strong>RadixAttention</strong> 基数树缓存）。</li>
+<li><strong>场景二：单 Prompt 多路并行采样（Parallel Sampling &#x2F; Beam Search &#x2F; RL GRPO Rollouts）</strong>：<br>当对同一个提示词 <code>&quot;Four score and seven years ago our&quot;</code> 同时生成 2 条候选回复时：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[PagedAttention 写时复制 (Copy-on-Write, CoW) 机制]</span><br><span class="line">  Sample A1 逻辑块: [LB0] ──► [LB1] ──┐ (初始时 LB1 均指向同一个物理块 PB1, 引用计数 ref_count = 2)</span><br><span class="line">  Sample A2 逻辑块: [LB0] ──► [LB1] ──┘</span><br><span class="line">                                │</span><br><span class="line">                                ▼ 当 A1 生成 &quot;fathers&quot; 而 A2 生成 &quot;mothers&quot; 需要写入 PB1 的同一槽位时:</span><br><span class="line">  触发 Copy-on-Write! 系统检测到 PB1 的 ref_count == 2 &gt; 1:</span><br><span class="line">  • Sample A1 原地修改 PB1 (ref_count 减为 1): [&quot;years&quot;, &quot;ago&quot;, &quot;our&quot;, &quot;fathers&quot;]</span><br><span class="line">  • Sample A2 自动分配新物理块 PB2 并拷贝前 3 词后写入新词: [&quot;years&quot;, &quot;ago&quot;, &quot;our&quot;, &quot;mothers&quot;]!</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>配套底层系统优化（vLLM &#x2F; SGLang 标配）</strong>：<ol>
+<li><strong>融合分块读取与注意力计算 Kernel（Fused Block-Read + Attention Kernel）</strong>：修改 FlashAttention &#x2F; FlashDecoding 内核，使其直接根据 Block Table 指针从非连续物理地址收集（Gather）KV 块进 SRAM，避免碎片化读取的 Kernel Launch 开销；</li>
+<li><strong>CUDA Graphs（图捕获）</strong>：在 Decode 阶段（每次计算耗时仅几毫秒），将一整串小算子的 CPU Launch 过程录制成一张静态的 CUDA Graph，由 GPU 硬件一次性回放执行，彻底消除 CPU 发射延迟瓶颈。</li>
+</ol>
+</li>
+</ul>
+<h2 id="6-全景总结：大模型推理优化技术栈速查表（Cheat-Sheet）"><a href="#6-全景总结：大模型推理优化技术栈速查表（Cheat-Sheet）" class="headerlink" title="6. 全景总结：大模型推理优化技术栈速查表（Cheat Sheet）"></a>6. 全景总结：大模型推理优化技术栈速查表（Cheat Sheet）</h2><table>
+<thead>
+<tr>
+<th align="left">优化维度</th>
+<th align="left">代表技术方案</th>
+<th align="left">是否无损？</th>
+<th align="left">核心作用机理</th>
+<th align="left">解决的核心痛点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. 注意力架构压缩</strong></td>
+<td align="left"><strong>GQA</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.13245">Ainslie et al., 2023</a>)<br><strong>MLA</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.04434">DeepSeek-V2, 2024</a>)<br><strong>CLA</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2405.12981">Brandon et al., 2024</a>)</td>
+<td align="left">有损（需训练适配，但精度几乎无损）</td>
+<td align="left">在头间共享 KV (GQA)、低秩压缩至 512 维潜在向量 (MLA)、在层间共享 KV (CLA)</td>
+<td align="left">将 KV Cache 缩小 $5\times \sim 15\times$，同时降低单步延迟并大幅提高最大并发 Batch Size</td>
+</tr>
+<tr>
+<td align="left"><strong>2. 长序列复杂度解耦</strong></td>
+<td align="left"><strong>SWA 滑动窗口</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.06825">Mistral 7B</a>)<br><strong>线性注意力 (Mamba-2 &#x2F; DeltaNet)</strong><br><strong>稀疏注意力 (DSA &#x2F; CSA)</strong></td>
+<td align="left">有损（常采用与全局注意力混合交替）</td>
+<td align="left">截断远距离 KV、用固定状态矩阵递归压缩、或用轻量 Indexer 筛选 Top-$k$</td>
+<td align="left">让非全局层的 KV Cache 与序列长度 $S$ 彻底解耦（$O(1)$ 显存），支撑百万上下文</td>
+</tr>
+<tr>
+<td align="left"><strong>3. 权重与缓存量化</strong></td>
+<td align="left"><strong>GPTQ</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2210.17323">Frantar et al., 2022</a>)<br><strong>AWQ</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2306.00978">Lin et al., 2023</a>)<br><strong>FP8 &#x2F; INT8 &#x2F; INT4</strong></td>
+<td align="left">有损（PTQ 训练后校准）</td>
+<td align="left">用二阶海森补偿误差 (GPTQ)，或根据激活幅度保护 1% 显著通道权重 (AWQ)</td>
+<td align="left">将模型权重与 KV Cache 字节数砍半至 $1&#x2F;4$，直接加速 Memory-bound 读取</td>
+</tr>
+<tr>
+<td align="left"><strong>4. 结构化剪枝蒸馏</strong></td>
+<td align="left"><strong>NVIDIA Minitron</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.14679">Muralidharan et al., 2024</a>)</td>
+<td align="left">有损（需 $&lt;3%$ 数据蒸馏愈合）</td>
+<td align="left">裁剪低激活幅度的层&#x2F;头&#x2F;隐藏维，再用原模型做知识蒸馏修复</td>
+<td align="left">以从头训练 $1&#x2F;40$ 的极低算力成本衍生出小巧高速的部署模型家族</td>
+</tr>
+<tr>
+<td align="left"><strong>5. 投机采样加速</strong></td>
+<td align="left"><strong>Speculative Decoding</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2211.17192">Leviathan et al., 2022</a>)<br><strong>Medusa &#x2F; EAGLE &#x2F; MTP</strong></td>
+<td align="left"><strong>100% 严格无损（Exact Distribution）</strong></td>
+<td align="left">小模型串行快猜 $K$ 词 + 大模型并行一次前向验证 + 修正拒绝与残差重采样</td>
+<td align="left">利用“并行验证远快于串行生成”的不对称性，在小 Batch 下实现 <strong>2x～3.5x</strong> 无损提速</td>
+</tr>
+<tr>
+<td align="left"><strong>6. 动态批处理与分页</strong></td>
+<td align="left"><strong>Continuous &amp; Selective Batching</strong> (<a target="_blank" rel="noopener" href="https://www.usenix.org/conference/osdi22/presentation/yu">Orca</a>)<br><strong>PagedAttention</strong> (<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2309.06180">vLLM</a>)</td>
+<td align="left"><strong>100% 系统级无损</strong></td>
+<td align="left">迭代级动态进出队列；MLP 展平拼接消去 Padding；虚拟内存非连续分块与写时复制 (CoW)</td>
+<td align="left">消除显存内外部碎片（利用率达 $&gt;96%$），支持前缀共享与高吞吐在线并发</td>
+</tr>
+</tbody></table>
+<h2 id="7-课后思考与自测练习（Review-Self-Check）"><a href="#7-课后思考与自测练习（Review-Self-Check）" class="headerlink" title="7. 课后思考与自测练习（Review &amp; Self-Check）"></a>7. 课后思考与自测练习（Review &amp; Self-Check）</h2><ol>
+<li><p><strong>Attention 与 MLP 算术强度及并发批大小极限推导</strong>：<br>在自回归生成阶段（Generation，$T &#x3D; 1$），假设上下文长度为 $S &#x3D; 4096$，模型隐藏维度 $D &#x3D; 4096$，MLP 升维维度 $F &#x3D; 4D &#x3D; 16384$，且采用标准多头注意力（MHA，$K \cdot H &#x3D; D$）。所有权重与激活均以 <code>bf16</code>（2 Bytes）存储，运行在单张 <strong>NVIDIA H100（稠密 BF16 算力 $989\text{ TFLOP&#x2F;s}$，HBM 带宽 $3.35\text{ TB&#x2F;s}$，硬件拐点强度 $I_{\text{acc}} \approx 295\text{ FLOPs&#x2F;Byte}$）</strong> 上。</p>
+<ul>
+<li>(a) 当并发批大小 $B &#x3D; 1$ 时，单步生成中 MLP 层和 Attention 核心层的算术强度分别是多少？它们各自处于 Compute-bound 还是 Memory-bound？</li>
+<li>(b) 如果我们将并发批大小提高到 $B &#x3D; 512$（且不共享前缀），MLP 层的渐近算术强度变为多少？此时 Attention 核心层的算术强度变为多少？为什么增大 $B$ 无法让 Attention 脱离 Memory-bound？</li>
+<li>(c) 如果将 MHA 改为 <strong>GQA（令 KV 头数缩减为 Query 头数的 $\frac{1}{8}$，即 $K \cdot H &#x3D; \frac{D}{8}$）</strong>，请重新推导 Generation 阶段（$T&#x3D;1, S \gg 1$）Attention 核心层的算术强度！它相比 MHA 提升了多少倍？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 当 $B &#x3D; 1, T &#x3D; 1$ 时：MLP 层的算术强度约为 $I_{\text{MLP}} \approx B \cdot T &#x3D; \mathbf{1\text{ FLOP&#x2F;Byte}} \ll 295$；Attention 层的算术强度为 $I_{\text{Attn}} &#x3D; \frac{S \cdot 1}{S + 1} &#x3D; \frac{4096}{4097} \approx \mathbf{0.9998\text{ FLOP&#x2F;Byte}} \ll 295$。<strong>两者均处于极端的 Memory-bound 状态</strong>。</li>
+<li>(b) 当 $B &#x3D; 512$ 时：MLP 层的渐近算术强度提升至 $I_{\text{MLP}} \approx B &#x3D; \mathbf{512\text{ FLOPs&#x2F;Byte}} &gt; 295$，<strong>成功跨过拐点进入 Compute-bound</strong>（因为 512 条序列共享同一份 MLP 权重）；然而 Attention 层的算术强度<strong>依然是 $\frac{S}{S+1} \approx \mathbf{1.0\text{ FLOP&#x2F;Byte}}$</strong>，因为每条序列都必须从 HBM 读取各自独立的 KV Cache，分子（计算量）与分母（访存量）同乘 $B$ 直接约掉，依然死卡在 Memory-bound！</li>
+<li>(c) 在 $1:8$ 的 GQA 下，每个 Query 头（共 $D$ 维）保持不变，但需要从 HBM 读取的历史 $K, V$ 缓存维度缩减为 $D_{\text{kv}} &#x3D; \frac{D}{8}$！因此当 $T &#x3D; 1, S \gg 1$ 时：<ul>
+<li>Attention 计算量仍为 $\text{FLOPs} &#x3D; 4 B S D$；</li>
+<li>HBM 读写量降为：读 $Q(2BD)$ + 读 $K,V\big(4 B S \cdot \frac{D}{8}\big)$ + 写 $Y(2BD) \approx \frac{1}{2} B S D\text{ Bytes}$；</li>
+<li>算术强度跃升为 $I_{\text{Attn}}^{\text{GQA}} &#x3D; \frac{4 B S D}{\frac{1}{2} B S D} &#x3D; \mathbf{8\text{ FLOPs&#x2F;Byte}}$（即直接等于每个 KV 组内的 Query 头数 <strong>$G &#x3D; \frac{N}{K} &#x3D; 8$</strong>，相比 MHA 整整提升了 <strong>8 倍</strong>！）。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>大模型推理显存、延迟与吞吐率综合精算</strong>：<br>考虑一个参数量为 $\text{num\_params} &#x3D; 30 \times 10^9$（30B）的稠密模型，层数 $L &#x3D; 60$，Query 头数 $N &#x3D; 64$，KV 头数 $K &#x3D; 8$（采用 $1:8$ 的 GQA），单头维度 $H &#x3D; 128$，上下文序列长度 $S &#x3D; 4096$，使用 <code>bf16</code>（2 Bytes）在单张 <strong>NVIDIA B200（<code>192 GB</code> HBM，显存带宽 $\text{BW} &#x3D; 8.0\text{ TB&#x2F;s} &#x3D; 8 \times 10^{12}\text{ Bytes&#x2F;s}$）</strong> 上进行自回归解码。</p>
+<ul>
+<li>(a) 请计算模型参数占用的静态显存（GB）以及单条序列（$S&#x3D;4096$）的 KV Cache 显存（GB）。单张 192GB 的 B200 最多能同时容纳多少条并发序列（$B_{\max}$）而不发生 OOM？</li>
+<li>(b) 当并发批大小设为 $B &#x3D; 100$ 时，理论最小单步延迟（<code>latency</code>，单位 ms&#x2F;token）和系统总吞吐率（<code>throughput</code>，单位 tokens&#x2F;s）分别是多少？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) <strong>参数显存</strong>：$2 \times 30 \times 10^9 &#x3D; 6 \times 10^{10}\text{ Bytes} &#x3D; \mathbf{60.0\text{ GB}}$。<br><strong>单条序列 KV Cache 显存</strong>：<br>$$\text{KV}<em>{\text{seq}} &#x3D; S \times (K \times H) \times L \times 2 \times 2 &#x3D; 4096 \times (8 \times 128) \times 60 \times 4 &#x3D; 1,006,632,960\text{ Bytes} \approx \mathbf{1.007\text{ GB &#x2F; seq}}$$<br><strong>最大并发序列数 $B_{\max}$</strong>：剩余可用于 KV Cache 的显存为 $192 - 60 &#x3D; 132\text{ GB}$，故 $B</em>{\max} &#x3D; \lfloor 132 &#x2F; 1.00663 \rfloor &#x3D; \mathbf{131\text{ 条序列}}$。</li>
+<li>(b) 当 $B &#x3D; 100$ 时：<ul>
+<li>总显存读取量 $\text{Memory}(100) &#x3D; 60.0\text{ GB} + 100 \times 1.00663\text{ GB} &#x3D; \mathbf{160.66\text{ GB}}$；</li>
+<li>单步生成延迟 $\text{Latency} &#x3D; \frac{160.66 \times 10^9\text{ Bytes}}{8.0 \times 10^{12}\text{ Bytes&#x2F;s}} &#x3D; 0.02008\text{ s} \approx \mathbf{20.08\text{ ms&#x2F;token}}$；</li>
+<li>系统总吞吐率 $\text{Throughput} &#x3D; \frac{100}{0.02008\text{ s}} \approx \mathbf{4,979.3\text{ tokens&#x2F;sec}}$。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>投机采样（Speculative Sampling）严格无损分布的手算数值验证</strong>：<br>假设词表包含三个词 $V &#x3D; {x_1, x_2, x_3}$。在某一步：</p>
+<ul>
+<li>目标大模型给出的真实概率分布为：$q &#x3D; [0.5, ; 0.4, ; 0.1]$；</li>
+<li>草稿小模型给出的预测概率分布为：$p &#x3D; [0.8, ; 0.1, ; 0.1]$。<br>请手算验证：</li>
+<li>(a) 三个词各自的接受概率 $\alpha(x_i) &#x3D; \min\big(1, \frac{q(x_i)}{p(x_i)}\big)$ 是多少？本步草稿被直接接受的总体概率 $\beta &#x3D; \sum_{i&#x3D;1}^3 p(x_i)\alpha(x_i)$ 是多少？</li>
+<li>(b) 一旦发生拒绝，归一化后的残差重采样分布 $q’(x_i) \propto \max(0, q(x_i) - p(x_i))$ 是什么？最终输出 $x_1, x_2, x_3$ 的总概率是否严格等于 $[0.5, 0.4, 0.1]$？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 接受概率分别为：<br>$$\alpha(x_1) &#x3D; \min\left(1, \frac{0.5}{0.8}\right) &#x3D; \mathbf{0.625}, \qquad \alpha(x_2) &#x3D; \min\left(1, \frac{0.4}{0.1}\right) &#x3D; \mathbf{1.0}, \qquad \alpha(x_3) &#x3D; \min\left(1, \frac{0.1}{0.1}\right) &#x3D; \mathbf{1.0}$$<br>总体直接接受率为 $\beta &#x3D; 0.8 \times 0.625 + 0.1 \times 1.0 + 0.1 \times 1.0 &#x3D; 0.5 + 0.1 + 0.1 &#x3D; \mathbf{0.70}$（即有 $30%$ 的概率发生拒绝并进入残差重采样）。</li>
+<li>(b) 未归一化残差 $\max(0, q - p) &#x3D; [\max(0, -0.3), ; \max(0, 0.3), ; \max(0, 0.0)] &#x3D; [0, ; 0.3, ; 0]$，归一化后残差分布为 <strong>$q’ &#x3D; [0, ; 1.0, ; 0]$</strong>（即拒绝后 100% 重采样出 $x_2$）。<br>最终各词总输出概率为：<ul>
+<li>$\mathbb{P}[x_1] &#x3D; p(x_1)\alpha(x_1) + (1 - \beta) q’(x_1) &#x3D; 0.8 \times 0.625 + 0.3 \times 0 &#x3D; \mathbf{0.50} &#x3D; q(x_1)$；</li>
+<li>$\mathbb{P}[x_2] &#x3D; p(x_2)\alpha(x_2) + (1 - \beta) q’(x_2) &#x3D; 0.1 \times 1.0 + 0.3 \times 1.0 &#x3D; \mathbf{0.40} &#x3D; q(x_2)$；</li>
+<li>$\mathbb{P}[x_3] &#x3D; p(x_3)\alpha(x_3) + (1 - \beta) q’(x_3) &#x3D; 0.1 \times 1.0 + 0.3 \times 0 &#x3D; \mathbf{0.10} &#x3D; q(x_3)$。<br>三者分毫不差地还原了目标模型分布 $q$！</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/10/26/cs336_lecture_10_notes/">https://kanosa0101.github.io/2026/10/26/cs336_lecture_10_notes/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/CS336/">CS336</a><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%8E%A8%E7%90%86/">大模型推理</a><a class="post-meta__tags" href="/tags/%E7%AE%97%E5%8A%9B%E5%AF%86%E5%BA%A6/">算力密度</a><a class="post-meta__tags" href="/tags/KV-Cache/">KV Cache</a><a class="post-meta__tags" href="/tags/%E6%A8%A1%E5%9E%8B%E9%87%8F%E5%8C%96/">模型量化</a><a class="post-meta__tags" href="/tags/%E6%8A%95%E6%9C%BA%E9%87%87%E6%A0%B7/">投机采样</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/10/26/cs336_lecture_11_notes/" title="Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 11 YouTube 视频 | 官方幻灯片 (lecture_11.pdf) | Assignment 3 指导手册与代码库  1. 引言：从经典 Chinchilla 到前沿开源大模型的实战扩展工程在两讲之前的 Lecture 9（Scaling Laws Part 1）中，Tatsu 带我们系统梳理了以 Hestness et al. (2017)、Kaplan et al. (2020) 和 Hoffmann et al. (2022, Chinchilla) 为代表的“经典扩展定律法典（Classical Scaling Laws Canon）”。然而，经典文献截止于 2022 年前后，主要回答了宏观算力分配问题（即给定...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_09_notes/" title="Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 9 YouTube 视频 | 官方幻灯片 (lecture_09.pdf) | Assignment 3 指导手册与代码库  1. 引言：为什么大模型工程需要扩展定律（Scaling Laws）？在经历了前四讲的**模型架构（Assignment 1）与第 5～8 讲的底层硬件与分布式系统（Assignment 2）**之后，从 Lecture 9 开始，课程正式进入第三大核心支柱——Scaling Laws（扩展定律，对应 Assignment 3）。由于排课原因，我们的节奏将是：本讲（Lecture 9）拆解 Scaling Laws 基础理论与经典范式 $\rightarrow$ 下一讲（Lecture 10）由 Percy...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/10/25/cs336_lecture_07_notes/" title="Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Percy Liang课程视频与代码讲义：Lecture 7 YouTube 视频 | Executable Lecture 源码 (lecture_07.py &#x2F; Trace)关联作业：Assignment 2 — Systems &amp; Parallelism（从零手写 Distributed Data Parallel (DDP)、通信与计算重叠、优化器状态分片 ZeRO-1）  课程编排说明（Spring 2026 vs. Spring 2025 课表顺序对调）：在 Spring 2026 学期中，课程组将两节并行课的顺序做了优化调整——Lecture 7（本讲，Percy Liang 主讲） 率先通过纯可执行代码 lecture_07.py 从底...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_09_notes/" title="Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 9 YouTube 视频 | 官方幻灯片 (lecture_09.pdf) | Assignment 3 指导手册与代码库  1. 引言：为什么大模型工程需要扩展定律（Scaling Laws）？在经历了前四讲的**模型架构（Assignment 1）与第 5～8 讲的底层硬件与分布式系统（Assignment 2）**之后，从 Lecture 9 开始，课程正式进入第三大核心支柱——Scaling Laws（扩展定律，对应 Assignment 3）。由于排课原因，我们的节奏将是：本讲（Lecture 9）拆解 Scaling Laws 基础理论与经典范式 $\rightarrow$ 下一讲（Lecture 10）由 Percy...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_08_notes/" title="Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Tatsunori Hashimoto (Tatsu)课程视频与讲义：Lecture 8 YouTube 视频 | 官方幻灯片 (lecture_08.pdf) | 配套参考：Google《How to Scale Your Model》关联作业：Assignment 2 — Systems &amp; Parallelism（实现 DDP 梯度分桶重叠、实现 ZeRO-1 优化器分片 &#x2F; FSDP、推导多维并行最佳拓扑配置） 1. 课程全景导读：当整个数据中心成为“基本计算单元”在 Lecture 7（分布式通信原语与 PyTorch 实战） 中，Percy Liang 带领我们从代码层面认识了 All-Reduce、All-Gather、...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_12_notes/" title="Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 12 YouTube 视频 | 交互式执行轨迹 (lecture_12.py) | 源码仓库 (spring2025-lectures/lecture_12.py) | Stanford CRFM HELM 评测平台  1. 引言：为什么大模型评测（Evaluation）不是简单的“跑分”？在前面的 11 讲中，我们已经完整搭建起了从零训练与部署一个大语言模型的全套工程技术栈：模型架构与优化器（Lectures 1–4）、GPU 算子与分布式并行系统（Lectures 5–8）、扩展定律与超参缩放（Lectures 9 &amp; 11）以及高效推理系统（Lecture 10）。现在，整个拼图只剩下最后两大核心板块：训练数据工程（Data，第 13–14 讲，对应 Assignme...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_11_notes/" title="Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 11 YouTube 视频 | 官方幻灯片 (lecture_11.pdf) | Assignment 3 指导手册与代码库  1. 引言：从经典 Chinchilla 到前沿开源大模型的实战扩展工程在两讲之前的 Lecture 9（Scaling Laws Part 1）中，Tatsu 带我们系统梳理了以 Hestness et al. (2017)、Kaplan et al. (2020) 和 Hoffmann et al. (2022, Chinchilla) 为代表的“经典扩展定律法典（Classical Scaling Laws Canon）”。然而，经典文献截止于 2022 年前后，主要回答了宏观算力分配问题（即给定...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_01_notes/" title="Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization 课程主页：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教师：Percy Liang &amp; Tatsunori Hashimoto（助教团队：Marcel Rød, Herman Brunborg, Steven Cao）配套资源：Lecture 1 视频 · 课件源码 (lecture_01.py) · 交互式执行轨迹 (Edtrace) · Assignment 1 代码仓库   1. 为什么要开设 CS336：从“调用 API”回归底层构建1.1 抽象层上移带来的“技术断层”与抽象泄漏在过去十年中，AI 研究者与底层技术栈的关系经历了显著的范式转移：    时代阶段 核心研究范式 代表性模型与操作 抽象层级特征    2016 年前后 从零实现与训练 (From Scratch) LSTM、早期 Seq2Seq 研究者自己编写模型结构、优化器与训...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">13</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">56</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Stanford-CS336-Spring-2026-Lecture-10-%E6%B7%B1%E5%BA%A6%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9AInference"><span class="toc-number">1.</span> <span class="toc-text">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%BC%95%E8%A8%80%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%8E%A8%E7%90%86%E7%B3%BB%E7%BB%9F%EF%BC%88Inference-Systems%EF%BC%89%E5%A6%82%E6%AD%A4%E9%87%8D%E8%A6%81%EF%BC%9F"><span class="toc-number">1.1.</span> <span class="toc-text">1. 引言：为什么大模型推理系统（Inference Systems）如此重要？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E6%8E%A8%E7%90%86%E6%97%A0%E5%A4%84%E4%B8%8D%E5%9C%A8%EF%BC%9A%E4%B8%80%E6%AC%A1%E6%80%A7%E8%AE%AD%E7%BB%83%E6%88%90%E6%9C%AC-vs-%E6%B0%B8%E4%B8%8D%E5%81%9C%E6%AD%87%E7%9A%84%E6%8E%A8%E7%90%86%E8%B4%A6%E5%8D%95"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 推理无处不在：一次性训练成本 vs. 永不停歇的推理账单</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E4%BB%8E-Chatbot-%E5%88%B0-Agent-%E6%97%B6%E4%BB%A3%E7%9A%84%E5%B7%A5%E4%BD%9C%E8%B4%9F%E8%BD%BD%E8%B4%A8%E5%8F%98"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 从 Chatbot 到 Agent 时代的工作负载质变</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E5%B7%A5%E4%B8%9A%E7%95%8C%E6%8E%A8%E7%90%86%E7%94%9F%E6%80%81%E4%B8%8E%E5%9B%9B%E5%A4%A7%E5%BC%80%E6%BA%90%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6%E5%AF%B9%E6%AF%94"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.3 工业界推理生态与四大开源推理框架对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-%E8%A1%A1%E9%87%8F%E6%8E%A8%E7%90%86%E2%80%9C%E5%BF%AB%E6%85%A2%E2%80%9D%E7%9A%84%E4%B8%89%E5%A4%A7%E6%A0%B8%E5%BF%83%E6%8C%87%E6%A0%87%E4%B8%8E%E6%A0%B9%E6%9C%AC%E7%9F%9B%E7%9B%BE"><span class="toc-number">1.1.4.</span> <span class="toc-text">1.4 衡量推理“快慢”的三大核心指标与根本矛盾</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Part-I%EF%BC%9A%E6%8E%A8%E7%90%86%E5%B7%A5%E4%BD%9C%E8%B4%9F%E8%BD%BD%E5%89%96%E6%9E%90-%E2%80%94%E2%80%94-%E7%AE%97%E6%9C%AF%E5%BC%BA%E5%BA%A6%E3%80%81KV-Cache-%E4%B8%8E%E5%90%9E%E5%90%90-%E5%BB%B6%E8%BF%9F%E6%9D%83%E8%A1%A1"><span class="toc-number">1.2.</span> <span class="toc-text">2. Part I：推理工作负载剖析 —— 算术强度、KV Cache 与吞吐-延迟权衡</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%BC%A0%E9%87%8F%E7%BB%B4%E5%BA%A6%E7%BA%A6%E5%AE%9A%E4%B8%8E-Transformer-Block-%E5%AE%8C%E6%95%B4%E6%95%B0%E6%8D%AE%E6%B5%81%E5%9B%BE%E8%A7%A3"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 张量维度约定与 Transformer Block 完整数据流图解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%A0%E9%87%8F%E4%B9%98%E6%B3%95%E7%9A%84%E4%B8%89%E7%B1%BB%E7%BB%B4%E5%BA%A6%E8%A7%92%E8%89%B2%EF%BC%88review-transformer%EF%BC%89"><span class="toc-number">1.2.1.1.</span> <span class="toc-text">张量乘法的三类维度角色（review_transformer）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E7%9F%A9%E9%98%B5%E4%B9%98%E6%B3%95%E7%AE%97%E6%9C%AF%E5%BC%BA%E5%BA%A6%E5%A4%8D%E4%B9%A0%E4%B8%8E-B-1-%E9%80%80%E5%8C%96%E6%9E%81%E9%99%90%EF%BC%88review-of-arithmetic-intensity%EF%BC%89"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 矩阵乘法算术强度复习与 $B&#x3D;1$ 退化极限（review_of_arithmetic_intensity）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%BF%85%E9%A1%BB%E5%BC%95%E5%85%A5-KV-Cache%EF%BC%9F%E4%BB%8E-O-T-3-%E6%9C%B4%E7%B4%A0%E6%8E%A8%E7%90%86%E5%88%B0%E4%B8%A4%E9%98%B6%E6%AE%B5%E8%A7%A3%E8%80%A6"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 为什么必须引入 KV Cache？从 $O(T^3)$ 朴素推理到两阶段解耦</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E6%A0%B8%E5%BF%83%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC%EF%BC%9AMLP-%E5%B1%82%E4%B8%8E-Attention-%E5%B1%82%E7%9A%84%E6%8E%A8%E7%90%86%E7%AE%97%E6%9C%AF%E5%BC%BA%E5%BA%A6%EF%BC%88arithmetic-intensity-of-inference%EF%BC%89"><span class="toc-number">1.2.4.</span> <span class="toc-text">2.4 核心数学推导：MLP 层与 Attention 层的推理算术强度（arithmetic_intensity_of_inference）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-MLP-%E5%B1%82%EF%BC%88SwiGLU-%E4%B8%89%E7%9F%A9%E9%98%B5%EF%BC%89%E7%9A%84%E7%AE%97%E6%9C%AF%E5%BC%BA%E5%BA%A6%E6%8E%A8%E5%AF%BC"><span class="toc-number">1.2.4.1.</span> <span class="toc-text">1. MLP 层（SwiGLU 三矩阵）的算术强度推导</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-Attention-%E5%B1%82%EF%BC%88FlashAttention-%E6%A0%B8%E5%BF%83%E4%B9%98%E5%8A%A0%EF%BC%89%E7%9A%84%E7%AE%97%E6%9C%AF%E5%BC%BA%E5%BA%A6%E6%8E%A8%E5%AF%BC"><span class="toc-number">1.2.4.2.</span> <span class="toc-text">2. Attention 层（FlashAttention 核心乘加）的算术强度推导</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E6%B7%B1%E5%BA%A6%E6%80%9D%E8%BE%A8%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E5%A2%9E%E5%A4%A7-Batch-Size-B-%E8%83%BD%E6%8B%AF%E6%95%91-MLP%EF%BC%8C%E5%8D%B4%E5%AE%8C%E5%85%A8%E6%95%91%E4%B8%8D%E4%BA%86-Attention%EF%BC%9F"><span class="toc-number">1.2.4.3.</span> <span class="toc-text">3. 深度思辨：为什么增大 Batch Size $B$ 能拯救 MLP，却完全救不了 Attention？</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E5%90%9E%E5%90%90%E9%87%8F%E4%B8%8E%E5%BB%B6%E8%BF%9F%E5%AE%9A%E9%87%8F%E5%BB%BA%E6%A8%A1%EF%BC%9ALlama-2-13B-%E5%9C%A8-H100-%E4%B8%8A%E7%9A%84-SymPy-%E5%AE%9E%E7%AE%97%EF%BC%88throughput-and-latency%EF%BC%89"><span class="toc-number">1.2.5.</span> <span class="toc-text">2.5 吞吐量与延迟定量建模：Llama 2 13B 在 H100 上的 SymPy 实算（throughput_and_latency）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BB%A3%E5%85%A5-Llama-2-13B-%E9%85%8D%E7%BD%AE%E5%90%8E%E7%9A%84%E7%AC%A6%E5%8F%B7%E6%96%B9%E7%A8%8B%E8%A7%A3%E6%9E%90"><span class="toc-number">1.2.5.1.</span> <span class="toc-text">代入 Llama 2 13B 配置后的符号方程解析</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Part-II%EF%BC%9A%E6%9C%89%E6%8D%9F%E6%8D%B7%E5%BE%84%EF%BC%88Lossy-Shortcuts%EF%BC%89%E2%80%94%E2%80%94-%E5%8E%8B%E7%BC%A9-KV-Cache%E3%80%81%E9%87%8F%E5%8C%96%E4%B8%8E%E6%A8%A1%E5%9E%8B%E5%89%AA%E6%9E%9D%E8%92%B8%E9%A6%8F"><span class="toc-number">1.3.</span> <span class="toc-text">3. Part II：有损捷径（Lossy Shortcuts）—— 压缩 KV Cache、量化与模型剪枝蒸馏</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%89%8A%E5%87%8F-KV-Cache-%E4%BD%93%E7%A7%AF%E7%9A%84%E5%9B%9B%E5%A4%A7%E6%9E%B6%E6%9E%84%E5%88%A9%E5%99%A8%EF%BC%88reduce-kv-cache-size%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 削减 KV Cache 体积的四大架构利器（reduce_kv_cache_size）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%88%86%E7%BB%84%E6%9F%A5%E8%AF%A2%E6%B3%A8%E6%84%8F%E5%8A%9B%EF%BC%88GQA-Grouped-Query-Attention%EF%BC%8CAinslie-et-al-2023%EF%BC%89"><span class="toc-number">1.3.1.1.</span> <span class="toc-text">1. 分组查询注意力（GQA, Grouped-Query Attention，Ainslie et al., 2023）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E5%A4%9A%E5%A4%B4%E6%BD%9C%E5%9C%A8%E6%B3%A8%E6%84%8F%E5%8A%9B%EF%BC%88MLA-Multi-Head-Latent-Attention%EF%BC%8CDeepSeek-V2-2024%EF%BC%89"><span class="toc-number">1.3.1.2.</span> <span class="toc-text">2. 多头潜在注意力（MLA, Multi-Head Latent Attention，DeepSeek-V2, 2024）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E8%B7%A8%E5%B1%82%E6%B3%A8%E6%84%8F%E5%8A%9B%EF%BC%88CLA-Cross-Layer-Attention%EF%BC%8CBrandon-et-al-2024%EF%BC%89"><span class="toc-number">1.3.1.3.</span> <span class="toc-text">3. 跨层注意力（CLA, Cross-Layer Attention，Brandon et al., 2024）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-%E5%B1%80%E9%83%A8%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3%E6%B3%A8%E6%84%8F%E5%8A%9B%EF%BC%88SWA%EF%BC%89%E3%80%81%E7%BA%BF%E6%80%A7%E6%B3%A8%E6%84%8F%E5%8A%9B%E4%B8%8E-DeepSeek-V4-%E7%99%BE%E4%B8%87%E4%B8%8A%E4%B8%8B%E6%96%87%E7%A8%80%E7%96%8F%E5%8E%8B%E7%BC%A9%E6%B3%A8%E6%84%8F%E5%8A%9B"><span class="toc-number">1.3.1.4.</span> <span class="toc-text">4. 局部滑动窗口注意力（SWA）、线性注意力与 DeepSeek-V4 百万上下文稀疏压缩注意力</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%95%B0%E5%80%BC%E7%B2%BE%E5%BA%A6%E9%87%8F%E5%8C%96%EF%BC%88Quantization%EF%BC%9A%E4%BB%8E-bf16-%E5%88%B0-int8-int4-int3%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 数值精度量化（Quantization：从 bf16 到 int8&#x2F;int4&#x2F;int3）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E7%BA%BF%E6%80%A7%E9%9D%9E%E5%AF%B9%E7%A7%B0%E9%87%8F%E5%8C%96%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%95%B0%E5%AD%A6%E6%9C%BA%E5%88%B6%EF%BC%88quantization%EF%BC%89"><span class="toc-number">1.3.2.1.</span> <span class="toc-text">1. 线性非对称量化的基本数学机制（quantization）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E9%87%8F%E5%8C%96%E6%84%9F%E7%9F%A5%E8%AE%AD%E7%BB%83%EF%BC%88QAT%EF%BC%89vs-%E8%AE%AD%E7%BB%83%E5%90%8E%E9%87%8F%E5%8C%96%EF%BC%88PTQ%EF%BC%9AGPTQ-%E4%B8%8E-AWQ%EF%BC%89"><span class="toc-number">1.3.2.2.</span> <span class="toc-text">2. 量化感知训练（QAT）vs. 训练后量化（PTQ：GPTQ 与 AWQ）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%A8%A1%E5%9E%8B%E7%BB%93%E6%9E%84%E5%8C%96%E5%89%AA%E6%9E%9D%E4%B8%8E%E8%92%B8%E9%A6%8F%E4%BF%AE%E5%A4%8D%EF%BC%88Model-Pruning-Distillation%EF%BC%8Cmodel-pruning%EF%BC%89"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 模型结构化剪枝与蒸馏修复（Model Pruning &amp; Distillation，model_pruning）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93%EF%BC%9A%E6%9E%84%E5%BB%BA%E9%AB%98%E9%80%9F%E6%8E%A8%E7%90%86%E6%A8%A1%E5%9E%8B%E7%9A%84%E4%B8%A4%E6%9D%A1%E6%A0%B8%E5%BF%83%E5%B7%A5%E7%A8%8B%E9%85%8D%E6%96%B9"><span class="toc-number">1.3.3.1.</span> <span class="toc-text">小结：构建高速推理模型的两条核心工程配方</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-Part-III%EF%BC%9A%E6%97%A0%E6%8D%9F%E6%8D%B7%E5%BE%84%EF%BC%88Lossless-Shortcut%EF%BC%89%E2%80%94%E2%80%94-%E6%8A%95%E6%9C%BA%E9%87%87%E6%A0%B7%EF%BC%88Speculative-Sampling-Decoding%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">4. Part III：无损捷径（Lossless Shortcut）—— 投机采样（Speculative Sampling &#x2F; Decoding）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E7%AC%AC%E4%B8%80%E6%80%A7%E5%8E%9F%E7%90%86%EF%BC%9A%E5%88%A9%E7%94%A8%E2%80%9C%E9%AA%8C%E8%AF%81%EF%BC%88Checking%EF%BC%89%E8%BF%9C%E5%BF%AB%E4%BA%8E%E7%94%9F%E6%88%90%EF%BC%88Generation%EF%BC%89%E2%80%9D%E7%9A%84%E4%B8%8D%E5%AF%B9%E7%A7%B0%E6%80%A7"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 第一性原理：利用“验证（Checking）远快于生成（Generation）”的不对称性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E6%8A%95%E6%9C%BA%E9%87%87%E6%A0%B7%E5%AE%8C%E6%95%B4%E7%AE%97%E6%B3%95%E4%B8%8E%E4%BF%AE%E6%AD%A3%E6%8B%92%E7%BB%9D%E9%87%87%E6%A0%B7%EF%BC%88Modified-Rejection-Sampling%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 投机采样完整算法与修正拒绝采样（Modified Rejection Sampling）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E6%8A%95%E6%9C%BA%E9%87%87%E6%A0%B7%E5%8D%95%E8%BD%AE%E7%AE%97%E6%B3%95%E6%AD%A5%E9%AA%A4%EF%BC%88%E7%BB%99%E5%AE%9A%E5%89%8D%E7%BC%80%EF%BC%8C%E5%89%8D%E7%9E%BB%E6%AD%A5%E9%95%BF-K-%EF%BC%89%EF%BC%9A"><span class="toc-number">1.4.2.1.</span> <span class="toc-text">标准投机采样单轮算法步骤（给定前缀，前瞻步长 $K$）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AE%83%E6%98%AF-100-%E4%B8%A5%E6%A0%BC%E6%97%A0%E6%8D%9F%E7%9A%84%EF%BC%9F%E2%80%94%E2%80%94-%E8%AF%BE%E5%A0%82%E4%BA%8C%E5%85%83%E8%AF%8D%E8%A1%A8-A-B-%E6%95%B0%E5%AD%A6%E8%AF%81%E6%98%8E"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 为什么它是 100% 严格无损的？—— 课堂二元词表 ${A, B}$ 数学证明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E5%B7%A5%E7%A8%8B%E6%9D%83%E8%A1%A1%E4%B8%8E%E5%89%8D%E6%B2%BF%E8%8D%89%E7%A8%BF%E6%A8%A1%E5%9E%8B%E6%BC%94%E8%BF%9B%EF%BC%88Medusa-EAGLE%EF%BC%89"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 工程权衡与前沿草稿模型演进（Medusa &amp; EAGLE）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-Part-IV%EF%BC%9A%E5%8A%A8%E6%80%81%E5%9C%A8%E7%BA%BF%E5%B7%A5%E4%BD%9C%E8%B4%9F%E8%BD%BD%E7%B3%BB%E7%BB%9F%E4%BC%98%E5%8C%96-%E2%80%94%E2%80%94-Continuous-Batching-%E4%B8%8E-PagedAttention"><span class="toc-number">1.5.</span> <span class="toc-text">5. Part IV：动态在线工作负载系统优化 —— Continuous Batching 与 PagedAttention</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Continuous-Batching-%E4%B8%8E-Selective-Batching%EF%BC%88Orca-Yu-et-al-OSDI-2022%EF%BC%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 Continuous Batching 与 Selective Batching（Orca, Yu et al., OSDI 2022）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E8%BF%9E%E7%BB%AD%E6%89%B9%E5%A4%84%E7%90%86-%E8%BF%AD%E4%BB%A3%E7%BA%A7%E8%B0%83%E5%BA%A6%EF%BC%88Continuous-Batching-Iteration-Level-Scheduling%EF%BC%89"><span class="toc-number">1.5.1.1.</span> <span class="toc-text">1. 连续批处理 &#x2F; 迭代级调度（Continuous Batching &#x2F; Iteration-Level Scheduling）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E9%80%89%E6%8B%A9%E6%80%A7%E6%89%B9%E5%A4%84%E7%90%86%EF%BC%88Selective-Batching%EF%BC%89%EF%BC%9A%E5%BD%BB%E5%BA%95%E6%B6%88%E7%81%AD%E4%B8%8D%E7%AD%89%E9%95%BF%E5%BA%8F%E5%88%97%E7%9A%84-Padding-%E6%B5%AA%E8%B4%B9"><span class="toc-number">1.5.1.2.</span> <span class="toc-text">2. 选择性批处理（Selective Batching）：彻底消灭不等长序列的 Padding 浪费</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-PagedAttention-%E4%B8%8E-vLLM%EF%BC%88Kwon-et-al-SOSP-2023%EF%BC%89%EF%BC%9A%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%E5%88%86%E9%A1%B5%E7%AE%A1%E7%90%86-KV-Cache"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 PagedAttention 与 vLLM（Kwon et al., SOSP 2023）：虚拟内存分页管理 KV Cache</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E4%BC%A0%E7%BB%9F%E8%BF%9E%E7%BB%AD%E6%98%BE%E5%AD%98%E9%A2%84%E5%88%86%E9%85%8D%E7%9A%84%E4%B8%A4%E5%A4%A7%E7%A2%8E%E7%89%87%E7%81%BE%E9%9A%BE"><span class="toc-number">1.5.2.1.</span> <span class="toc-text">1. 传统连续显存预分配的两大碎片灾难</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-PagedAttention-%E7%9A%84%E6%A0%B8%E5%BF%83%E6%9C%BA%E5%88%B6%EF%BC%9A%E9%9D%9E%E8%BF%9E%E7%BB%AD%E7%89%A9%E7%90%86%E5%9D%97%EF%BC%88Blocks%EF%BC%89%E4%B8%8E%E5%9D%97%E8%A1%A8%E6%98%A0%E5%B0%84"><span class="toc-number">1.5.2.2.</span> <span class="toc-text">2. PagedAttention 的核心机制：非连续物理块（Blocks）与块表映射</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E5%9D%97%E7%BA%A7%E5%89%8D%E7%BC%80%E5%85%B1%E4%BA%AB%E4%B8%8E%E5%86%99%E6%97%B6%E5%A4%8D%E5%88%B6%EF%BC%88Prefix-Sharing-Copy-on-Write-CoW%EF%BC%89"><span class="toc-number">1.5.2.3.</span> <span class="toc-text">3. 块级前缀共享与写时复制（Prefix Sharing &amp; Copy-on-Write, CoW）</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%85%A8%E6%99%AF%E6%80%BB%E7%BB%93%EF%BC%9A%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%8E%A8%E7%90%86%E4%BC%98%E5%8C%96%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5%E8%A1%A8%EF%BC%88Cheat-Sheet%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">6. 全景总结：大模型推理优化技术栈速查表（Cheat Sheet）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E8%AF%BE%E5%90%8E%E6%80%9D%E8%80%83%E4%B8%8E%E8%87%AA%E6%B5%8B%E7%BB%83%E4%B9%A0%EF%BC%88Review-Self-Check%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">7. 课后思考与自测练习（Review &amp; Self-Check）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_12_notes/" title="Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation">Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation</a><time datetime="2026-10-26T00:53:00.000Z" title="发表于 2026-10-26 08:53:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_11_notes/" title="Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)</a><time datetime="2026-10-26T00:52:00.000Z" title="发表于 2026-10-26 08:52:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_10_notes/" title="Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</a><time datetime="2026-10-26T00:51:00.000Z" title="发表于 2026-10-26 08:51:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_09_notes/" title="Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)</a><time datetime="2026-10-26T00:50:00.000Z" title="发表于 2026-10-26 08:50:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/25/cs336_lecture_08_notes/" title="Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)</a><time datetime="2026-10-25T08:24:00.000Z" title="发表于 2026-10-25 16:24:00">2026-10-25</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>

@@ -1,0 +1,687 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="系统总结 Stanford CS336 Lecture 12，全方位拆解大模型评测体系：困惑度（Perplexity）数学局限、标准化考试&#x2F;Agentic&#x2F;推理与安全基准测试、生态效度（Ecological Validity）以及测试集污染检测方法。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/10/26/cs336_lecture_12_notes/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="系统总结 Stanford CS336 Lecture 12，全方位拆解大模型评测体系：困惑度（Perplexity）数学局限、标准化考试&#x2F;Agentic&#x2F;推理与安全基准测试、生态效度（Ecological Validity）以及测试集污染检测方法。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-10-26T00:53:00.000Z">
+<meta property="article:modified_time" content="2026-10-26T01:01:12.215Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="CS336">
+<meta property="article:tag" content="HELM">
+<meta property="article:tag" content="困惑度">
+<meta property="article:tag" content="基准测试">
+<meta property="article:tag" content="大模型">
+<meta property="article:tag" content="模型评测">
+<meta property="article:tag" content="污染检测">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation",
+  "url": "https://kanosa0101.github.io/2026/10/26/cs336_lecture_12_notes/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-10-26T00:53:00.000Z",
+  "dateModified": "2026-10-26T01:01:12.215Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/10/26/cs336_lecture_12_notes/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">13</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">56</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-26T00:53:00.000Z" title="发表于 2026-10-26 08:53:00">2026-10-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-26T01:01:12.215Z" title="更新于 2026-10-26 09:01:12">2026-10-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/">笔记</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AC%94%E8%AE%B0/CS336/">CS336</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Stanford-CS336-Spring-2026-Lecture-12-深度课程笔记：Evaluation"><a href="#Stanford-CS336-Spring-2026-Lecture-12-深度课程笔记：Evaluation" class="headerlink" title="Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation"></a>Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation</h1><blockquote>
+<p><strong>课程信息</strong>：<a target="_blank" rel="noopener" href="https://cs336.stanford.edu/">Stanford CS336: Language Modeling from Scratch (Spring 2026)</a><br><strong>主讲教授</strong>：Percy Liang<br><strong>本讲资源</strong>：<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=JpAxdTWQJxM">Lecture 12 YouTube 视频</a> | <a target="_blank" rel="noopener" href="https://cs336.stanford.edu/lectures/?trace=lecture_12">交互式执行轨迹 (<code>lecture_12.py</code>)</a> | <a target="_blank" rel="noopener" href="https://github.com/stanford-cs336/spring2025-lectures/blob/main/lecture_12.py">源码仓库 (<code>spring2025-lectures/lecture_12.py</code>)</a> | <a target="_blank" rel="noopener" href="https://crfm.stanford.edu/helm/">Stanford CRFM HELM 评测平台</a></p>
+</blockquote>
+<h2 id="1-引言：为什么大模型评测（Evaluation）不是简单的“跑分”？"><a href="#1-引言：为什么大模型评测（Evaluation）不是简单的“跑分”？" class="headerlink" title="1. 引言：为什么大模型评测（Evaluation）不是简单的“跑分”？"></a>1. 引言：为什么大模型评测（Evaluation）不是简单的“跑分”？</h2><p>在前面的 11 讲中，我们已经完整搭建起了从零训练与部署一个大语言模型的全套工程技术栈：模型架构与优化器（Lectures 1–4）、GPU 算子与分布式并行系统（Lectures 5–8）、扩展定律与超参缩放（Lectures 9 &amp; 11）以及高效推理系统（Lecture 10）。现在，整个拼图只剩下最后两大核心板块：<strong>训练数据工程（Data，第 13–14 讲，对应 Assignment 4）</strong> 与 <strong>后训练对齐（Alignment &amp; RL，第 15–17 讲，对应 Assignment 5）</strong>。</p>
+<p>Percy 在开篇指出：<strong>训练数据决定了模型的行为</strong>（喂给模型代码，它就擅长写代码；只喂给它 DNA 序列，它就绝不可能学会说英语）。但在我们动手清洗和配比数据之前，必须先回答一个更根本的前置问题：<strong>我们到底希望语言模型具备什么样的能力与行为？换言之，给定一个训练好的模型，它究竟有多“好”（How “good” is it）？</strong> 这正是本讲（Lecture 12: Evaluation）的主题。</p>
+<h3 id="1-1-评测的北极星效应与核心挑战（Abstract-Construct-to-Concrete-Metric）"><a href="#1-1-评测的北极星效应与核心挑战（Abstract-Construct-to-Concrete-Metric）" class="headerlink" title="1.1 评测的北极星效应与核心挑战（Abstract Construct $\to$ Concrete Metric）"></a>1.1 评测的北极星效应与核心挑战（Abstract Construct $\to$ Concrete Metric）</h3><p>表面上看，评测（Evaluation）似乎只是一个机械的工程流程：<br>$$\text{定义一组提示词 (Prompts)} \longrightarrow \text{发送给模型获取回复 (Responses)} \longrightarrow \text{计算准确率 (Accuracy)}$$<br>但实际上，<strong>评测是塑造整个 AI 领域演进方向的指挥棒（North Star）</strong>——无论是开源社区还是闭源巨头，所有模型研发者都盯着评测指标来衡量每一次架构修改、数据过滤或算法迭代是否有效。如果你定义的评测偏离了真实目标（Goodhart’s Law），整个社区就会朝着错误的方向狂奔。</p>
+<ul>
+<li><strong>评测最核心的科学难题</strong>：<br>人类最初拥有的往往是一个<strong>抽象概念（Abstract Construct）</strong>——例如“我希望模型擅长对话”、“具有强大的逻辑推理能力”或“安全可靠”；而评测的本质，就是<strong>将这个模糊的抽象概念转化为由具体提示词（Prompts）、交互环境（Environments）与打分规则驱动的具象数值指标（Concrete Metric）</strong>！</li>
+</ul>
+<h3 id="1-2-定义“什么是好模型（What-is-Good-）”的四种不同视角"><a href="#1-2-定义“什么是好模型（What-is-Good-）”的四种不同视角" class="headerlink" title="1.2 定义“什么是好模型（What is Good?）”的四种不同视角"></a>1.2 定义“什么是好模型（What is Good?）”的四种不同视角</h3><p>在进入具体基准之前，Percy 在 <code>what_is_good()</code> 中展示了当前工业界衡量模型好坏的四种截然不同的宏观透镜：</p>
+<table>
+<thead>
+<tr>
+<th align="left">评估视角</th>
+<th align="left">代表平台 &#x2F; 榜单</th>
+<th align="left">核心度量逻辑</th>
+<th align="left">优势与局限性</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. 纯基准跑分视角</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://artificialanalysis.ai/">Artificial Analysis Intelligence Index</a></strong></td>
+<td align="left">汇总多个高难度学术与推理基准的平均得分（如 2026 年榜单上从 GPT-5.5 等前沿模型一路向下排序）</td>
+<td align="left">客观、可复现，但容易受刷榜（Benchmaxing）影响，且未反映使用成本</td>
+</tr>
+<tr>
+<td align="left"><strong>2. 性能-成本帕累托视角</strong></td>
+<td align="left"><strong>Artificial Analysis (Intelligence vs. Price)</strong></td>
+<td align="left">横轴为每百万 Token 推理价格（$&#x2F;1M Tokens），纵轴为综合智力指数</td>
+<td align="left">揭示了精度与推理成本的正相关性及帕累托前沿，直接指导工程选型</td>
+</tr>
+<tr>
+<td align="left"><strong>3. 人类主观偏好视角</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://lmarena.ai/">Arena AI (原 LMSYS Chatbot Arena)</a></strong></td>
+<td align="left">让真实互联网用户盲测两个匿名模型的回复并投票，拟合 <strong>Elo 积分</strong></td>
+<td align="left">贴近真实人类对话体感，但受用户群体分布偏差与形式讨好（Sycophancy &#x2F; 长度偏见）影响</td>
+</tr>
+<tr>
+<td align="left"><strong>4. 市场真金白银投票视角</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://openrouter.ai/rankings">OpenRouter Usage Rankings</a></strong></td>
+<td align="left">统计通过统一 API 网关实际调用并付费消耗的各模型 Token 市场份额</td>
+<td align="left">最纯粹的经济学检验（“如果人们愿意掏钱用它，它一定在创造价值”），但受限于特定开发者生态样本</td>
+</tr>
+</tbody></table>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                       CS336 Lecture 12 全景架构：大模型评测的六大支柱与三大元准则               │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [六大评测范式演进 (Six Pillars of LLM Evaluation)]                                             │</span><br><span class="line">│    ├─► 1. 概率分布视角: 困惑度 (Perplexity, PPL) ──► 经典域内 (PTB/1BW) vs. GPT-2 零样本域外    │</span><br><span class="line">│    │      • 条件困惑度 (Conditional PPL) 与“伪装成准确率的困惑度” (LAMBADA, HellaSwag)           │</span><br><span class="line">│    ├─► 2. 标准化考试基准 (Exam Benchmarks): MMLU (2020) ──► MMLU-Pro ──► GPQA ──► HLE (2025)    │</span><br><span class="line">│    ├─► 3. 开放式对话基准 (Chat Benchmarks): Chatbot Arena (Elo) ──► AlpacaEval 2.0 ──► WildBench│</span><br><span class="line">│    ├─► 4. 自主智能体基准 (Agentic Benchmarks): SWE-bench ──► Terminal-Bench 2.0 / Cybench / MLE │</span><br><span class="line">│    ├─► 5. 纯流体推理基准 (Pure Reasoning): ARC-AGI-1 (2019) ──► ARC-AGI-2 ──► ARC-AGI-3 (2026)  │</span><br><span class="line">│    └─► 6. 安全与红队基准 (Safety &amp; Red-Teaming): HarmBench, AIR-Bench 2024, GCG 对抗越狱与双用途│</span><br><span class="line">│                                                                                                 │</span><br><span class="line">│  [三大元评测工程准则 (Meta-Evaluation Considerations)]                                          │</span><br><span class="line">│    ├─► 准则 A: 生态效度与真实感 (Realism / Ecological Validity) ──► GDPval, MedHELM, Clio 隐私分析│</span><br><span class="line">│    ├─► 准则 B: 科学效度与防污染 (Validity &amp; Decontamination) ──► 可交换性检验/动态新题/私有评测 │</span><br><span class="line">│    └─► 准则 C: 评估目标解耦 (Methods vs. Models vs. Agents) ──► 明确游戏规则，审计轨迹 (Docent) │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-支柱一：困惑度（Perplexity）——-从概率分布本源看评测（perplexity）"><a href="#2-支柱一：困惑度（Perplexity）——-从概率分布本源看评测（perplexity）" class="headerlink" title="2. 支柱一：困惑度（Perplexity）—— 从概率分布本源看评测（perplexity）"></a>2. 支柱一：困惑度（Perplexity）—— 从概率分布本源看评测（<code>perplexity</code>）</h2><p>回顾语言模型最本质的数学定义：<strong>语言模型是一个定义在 Token 序列上的概率分布 $p(x_1, x_2, \dots, x_L)$</strong>。因此，评估一个概率分布最自然、最第一性原理的指标，就是看它为测试集 $D$ 赋予了多大的概率质量——这就是<strong>困惑度（Perplexity, PPL）</strong>（即平均每 Token 交叉熵损失的指数）：<br>$$\mathbf{\text{Perplexity}(p, D) &#x3D; \left(\frac{1}{p(D)}\right)^{\frac{1}{|D|}} &#x3D; \exp!\left(-\frac{1}{|D|} \sum_{i&#x3D;1}^{|D|} \log p(x_i \mid x_{&lt;i})\right)}$$</p>
+<h3 id="2-1-从经典“域内评测”到-GPT-2-的“零样本域外评测”范式转移"><a href="#2-1-从经典“域内评测”到-GPT-2-的“零样本域外评测”范式转移" class="headerlink" title="2.1 从经典“域内评测”到 GPT-2 的“零样本域外评测”范式转移"></a>2.1 从经典“域内评测”到 GPT-2 的“零样本域外评测”范式转移</h3><ol>
+<li><strong>2010 年代的经典范式：域内评测（In-Distribution Evaluation）</strong><br>在预训练大模型诞生之前，语言建模研究遵循严格的独立同分布（I.I.D.）假设：在某个特定数据集的训练集切分（Train Split）上训练模型，然后在同一个数据集的测试集切分（Test Split）上报告 Perplexity。当時の三大标准基准为：<ul>
+<li><strong>Penn Treebank (PTB)</strong>：源自《华尔街日报》（WSJ）新闻语料，规模极小（约百万词级）；</li>
+<li><strong>WikiText-103</strong>：源自维基百科精选文章；</li>
+<li><strong>One Billion Word Benchmark (1BW)</strong>：源自 WMT11 机器翻译语料（EuroParl、联合国文件与新闻）。</li>
+<li><strong>历史里程碑案例</strong>：<strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/1602.02410">Exploring the Limits of Language Modeling (Jozefowicz, Vinyals, Schuster, Shazeer &amp; Wu, 2016)</a></strong> 在 1BW 基准上通过大规模字符级 CNN + LSTM 将单模型 Perplexity 从 <code>51.3</code> 暴力压低至 <strong><code>30.0</code></strong>（集成模型达 <code>23.7</code>）。Percy 回忆道，当时学界还在争论到底应该用传统 $n$-gram 平滑还是神经语言模型，而这篇论文彻底终结了悬念，确立了纯神经网络统治语言建模的时代。</li>
+</ul>
+</li>
+<li><strong>2019 年 GPT-2 掀起的范式革命：零样本域外评测（Zero-Shot Out-of-Distribution Evaluation）</strong><br>当 OpenAI 发布 <strong><a target="_blank" rel="noopener" href="https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf">GPT-2 (Radford et al., 2019)</a></strong> 时，他们做了一件在当时极具颠覆性的事：只在从 Reddit 外链抓取的 <code>40 GB</code> <strong>WebText</strong> 数据集上训练模型，然后<strong>完全不碰 PTB、WikiText-103、1BW 的训练集，直接以零样本（Zero-Shot）方式去测这些传统数据集测试集的 Perplexity</strong>！<ul>
+<li><strong>结果与洞见</strong>：GPT-2 (1.5B) 在小数据集（如 PTB）上直接将 Perplexity 刷到了 <code>35.8</code>（大幅超越此前域内训练的 SOTA <code>46.5</code>），因为小数据集自身训练样本不足，通用预训练的迁移红利巨大；而在拥有充足域内训练数据的 1BW 上，GPT-2 的零样本 PPL（<code>75.2</code>）则不如专门在 1BW 上过拟合训练的模型。这一工作正式开启了“在海量互联网语料上预训练、在各类外部标准基准上零样本评测”的现代范式。</li>
+</ul>
+</li>
+</ol>
+<h3 id="2-2-“Perplexity-Is-All-You-Need”-的极限信仰-vs-“Perplexity-管得太宽了”"><a href="#2-2-“Perplexity-Is-All-You-Need”-的极限信仰-vs-“Perplexity-管得太宽了”" class="headerlink" title="2.2 “Perplexity Is All You Need” 的极限信仰 vs. “Perplexity 管得太宽了”"></a>2.2 “Perplexity Is All You Need” 的极限信仰 vs. “Perplexity 管得太宽了”</h3><ul>
+<li><strong>为什么许多早期研究者坚信“只要把 Perplexity 降到底，就能通往 AGI”？</strong><br>设真实世界文本与任务的生成分布为 $t(x)$，我们的语言模型分布为 $p(x)$。根据信息论中的吉布斯不等式（Gibbs’ Inequality），交叉熵 $H(t, p) &#x3D; H(t) + D_{\text{KL}}(t \parallel p) \ge H(t)$：<br>$$\min_p \text{Perplexity}(p, t) &#x3D; \exp\big(H(t)\big) \quad \Longleftrightarrow \quad \mathbf{p &#x3D; t \quad (\text{当且仅当 } D_{\text{KL}}(t \parallel p) &#x3D; 0)}$$<br>也就是说，<strong>最小化 Perplexity 的唯一全局极小值点就是 $p &#x3D; t$（完美还原真实世界分布）</strong>！一旦 $p &#x3D; t$，你就可以把任何问题作为前缀条件，通过求条件概率 $p(\text{solution} \mid \text{problem})$ 或 $p(\text{answer} \mid \text{question})$ 解决人类写出的一切任务！正是这种近乎宗教般的信念（More faith than science），支撑了研究者们在 GPT-3 爆发前夜坚定不移地投入巨资扩展模型规模。</li>
+<li><strong>为什么说 Perplexity 有时又“管得太宽了（More than you need）”？</strong><br>考虑句子：<code>&quot;Stanford was founded in 1885&quot;</code>。<br>标准全句 Perplexity 会对句子中的<strong>每一个 Token</strong> 都同等施加对数似然惩罚：<ul>
+<li>给定 <code>&quot;Stanford was founded in &quot;</code> 预测 <strong><code>&quot;1885&quot;</code></strong>：这非常有价值！它本质上就是在考一道世界知识问答题（QA）；</li>
+<li>给定空串预测句首第一个词 <strong><code>&quot;Stanford&quot;</code></strong>，或者预测中间的语法词 <strong><code>&quot;was&quot;</code></strong>：这纯粹取决于作者当时想聊哪所大学或用什么句式，包含大量无关紧要的偶然噪声（Incidental Noise），但全句 Perplexity 依然会因为你没猜中句首词而重罚你！</li>
+</ul>
+</li>
+<li><strong>工程解法：条件困惑度（Conditional Perplexity）</strong><br>为了只评估我们真正关心的核心信息 Token，我们可以固定提示词前缀 <code>prompt</code>，仅对目标回答 <code>response</code> 计算<strong>条件困惑度</strong>：<br>$$\mathbf{\text{Conditional PPL}(p) &#x3D; \left(\frac{1}{p(\text{response} \mid \text{prompt})}\right)^{\frac{1}{|\text{response}|}}}$$</li>
+</ul>
+<h3 id="2-3-“伪装成准确率的困惑度”（Perplexity-in-Disguise）与排行榜作弊陷阱"><a href="#2-3-“伪装成准确率的困惑度”（Perplexity-in-Disguise）与排行榜作弊陷阱" class="headerlink" title="2.3 “伪装成准确率的困惑度”（Perplexity in Disguise）与排行榜作弊陷阱"></a>2.3 “伪装成准确率的困惑度”（Perplexity in Disguise）与排行榜作弊陷阱</h3><p>Percy 指出，许多经典的下游准确率基准，撕开外壳看本质，其实就是<strong>只针对特定关键位置或候选句计算的条件困惑度</strong>：</p>
+<ol>
+<li><strong>完形填空任务（Cloze Tasks）：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1606.06031">LAMBADA (Paperno et al., 2016)</a></strong><br>给定一段长叙事上下文，要求预测全篇的<strong>最后一个词</strong>（例如：<em>“… Once back in the hospital, Thomas goes straight to Jen’s room… ‘Do you honestly think I would want you to have a ____?’”</em> $\to$ 答案：<code>&quot;miscarriage&quot;</code>）。<ul>
+<li><strong>设计巧思</strong>：作者通过人类被试筛选确保：<strong>只有读完全篇长上下文的人才能猜出最后一个词，只看最后一句的人绝不可能猜出</strong>！这精准过滤掉了无聊的局部语法搭配，专门把 Perplexity 聚焦在需要长距离跨句篇章推理（Broad Discourse Context）的关键 Token 上（GPT-2 曾将其作为主打评测基准）。</li>
+</ul>
+</li>
+<li><strong>多项选择句子补全：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/1905.07830">HellaSwag (Zellers et al., 2019)</a></strong><br>给定事件前缀（如 <em>“A woman is outside with a bucket and a dog. The dog is running around trying to avoid a bath. She…”</em>），从 4 个候选后续句子中选出最合理的一个（模型通过比较 4 个候选续写的条件对数似然 $\log p(\text{choice}_i \mid \text{context})$ 来做选择）。<ul>
+<li><strong>核心贡献——对抗性过滤（Adversarial Filtering, AF）</strong>：由早期语言模型生成错误选项，并用判别器迭代挑选出那些**对人类来说荒谬无比（人类准确率 $&gt;95%$）、但最容易欺骗当时 SOTA 模型（模型准确率 $&lt;48%$）**的干扰项。</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p><strong>重要工程警示：为什么你很难办一个公开的“黑盒 Perplexity 排行榜（Perplexity Leaderboard）”？</strong></p>
+<ul>
+<li><strong>在下游任务（Downstream Accuracy）排行榜中</strong>：模型完全可以是黑盒 API——组织者发去一条 <code>prompt</code>，参赛模型返回生成的字符串 <code>response</code>，评测脚本直接对比 <code>response == ground_truth</code>，参赛者无法在算分环节弄虚作假。</li>
+<li><strong>在 Perplexity 排行榜中</strong>：组织者把测试集文本 <code>test_data</code> 发给参赛模型，要求参赛模型返回 <code>log_prob = LM(test_data)</code>。**致命漏洞在于：你必须信任参赛模型返回的概率分布真的是一个合法归一化的概率分布（即对所有可能词表 Token 求和严格满足 $\sum_{v \in V} p(v \mid x_{&lt;t}) &#x3D; 1$）！** 如果一个作弊者写一行代码永远返回 <code>log_prob = 0.0</code>（即声称概率恒为 $100%$，导致 $\sum p &gt; 1$），它的 Perplexity 就能拿到满分 <code>1.0</code>！而如果不审查模型源码与全词表 Logits（或者面对像 VAE &#x2F; 扩散模型这种只能算变分下界 ELBO 的非自回归模型），外部评测方很难低成本地验证概率分布的合法性。</li>
+</ul>
+</blockquote>
+<h2 id="3-支柱二：标准化考试基准（Exam-Benchmarks）——-从-MMLU-到-Humanity’s-Last-Exam（exam-benchmarks）"><a href="#3-支柱二：标准化考试基准（Exam-Benchmarks）——-从-MMLU-到-Humanity’s-Last-Exam（exam-benchmarks）" class="headerlink" title="3. 支柱二：标准化考试基准（Exam Benchmarks）—— 从 MMLU 到 Humanity’s Last Exam（exam_benchmarks）"></a>3. 支柱二：标准化考试基准（Exam Benchmarks）—— 从 MMLU 到 Humanity’s Last Exam（<code>exam_benchmarks</code>）</h2><p>既然纯 Perplexity 难以直观说服非技术受众（”non-believers”），学界最自然的想法就是<strong>像考人类学生一样，用标准化试卷（Exams）去考大模型</strong>。考试题目的最大优点是：<strong>学科与难度高度可控，且拥有唯一明确的客观标准答案（多选题 A&#x2F;B&#x2F;C&#x2F;D 或简短数值），极易自动化判卷</strong>。</p>
+<p>Percy 沿着 2020 年至 2026 年的时间线，梳理了由于模型能力狂飙而不断被迫“加难重造”的四代里程碑考试基准：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">考试基准演进与饱和循环 (2020–2026):</span><br><span class="line">  [MMLU (2020)] ────────► 2024 年刷到 ~90% 饱和!</span><br><span class="line">  (57学科, 4选1, 5-shot)</span><br><span class="line">         │</span><br><span class="line">         ▼ (清洗错题 + 扩为 10 选 1 + 引入 CoT 推理题)</span><br><span class="line">  [MMLU-Pro (2024.06)] ─► 发布时暴跌 16%~33%，但到 2026 年又刷到了 ~89% 饱和!</span><br><span class="line">         │</span><br><span class="line">         ▼ (雇佣 61 名博士出“Google 搜不到答案”的硬核专业题)</span><br><span class="line">  [GPQA Diamond (2023.11)]► 人类博士 65% / 外行搜 Google 34% / GPT-4 39% ──► 2026 年刷到 ~94% 饱和!</span><br><span class="line">         │</span><br><span class="line">         ▼ ($500K 奖金 + 全球超千名顶尖学者共创多模态人类知识极限闭卷题)</span><br><span class="line">  [Humanity&#x27;s Last Exam (HLE, 2025.01)] ──► 2025 初仅个位数 (~3%~9%) ──► 2026.05 最强模型 (Claude Mythos) 达 64.7%!</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th align="left">考试基准</th>
+<th align="left">发布论文与年份</th>
+<th align="left">题目规模与题型设计</th>
+<th align="left">出题流程与核心创新点</th>
+<th align="left">人类 vs. 模型分数演进轨迹 (截至 2026.05)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. MMLU</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2009.03300">Hendrycks et al. (2020)</a></strong></td>
+<td align="left">57 个学科（初等数学、美国历史、法律、道德等），4 选 1 单选题</td>
+<td align="left">伯克利学生从网上免费公开试卷搜集；首次在 GPT-3 上用 <strong>Few-shot Prompting (5-shot)</strong> 评测通用知识</td>
+<td align="left">GPT-3 (175B) 仅 <code>43.9%</code>（小模型接近随机 <code>25%</code>）$\to$ GPT-4 <code>86.4%</code> $\to$ 现已 <code>&gt;90%</code> 彻底饱和（可在 <a target="_blank" rel="noopener" href="https://crfm.stanford.edu/helm/mmlu/latest/">HELM MMLU</a> 查看具体预测）</td>
+</tr>
+<tr>
+<td align="left"><strong>2. MMLU-Pro</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.01574">Wang et al. (2024)</a></strong></td>
+<td align="left">12,000+ 题，<strong>从 4 选 1 扩展为 10 选 1</strong>，聚焦多步计算与推理</td>
+<td align="left">剔除原版 MMLU 中的错题与送分题；强制使用 <strong>Chain-of-Thought (CoT)</strong> 评测，使不同 Prompt 风格的波动从 <code>4-5%</code> 降至 <code>2%</code></td>
+<td align="left">发布时各模型分数比 MMLU 暴跌 <code>16%~33%</code>；但到 2026 年初前沿模型已达 <strong><code>~88%–90%</code></strong>（<a target="_blank" rel="noopener" href="https://www.google.com/search?q=https://crfm.stanford.edu/helm/mmlu-pro/latest/">HELM MMLU-Pro</a>）</td>
+</tr>
+<tr>
+<td align="left"><strong>3. GPQA</strong> (<em>Google-Proof Q&amp;A</em>)</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2311.12022">Rein et al. (2023)</a></strong></td>
+<td align="left">448 道生物、物理、化学博士级难题（核心精选子集为 <strong>GPQA Diamond</strong>）</td>
+<td align="left">雇佣 61 名 Upwork 博士撰题 $\to$ 同领域第二专家验证并返修 $\to$ <strong>让非本专业高学历验证者开着 Google 搜 30 分钟</strong>，仅当专家答对且外行答错时选入 Diamond</td>
+<td align="left">• 本专业博士：<strong><code>65%</code></strong>（事后扣除粗心失误为 <code>74%</code>）<br>• 外行开 Google 搜 30 分钟：<strong><code>34%</code></strong><br>• GPT-4 初代：<strong><code>39%</code></strong> $\to$ <strong>2026 年 SOTA 已达 <code>94%</code>！</strong></td>
+</tr>
+<tr>
+<td align="left"><strong>4. HLE</strong> (<em>Humanity’s Last Exam</em>)</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.14249">Phan et al. (2025)</a></strong> (<a target="_blank" rel="noopener" href="https://lastexam.ai/">lastexam.ai</a>)</td>
+<td align="left">2,500 道跨数十学科的**多模态（图文）**选择题与精确简答题（加设未公开私有测试集）</td>
+<td align="left">设立 <strong>$50 万美元奖金池 + 论文共同作者署名权</strong>，发动全球上千名领域学者出题；先用全套前沿大模型做过滤，只要现有模型能答对的题当场淘汰！</td>
+<td align="left">• 2025 年 1 月发布时：GPT-4o <code>3.3%</code>、o1 <code>~8%</code>（全军覆没）<br>• <strong>2026 年 5 月最新 SOTA（Claude Mythos）：已攀升至 <code>64.7%</code>！</strong></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>课堂问答：在多选题（如 HLE &#x2F; MMLU）中，到底是怎么提取模型答案并计算准确率的？</strong></p>
+<ul>
+<li><strong>学生提问</strong>：在计算多选题准确率时，我们是直接检查模型对 A&#x2F;B&#x2F;C&#x2F;D 四个选项字母赋予的概率（Logprobs），还是让模型生成一段文本？</li>
+<li><strong>Percy 解答</strong>：早期（如 GPT-3 测原版 MMLU 时）确实常直接看下一个 Token 是 <code>&#39;A&#39;</code>, <code>&#39;B&#39;</code>, <code>&#39;C&#39;</code>, <code>&#39;D&#39;</code> 的概率或只生成 1 个字母；但在现代大模型（尤其是推理模型）评测中，<strong>标准做法是让模型先生成一段完整的思维链推理（Chain-of-Thought）与解释，最后由答案提取器（Answer Extractor &#x2F; 正则解析器）从输出末尾抽取出最终选择的字母（如 <code>Answer: C</code>）与标准答案比对</strong>。Percy 特别提醒：<strong>答案提取与格式化解析的细节对最终准确率非常敏感</strong>（有时模型明明推对了，却因为输出格式没对齐正则表达式而被判错）！</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>考试基准的根本局限</strong>：<br>虽然多选题在难度上可以做到无限难（如 HLE），但<strong>考试并不能代表真实世界的使用场景（Does not capture real-world usage）</strong>——现实中没有用户会每天拿着 4 选 1 的博士考题去考 AI 助手；真实用户的提问绝大多数是<strong>开放式的（Open-ended）、表述含糊的，甚至根本不存在唯一标准答案</strong>！</li>
+</ul>
+<h2 id="4-支柱三：开放式对话基准（Chat-Benchmarks）——-人类盲测-Elo-与-LLM-as-a-Judge（chat-benchmarks）"><a href="#4-支柱三：开放式对话基准（Chat-Benchmarks）——-人类盲测-Elo-与-LLM-as-a-Judge（chat-benchmarks）" class="headerlink" title="4. 支柱三：开放式对话基准（Chat Benchmarks）—— 人类盲测 Elo 与 LLM-as-a-Judge（chat_benchmarks）"></a>4. 支柱三：开放式对话基准（Chat Benchmarks）—— 人类盲测 Elo 与 LLM-as-a-Judge（<code>chat_benchmarks</code>）</h2><p>为了评估开放式指令遵循与日常对话（例如课堂给出的真实 Prompt：<em>“我想做一份甜菜根配山羊奶酪沙拉，放什么香草比较搭，什么不搭？”</em>），既然不存在可以使用 <code>==</code> 判定的标准答案，学界演化出了两条核心路径：<strong>众包人类盲测对战（Chatbot Arena）</strong> 与 <strong>大模型自动裁判（LLM-as-a-Judge）</strong>。</p>
+<h3 id="4-1-众包人类成对盲测与-Elo-等级分推导（Chatbot-Arena-Arena-AI-Chiang-et-al-2024）"><a href="#4-1-众包人类成对盲测与-Elo-等级分推导（Chatbot-Arena-Arena-AI-Chiang-et-al-2024）" class="headerlink" title="4.1 众包人类成对盲测与 Elo 等级分推导（Chatbot Arena &#x2F; Arena AI, Chiang et al., 2024）"></a>4.1 众包人类成对盲测与 Elo 等级分推导（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2403.04132">Chatbot Arena &#x2F; Arena AI, Chiang et al., 2024</a>）</h3><p>UC Berkeley LMSYS 团队搭建的 <strong>Chatbot Arena（现称 <a target="_blank" rel="noopener" href="https://lmarena.ai/">Arena AI</a>）</strong> 开创了众包成对比较（Pairwise Comparison）的黄金范式：</p>
+<ol>
+<li><strong>数据收集机制</strong>：任何互联网用户访问网站并输入任意真实 Prompt $\to$ 系统后台随机抽取两个匿名模型（Anonymous Model A &amp; Model B）并排生成回复 $\to$ 用户根据主观体感投票选择 <code>A is better</code>、<code>B is better</code>、<code>Tie (Both are good)</code> 或 <code>Both are bad</code>。</li>
+<li><strong>Bradley-Terry &#x2F; Elo 等级分统计建模</strong>：<br>假设每个模型 $i$ 都有一个潜在的能力等级分参数 $R_i$（即 $\text{ELO}_i$）。模型 $A$ 在单局对战中击败模型 $B$ 的理论概率定义为逻辑斯蒂（Logistic &#x2F; Sigmoid）函数：<br>$$\mathbf{P(A \text{ beats } B) &#x3D; \frac{1}{1 + 10^{\frac{\text{ELO}_B - \text{ELO}_A}{400}}}}$$<br>给定收集到的成千上万条人类成对投票记录，通过**最大似然估计（Maximum Likelihood Estimation, MLE）**拟合出所有模型的 $\text{ELO}$ 分数（注：相比于早期顺序更新的经典国际象棋 Elo，现代 Chatbot Arena 使用批量 Bradley-Terry 逻辑回归来消除对局先后顺序偏差并计算置信区间）。</li>
+<li><strong>Chatbot Arena 的两大系统优势与四大潜在隐患</strong>：<ul>
+<li><strong>优势 1（稀疏成对采样即可全局排序）</strong>：正如国际象棋比赛不需要让所有棋手两两全打一遍，只要模型之间的对战图是连通的（Connected Graph），成对比较就能从稀疏采样中拟出全局一致的排名，且完全<strong>不需要给所有模型喂相同的固定 Prompt</strong>！</li>
+<li><strong>优势 2（天然动态演进）</strong>：随时可以无缝接入新发布的模型和用户实时想出的新 Prompt。</li>
+<li><strong>四大隐患</strong>：<ol>
+<li><strong>用户分布未知且有偏（Uncontrolled User Distribution）</strong>：去免费用 Arena 的网民代表了什么样的分布？是否存在恶意刷票者（Spammers）甚至模型厂商定向投毒（Game the leaderboard）？</li>
+<li><strong>将“文风形式（Style）”与“事实正确性（Correctness）”混为一谈</strong>：在国际象棋中赢就是赢；但在对话中，二元偏好投票把排版好看、语气热情与内容正确揉成了一个标量。</li>
+<li><strong>外行裁判悖论</strong>：用户之所以向 AI 提问，往往正是因为<strong>用户自己不知道正确答案</strong>！当两个模型给出看似都很有道理但结论相反的专业回答时，提问者怎么判断谁是对的？</li>
+<li><strong>诱导阿谀奉承（Sycophancy）</strong>：一味迎合人类直觉、顺着用户偏见说好话的回复，往往比客观严厉指出用户错误的回复更容易拿到高赞。</li>
+</ol>
+</li>
+</ul>
+</li>
+</ol>
+<h3 id="4-2-大模型自动裁判（LLM-as-a-Judge）与长度偏见去偏（AlpacaEval-2-0-WildBench）"><a href="#4-2-大模型自动裁判（LLM-as-a-Judge）与长度偏见去偏（AlpacaEval-2-0-WildBench）" class="headerlink" title="4.2 大模型自动裁判（LLM-as-a-Judge）与长度偏见去偏（AlpacaEval 2.0 &amp; WildBench）"></a>4.2 大模型自动裁判（LLM-as-a-Judge）与长度偏见去偏（AlpacaEval 2.0 &amp; WildBench）</h3><p>人类盲测虽然好，但收集成千上万张选票既慢又贵，无法用于日常模型开发内部迭代。于是学界提出了 <strong>LLM-as-a-Judge（用强模型如 GPT-4 作为自动裁判）</strong> 的基准：</p>
+<h4 id="1-AlpacaEval-Li-et-al-2023-与-Length-Controlled-AlpacaEval-2-0-Dubois-Galambosi-Liang-Hashimoto-2024"><a href="#1-AlpacaEval-Li-et-al-2023-与-Length-Controlled-AlpacaEval-2-0-Dubois-Galambosi-Liang-Hashimoto-2024" class="headerlink" title="1. AlpacaEval (Li et al., 2023) 与 Length-Controlled AlpacaEval 2.0 (Dubois, Galambosi, Liang &amp; Hashimoto, 2024)"></a>1. <a target="_blank" rel="noopener" href="https://tatsu-lab.github.io/alpaca_eval/">AlpacaEval (Li et al., 2023)</a> 与 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2404.04475">Length-Controlled AlpacaEval 2.0 (Dubois, Galambosi, Liang &amp; Hashimoto, 2024)</a></h4><ul>
+<li><strong>基本设定</strong>：收集 805 条代表性开放指令，让被测模型 $m$ 生成回复 $z_m$，并与基准模型 $b$（如 <code>GPT-4 Preview</code>）生成的回复 $z_b$ 一起交给裁判模型（<code>GPT-4 Preview</code>）打分，计算被测模型击败基准模型的<strong>胜率（Win Rate）</strong>。</li>
+<li><strong>暴露出的严重漏洞——长度偏见（Length Bias &#x2F; Verbosity Gaming）</strong>：<br>早期的 AlpacaEval 发布后不久，榜单迅速被各种微调小模型刷爆——研究者发现 <strong>LLM 裁判（其实人类裁判也一样）极其偏爱长篇大论、滥用 Markdown 列表的啰嗦回复</strong>！哪怕内容全是车轱辘话，只要把输出长度拉长一倍，胜率就会虚高十几个百分点。</li>
+<li><strong>Tatsu 与 Percy 团队的去偏解法（Length-Controlled AlpacaEval）</strong>：<br>回答一个<strong>反事实问题（Counterfactual Question）</strong>：<em>“如果被测模型的回复与基准模型的回复长度完全相同（$\text{length}(z_m) - \text{length}(z_b) &#x3D; 0$），裁判的偏好胜率会是多少？”</em><br>具体做法是构建一个包含<strong>模型真实能力项 $\theta_m$</strong> 与<strong>长度差混淆中介项 $\tanh(\Delta \text{length})$</strong> 的广义线性模型（Logistic Regression &#x2F; GLM）：<br>$$q_{\theta, \phi, \psi}(y &#x3D; 1 \mid x, m, b) &#x3D; \text{logistic}!\left(\theta_m - \theta_b + \phi_{m, b} \cdot \tanh!\left(\frac{\text{len}(z_m) - \text{len}(z_b)}{\sigma_{\Delta\text{len}}}\right) + (\psi_m - \psi_b)\gamma(x)\right)$$<br>拟合出参数后，<strong>在预测时强行令长度差项 $\text{len}(z_m) - \text{len}(z_b) \equiv 0$（即拔掉长度偏见插头）</strong>，直接计算净胜率！这一简单优雅的回归去偏不仅彻底堵死了靠啰嗦刷榜的漏洞，还将 AlpacaEval 与人类 Chatbot Arena 的 <strong>Spearman 秩相关系数从 <code>0.94</code> 大幅提升到了 <code>0.98</code></strong>！</li>
+</ul>
+<h4 id="2-WildBench-Lin-et-al-2024-：引入任务专属评分细则清单（Task-Specific-Checklists）"><a href="#2-WildBench-Lin-et-al-2024-：引入任务专属评分细则清单（Task-Specific-Checklists）" class="headerlink" title="2. WildBench (Lin et al., 2024)：引入任务专属评分细则清单（Task-Specific Checklists）"></a>2. <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.04770">WildBench (Lin et al., 2024)</a>：引入任务专属评分细则清单（Task-Specific Checklists）</h4><p>直接问裁判模型“你觉得回答 A 和回答 B 哪个更好？”往往是一个定义不清（Ill-defined）的问题。AI2 团队提出的 <strong>WildBench</strong> 从百万条真实人类对话日志（WildChat）中精选出 1,024 个高难度真实任务，并引入了两项关键改进：</p>
+<ol>
+<li><strong>针对每道题定制专属评分清单（Task-Specific Checklists &#x2F; Rubrics）</strong>：在让 GPT-4-turbo 裁判打分前，先根据具体问题列出必须检查的 5～10 条核心核对项（相当于为裁判提供了结构化的评分思维链 CoT），大幅提升了自动判卷的信噪比与可解释性；</li>
+<li><strong>五档细粒度比较与硬性长度惩罚</strong>：采用五档打分（<code>Much better / Slightly better / Tie / Slightly worse / Much worse</code>），并规定如果获胜方的字符数比失败方超出阈值 $K$ 且仅被评为 <code>Slightly better</code>，则强制将其降级为平局 <code>Tie</code>。其与 Chatbot Arena 顶部模型的 Pearson 相关系数高达 <strong><code>0.98</code></strong>（可在 <a target="_blank" rel="noopener" href="https://www.google.com/search?q=https://crfm.stanford.edu/helm/wildbench/latest/">HELM WildBench</a> 查看）。</li>
+</ol>
+<blockquote>
+<p><strong>元问题思考：我们该如何“评估一个评测指标本身的好坏（How to evaluate a metric）”？</strong><br>Percy 指出，目前学界最常用的合理性检验（Sanity Check）就是计算新指标与人类盲测榜单（如 Chatbot Arena）的相关系数（Correlation）。但这存在一定的循环论证风险（因为 Chatbot Arena 本身也有人类偏见，并非绝对真理），更稳健的做法是<strong>联合多个不同架构的 LLM 裁判与遵循严格 Rubric 的人类专家进行交叉印证</strong>。</p>
+</blockquote>
+<h2 id="5-支柱四：自主智能体基准（Agentic-Benchmarks）——-从“评估模型说什么”到“评估模型做什么”（agentic-benchmarks）"><a href="#5-支柱四：自主智能体基准（Agentic-Benchmarks）——-从“评估模型说什么”到“评估模型做什么”（agentic-benchmarks）" class="headerlink" title="5. 支柱四：自主智能体基准（Agentic Benchmarks）—— 从“评估模型说什么”到“评估模型做什么”（agentic_benchmarks）"></a>5. 支柱四：自主智能体基准（Agentic Benchmarks）—— 从“评估模型说什么”到“评估模型做什么”（<code>agentic_benchmarks</code>）</h2><p>如果说前面的考试和对话基准都在评估**“语言模型说了什么（What LMs say）”<strong>，那么近两年最激动人心的范式跃迁就是评估</strong>“语言模型在真实环境中做出了什么（What LMs do）”**——即 <strong>Agentic Benchmarks（智能体基准）</strong>！</p>
+<h3 id="5-1-智能体的核心等式与四大代表性基准"><a href="#5-1-智能体的核心等式与四大代表性基准" class="headerlink" title="5.1 智能体的核心等式与四大代表性基准"></a>5.1 智能体的核心等式与四大代表性基准</h3><p>$$\mathbf{\text{Agent (智能体系统)} &#x3D; \text{Language Model (底层基座模型)} + \text{Agent Scaffold (智能体脚手架 &#x2F; 控制流逻辑)}}$$</p>
+<p>在智能体任务中，模型不再是一锤子买卖地吐出一段文本，而是运行在一个循环脚手架（Scaffold）中：观察环境状态 $\to$ 思考并生成工具调用（如执行 Bash 命令、读写文件、运行测试） $\to$ 接收环境反馈 $\to$ 多轮迭代修正直至完成任务。</p>
+<table>
+<thead>
+<tr>
+<th align="left">智能体基准</th>
+<th align="left">论文与年份</th>
+<th align="left">任务领域与环境设定</th>
+<th align="left">题目规模与验证判分方式</th>
+<th align="left">分数演进轨迹与核心启示</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. SWE-bench</strong> (&amp; <strong>SWE-bench Verified</strong>)</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.06770">Jimenez et al. (2023)</a></strong></td>
+<td align="left"><strong>真实软件工程</strong>：给定完整 Python 代码库与真实 GitHub Issue 描述，要求生成代码修复补丁（PR Patch）</td>
+<td align="left">12 个流行仓库共 2,294 题（后经人工审计过滤掉测试不全的坏题，精选出 500 题构成 <strong>Verified</strong>）；通过运行 <strong>Fail-to-Pass 与 Pass-to-Pass 单元测试</strong> 严格判分</td>
+<td align="left">• 2023 初代 Claude 2 仅 <strong><code>1.96%</code></strong><br>• 2024 年 SWE-bench Verified 约 <strong><code>16%</code></strong><br>• <strong>2026 年 5 月最新 SOTA（Claude Mythos）已飙升至 <code>93.9%</code>！</strong></td>
+</tr>
+<tr>
+<td align="left"><strong>2. Terminal-Bench 2.0</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2601.11868">Merrill et al. (2026)</a></strong> (<a target="_blank" rel="noopener" href="https://www.tbench.ai/">tbench.ai</a>)</td>
+<td align="left"><strong>通用计算机命令行终端（CLI）</strong>：在真实 Linux 终端中完成系统配置、编译排错、数据处理等复杂长周期任务</td>
+<td align="left">由全球 93 位贡献者众包构建 229 题，精选 <strong>89 道硬核任务</strong>构成 2.0 版（人类耗时从 1 小时到数天不等），每题配独立容器环境与测试套件</td>
+<td align="left">极具区分度：截至 2026 年初，即便是最强的前沿模型与脚手架组合，得分也<strong>普遍低于 <code>65%</code></strong>，且同一模型换不同 Scaffold 性能差异显著</td>
+</tr>
+<tr>
+<td align="left"><strong>3. Cybench</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2408.08926">Zhang et al. (2024)</a></strong> (<a target="_blank" rel="noopener" href="https://cybench.github.io/">cybench.github.io</a>)</td>
+<td align="left"><strong>网络安全夺旗赛（CTF, Capture the Flag）</strong>：给定存在漏洞的目标服务器或二进制源码，自主执行渗透攻击夺取隐藏的 <code>flag</code> 字符串</td>
+<td align="left">源自 4 大顶级国际 CTF 竞赛的 <strong>40 道专业赛题</strong>；以人类战队**首次攻破耗时（First-solve time，从 11 分钟到 25 小时）**作为客观难度标尺，并拆分中间子任务（Subtasks）</td>
+<td align="left">2024 年刚发布时顶尖模型仅能解出人类耗时 $\le 11$ 分钟的简单题（总分 <code>~10%–20%</code>）；到 <strong>2026 年该基准已接近被完全攻克（Solved）</strong></td>
+</tr>
+<tr>
+<td align="left"><strong>4. MLE-bench</strong></td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2410.07095">Chan et al. (2024)</a></strong></td>
+<td align="left"><strong>机器学习工程竞赛（Kaggle）</strong>：阅读赛题、清洗特征、编写训练代码、调参并提交测试集预测文件</td>
+<td align="left">精选 <strong>75 个真实 Kaggle 竞赛</strong>，直接以人类 Kaggle 排行榜的铜牌&#x2F;银牌&#x2F;金牌分数线作为评分基准</td>
+<td align="left">发布时 <code>o1-preview + AIDE 脚手架</code> 在 <code>16.9%</code> 的比赛中达到铜牌线；到 2026 年顶尖 Agent 已能在过半数比赛中夺牌，且重度依赖脚手架设计</td>
+</tr>
+</tbody></table>
+<h3 id="5-2-为什么智能体脚手架（Agent-Scaffolds）对评测结果有决定性影响？"><a href="#5-2-为什么智能体脚手架（Agent-Scaffolds）对评测结果有决定性影响？" class="headerlink" title="5.2 为什么智能体脚手架（Agent Scaffolds）对评测结果有决定性影响？"></a>5.2 为什么智能体脚手架（Agent Scaffolds）对评测结果有决定性影响？</h3><p>Percy 对比了早期 Cybench 使用的极简脚手架（把所有历史 Action 和 Observation 一股脑无限拼接到同一个 Context Buffer 里，很快导致上下文爆炸与迷失方向）与 2025–2026 年现代生产级 Agent 脚手架（参考 <a target="_blank" rel="noopener" href="https://blog.langchain.com/">LangChain 关于 Agent Harness &#x2F; Context Engineering 的总结</a>），指出了现代脚手架的<strong>四大核心工程支柱</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    现代高性能 Agent Scaffold (智能体脚手架) 的四大核心工程支柱                    │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│  1. 显式任务规划 (Explicit Planning):                                                           │</span><br><span class="line">│     拒绝无头苍蝇式的自由流推理；强制维护结构化 To-Do List / task.md，逐项执行并打勾核销。       │</span><br><span class="line">│  2. 层级化子智能体委派 (Hierarchical Delegation):                                               │</span><br><span class="line">│     主控 Agent 将子任务派发给拥有干净独立上下文 (Clean Context) 的 Sub-agent，子 Agent 只向主控 │</span><br><span class="line">│     返回提炼后的最终结论，将海量中间报错与探索细节彻底封装隔离 (Encapsulation)！                 │</span><br><span class="line">│  3. 持久化外部记忆 (Persistent Memory):                                                         │</span><br><span class="line">│     突破有限的 Context Window，显式向磁盘文件系统读写工作笔记、中间状态与代码摘要。             │</span><br><span class="line">│  4. 极致上下文与流程工程 (Extreme Context Engineering):                                         │</span><br><span class="line">│     针对特定基座模型精细调优何时委派、何时切换探索策略、何时回滚重试的元控制指令。              │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>核心结论</strong>：在 Agentic 时代，当你看到排行榜上的一个高分时，<strong>你评估的绝不仅仅是底层的语言模型（LM），而是 <code>Language Model + Agent Scaffold</code> 的耦合系统</strong>！同一个基座模型搭配不同的脚手架，在 Terminal-Bench 或 MLE-bench 上的得分可以相差数十个百分点。</p>
+</blockquote>
+<h2 id="6-支柱五：纯流体推理基准（Pure-Reasoning）——-剥离世界知识的尝试（pure-reasoning-benchmarks）"><a href="#6-支柱五：纯流体推理基准（Pure-Reasoning）——-剥离世界知识的尝试（pure-reasoning-benchmarks）" class="headerlink" title="6. 支柱五：纯流体推理基准（Pure Reasoning）—— 剥离世界知识的尝试（pure_reasoning_benchmarks）"></a>6. 支柱五：纯流体推理基准（Pure Reasoning）—— 剥离世界知识的尝试（<code>pure_reasoning_benchmarks</code>）</h2><p>无论是 MMLU、GPQA 还是 SWE-bench，都需要模型具备海量的语言知识与专业领域背景（结晶智力 Crystallized Intelligence）。于是以 François Chollet 为代表的研究者提出了一个深刻的科学追问：<strong>我们能否把“纯粹的推理与抽象泛化能力（Fluid Intelligence）”从“背诵互联网知识（Memorizing Facts）”中彻底剥离出来单独评测？</strong></p>
+<p>这就是著名的 <strong><a target="_blank" rel="noopener" href="https://arcprize.org/">ARC-AGI（Abstraction and Reasoning Corpus）</a></strong> 系列基准的设计哲学：<strong>每一道测试题都是一个前所未见的独特网格变换谜题（Special Snowflake），包含若干个输入-输出彩色网格示例，要求推理出测试输入对应的输出网格；所有题目仅依赖最基础的核心知识先验（物体、对称、计数、拓扑），对普通人类而言 100% 可解，但死记硬背互联网语料毫无帮助</strong>！</p>
+<h3 id="6-1-从-ARC-AGI-1-到-ARC-AGI-3（2019–2026）的三代演进与启示"><a href="#6-1-从-ARC-AGI-1-到-ARC-AGI-3（2019–2026）的三代演进与启示" class="headerlink" title="6.1 从 ARC-AGI-1 到 ARC-AGI-3（2019–2026）的三代演进与启示"></a>6.1 从 ARC-AGI-1 到 ARC-AGI-3（2019–2026）的三代演进与启示</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ARC-AGI 历史准确率跃迁图:</span><br><span class="line">  准确率 ▲</span><br><span class="line">   100% ┼─────────────────────────────────────────────── ● (人类基线 ~85%-100%)</span><br><span class="line">        │                                     ╭─────────╯</span><br><span class="line">        │                                   ╭─╯ ARC-AGI-1 (o1/o3 开启测试时推理后彻底攻克!)</span><br><span class="line">    50% ┼─────────────────────────────────╭─╯</span><br><span class="line">        │                               ╭─╯   ╭─────────► ARC-AGI-2 (2025.03 发布，快速攀升中)</span><br><span class="line">        │                             ╭─╯   ╭─╯</span><br><span class="line">     0% ┼═══●═════════●═════════●═════╯═════╯═══●═══════► ARC-AGI-3 (2026.03 交互式游戏环境，当前 &lt;1%!)</span><br><span class="line">       2019(GPT-2) 2020(GPT-3) 2023(GPT-4) 2024.09(o1) 2026.03</span><br><span class="line">       [纯预训练时代: 分数恒为 ~0%，毫无进展!]   [测试时计算 (Test-Time Compute) 推理模型爆发期!]</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><strong>第一阶段（2019–2024，纯预训练扩展的滑铁卢）</strong>：<br>从 2019 年 GPT-2 到 GPT-3 再到 GPT-4，尽管预训练参数量和语料规模扩大了数千倍，但单纯的前向自回归预训练模型在 <strong>ARC-AGI-1</strong> 上的得分几乎纹丝不动（长期徘徊在 <code>0%</code> 到个位数），完美验证了 Chollet 的预言：仅靠记忆浅层语料模式无法直接解决即兴抽象变换。</li>
+<li><strong>第二阶段（2024–2025，测试时推理模型 o1 &#x2F; o3 的爆发式破局）</strong>：<br>2024 年底，随着 OpenAI 推出 <code>o1</code> 与 <code>o3</code> 等<strong>强化学习推理模型（Reasoning Models，在测试时生成数万 Token 的内部搜索与假设检验思维链）</strong>，ARC-AGI-1 的得分瞬间垂直起飞并被基本攻克！随后官方于 2025 年 3 月推出了需要更深多步组合推理的 <strong>ARC-AGI-2</strong>，目前前沿推理模型也已将其刷至高位。<ul>
+<li><strong>Percy 的深层思考</strong>：虽然表面上看预训练知识对做图形题没用，但<strong>如果没有大规模预训练赋予模型强大的代码生成、符号表征与通用世界先验，后续的强化学习推理（o1&#x2F;o3）根本无从涌现</strong>！</li>
+</ul>
+</li>
+<li><strong>第三阶段（2026 年 3 月最新推出：<a target="_blank" rel="noopener" href="https://arcprize.org/arc-agi/3/">ARC-AGI-3</a> —— 交互式无语言探索环境）</strong>：<br>就在本讲开课前一个月（2026 年 3 月），官方发布了第三代 <strong>ARC-AGI-3</strong>：不再是静态的看图填空，而是变成了<strong>完全没有任何文字说明的交互式 2D 网格游戏环境（Interactive Environments）</strong>！智能体必须自己通过试探性动作观察环境反馈、自主推断游戏规则与通关目标、规划动作序列（可通过 $64\times 64$ 图像或 ASCII 文本网格输入给模型）。目前所有前沿模型在 ARC-AGI-3 上的得分再次跌回了个位数。</li>
+</ol>
+<ul>
+<li><strong>纯推理基准的局限性</strong>：<br>第一，要真正把“推理”与“先验知识”100% 正交解耦在哲学与数学上几乎是不可能的（任何谜题依然隐含着人类视觉与物理先验，只要针对该分布合成海量微调数据依然可以刷榜）；第二，ARC-AGI 刻意限制在“普通人类几分钟内能解出”的谜题，<strong>无法衡量超越常人极限的超人类科学推理（Superhuman Reasoning，如攻克国际数学奥林匹克 IMO 金牌题或未解数学猜想）</strong>。</li>
+</ul>
+<h2 id="7-支柱六：安全与红队基准（Safety-Benchmarks）——-合规拒答、对抗越狱与双用途困境（safety-benchmarks）"><a href="#7-支柱六：安全与红队基准（Safety-Benchmarks）——-合规拒答、对抗越狱与双用途困境（safety-benchmarks）" class="headerlink" title="7. 支柱六：安全与红队基准（Safety Benchmarks）—— 合规拒答、对抗越狱与双用途困境（safety_benchmarks）"></a>7. 支柱六：安全与红队基准（Safety Benchmarks）—— 合规拒答、对抗越狱与双用途困境（<code>safety_benchmarks</code>）</h2><p>在汽车工业中，“安全评测”有极其明确的物理标准（把放着假人的汽车以固定时速撞向混凝土墙，测量传感器受力）。但在人工智能领域，<strong>“什么是安全（What is Safety?）”</strong> 却是一个高度复杂、强依赖社会文化语境的难题。</p>
+<h3 id="7-1-标准拒答基准、法规对齐分类与自动对抗越狱（GCG）"><a href="#7-1-标准拒答基准、法规对齐分类与自动对抗越狱（GCG）" class="headerlink" title="7.1 标准拒答基准、法规对齐分类与自动对抗越狱（GCG）"></a>7.1 标准拒答基准、法规对齐分类与自动对抗越狱（GCG）</h3><ol>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.04249">HarmBench (Mazeika et al., 2024)</a>：标准化自动红队与鲁棒拒答评测</strong><br>收集了 510 种违反法律或社会规范的恶意行为指令（如制造生化武器、编写恶意勒索软件、侵犯版权等），评估 18 种自动红队攻击方法（Red Teaming）与 33 个目标模型的<strong>拒答鲁棒性（Robust Refusal）</strong>（详见 <a target="_blank" rel="noopener" href="https://www.google.com/search?q=https://crfm.stanford.edu/helm/harmbench/latest/">HELM HarmBench</a>）。</li>
+<li><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.17436">AIR-Bench 2024 (Zeng et al., 2024)</a>：对齐全球政府法规与企业政策的安全分类学</strong><br>过去的学术安全基准往往由研究者凭个人直觉定义风险类别。为了与真实世界的监管接轨，斯坦福团队系统拆解了全球 <strong>8 部政府监管法规（涵盖欧盟 AI 法案、美国行政令与中国监管规定）</strong> 以及 <strong>16 家科技公司的安全使用政策</strong>，构建了一个包含 <strong>4 层架构、底层细化为 314 个细粒度风险类别（Granular Risk Categories）</strong> 的统一安全分类学，并人工精校了 5,694 条测试提示词（详见 <a target="_blank" rel="noopener" href="https://crfm.stanford.edu/helm/air-bench/latest/">HELM AIR-Bench</a>）。</li>
+<li><strong>安全护栏的阿喀琉斯之踵：自动对抗越狱攻击（Jailbreaking via <a target="_blank" rel="noopener" href="https://www.google.com/search?q=https://arxiv.org/abs/2307.25863">GCG, Zou et al., 2023</a>）</strong><br>即便模型在后训练（RLHF&#x2F;SFT）中学到了对正常恶意提问说“对不起，我不能回答”，攻击者依然可以通过**越狱（Jailbreaking）**绕过限制。<ul>
+<li><strong>GCG（Greedy Coordinate Gradient，贪婪坐标梯度攻击）</strong>：不在自然语言层面绞尽脑汁写角色扮演提示词，而是直接在离散 Token 空间上运行梯度引导的贪婪搜索——寻找一段跟在恶意问题后面的“乱码后缀（Adversarial Suffix）”，使得模型以极高概率吐出肯定回复开头 <code>&quot;Sure, here is a step-by-step plan to...&quot;</code>！</li>
+<li><strong>惊人的跨模型迁移性（Transferability）</strong>：在完全开源的小模型（如 Vicuna-7B&#x2F;13B 或 Llama-2）上通过白盒梯度优化搜索出的乱码后缀，<strong>直接复制粘贴到完全闭源的黑盒商业模型（如早期的 ChatGPT、Claude、Bard）上竟然同样能成功触发越狱</strong>！</li>
+</ul>
+</li>
+</ol>
+<h3 id="7-2-为什么-AI-安全评测如此棘手？（三大深层张力）"><a href="#7-2-为什么-AI-安全评测如此棘手？（三大深层张力）" class="headerlink" title="7.2 为什么 AI 安全评测如此棘手？（三大深层张力）"></a>7.2 为什么 AI 安全评测如此棘手？（三大深层张力）</h3><ol>
+<li><strong>高度的语境与文化相对性（Contextual &amp; Cultural Relativity）</strong>：涉及政治、法律、宗教与社会伦理的边界在不同国家、不同司法管辖区乃至不同企业应用场景下截然不同，不存在放之四海而皆准的单一拒答标准。</li>
+<li><strong>风险谱系的极端多样性（与模型能力呈不同相关性）</strong>：<ul>
+<li>有些风险（如医疗&#x2F;法律场景下的<strong>幻觉 Hallucinations</strong>）与模型基础能力呈<strong>负相关</strong>——模型越聪明、知识越准，幻觉风险就越低；</li>
+<li>有些风险（如<strong>阿谀奉承 Sycophancy</strong>、人类过度依赖 AI 导致<strong>丧失批判性思维 Losing Critical Thinking</strong>、加剧社会经济不平等）则与模型交互设计及社会部署方式深度交织；</li>
+<li>而另一些风险（如<strong>协助网络犯罪 Abetting Crimes</strong>）则与模型的极限能力呈<strong>正相关</strong>！</li>
+</ul>
+</li>
+<li><strong>双用途困境（Dual-Use Dilemma）</strong>：<br>以第 5 节提到的网络安全智能体（如在 Cybench 上表现极强的 <strong>Claude Mythos</strong> 等模型）为例：一套能够自主扫描源码并构造漏洞利用（Exploit）的强大 Agent，交到黑客手里就是高危的自动化网络攻击武器，但交到安全工程师手里就是全天候自动发现并修补软件漏洞的<strong>渗透测试卫士（Penetration Testing）</strong>！能力本身是一把一体两面的双刃剑。</li>
+</ol>
+<h2 id="8-元评测工程准则：真实感（生态效度）、防污染（科学效度）与游戏规则"><a href="#8-元评测工程准则：真实感（生态效度）、防污染（科学效度）与游戏规则" class="headerlink" title="8. 元评测工程准则：真实感（生态效度）、防污染（科学效度）与游戏规则"></a>8. 元评测工程准则：真实感（生态效度）、防污染（科学效度）与游戏规则</h2><p>在讲座的最后一部分，Percy 跳出具体的数据集，从科学方法论的高度审视了任何评测体系都必须面对的三个核心维度：<strong>真实感（Realism &#x2F; Ecological Validity）</strong>、<strong>科学有效性（Validity：防数据污染与基准质量审计）</strong> 以及 <strong>评测目标的顶层定义（How to think about evaluation）</strong>。</p>
+<h3 id="8-1-生态效度（Ecological-Validity-Realism）：评测有多贴近真实世界？（realism）"><a href="#8-1-生态效度（Ecological-Validity-Realism）：评测有多贴近真实世界？（realism）" class="headerlink" title="8.1 生态效度（Ecological Validity &#x2F; Realism）：评测有多贴近真实世界？（realism）"></a>8.1 生态效度（Ecological Validity &#x2F; Realism）：评测有多贴近真实世界？（<code>realism</code>）</h3><p>所谓<strong>生态效度（Ecological Validity）</strong>，是指实验室里的评测分数能在多大程度上预测模型在真实世界生产环境中的表现。</p>
+<ul>
+<li>标准化考试（如 GPQA、HLE）虽然难，但生态效度极低；</li>
+<li>Chatbot Arena 虽然来自真实网民，但样本分布不受控，且偏向简短的闲聊或单轮问答。</li>
+</ul>
+<p>为了真正捕捉<strong>具有高经济价值与专业深度的真实工作流</strong>，2025 年涌现出了三项极具代表性的标杆工作：</p>
+<table>
+<thead>
+<tr>
+<th align="left">代表项目</th>
+<th align="left">论文与年份</th>
+<th align="left">核心设计理念与数据来源</th>
+<th align="left">关键实证发现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. GDPval</strong> (OpenAI)</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2510.04374">Patwardhan et al. (2025)</a></strong></td>
+<td align="left">对齐美国劳工统计局（BLS）与 <strong>美国 GDP 贡献最大的前 9 大行业、44 种核心职业</strong>；聘请平均拥有 <strong>14 年从业经验</strong> 的资深行业专家（护士、房产经纪、财务顾问、影视剪辑、工程师等）从真实日常工作中提取完整交付物任务（并开源了 220 题黄金子集）</td>
+<td align="left">前沿模型在真实经济任务上的交付质量正随时间呈近似线性提升，且增加推理预算（Reasoning Effort）、任务上下文与脚手架均能显著提分</td>
+</tr>
+<tr>
+<td align="left"><strong>2. MedHELM</strong> (Stanford)</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2505.23802">Bedi et al. (2025)</a></strong> (<a target="_blank" rel="noopener" href="https://crfm.stanford.edu/helm/medhelm/latest/">MedHELM</a>)</td>
+<td align="left">指出“通过美国执业医师资格考试（USMLE 多选题）绝不等于能直接上临床看病”；联合 <strong>29 位临床医生</strong> 构建了涵盖 5 大类、22 子类、<strong>121 项真实临床任务</strong>（病历生成、医患沟通、临床决策支持、行政工作流等）的 35 个公私混合基准，采用 <strong>LLM-Jury（陪审团）</strong> 评分</td>
+<td align="left">LLM-Jury 与临床医生评分的一致性（$\text{ICC}&#x3D;0.47$）甚至超过了医生与医生之间的一致性（$\text{ICC}&#x3D;0.43$）；模型在病历书写与医患沟通上表现优异（<code>0.73–0.85</code>），但在复杂临床决策与医院工作流上仍有明显短板（<code>0.53–0.72</code>）</td>
+</tr>
+<tr>
+<td align="left"><strong>3. Clio</strong> (Anthropic)</td>
+<td align="left"><strong><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2412.13678">Tamkin et al. (2024)</a></strong></td>
+<td align="left"><strong>用大模型做隐私保护下的真实流量洞察</strong>：模型厂商手握最真实的百万级用户对话流，但受隐私法规限制人类研究员不能直接窥探原始对话。Clio 利用 Claude 自动对百万条真实对话进行去隐私化特征提取与层次化聚类汇总</td>
+<td align="left">在零人工接触原始隐私数据的前提下，精准绘制出真实世界中人们到底在用 AI 做什么（如编程、写作、甚至发现日语对话中讨论养老护理的比例显著高于其他语种），直接反哺高真实感基准构建</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>核心张力（Realism vs. Privacy）</strong>：最真实的评测莫过于直接从线上真实用户流量中采样构建测试集，但这天然与**用户数据隐私（Privacy）**及商业机密相冲突；如何在保护隐私的前提下提升评测的生态效度，是工业界持续探索的前沿课题。</p>
+</blockquote>
+<h3 id="8-2-科学效度（Scientific-Validity）：训练-测试集污染（Contamination）与基准质量审计（validity）"><a href="#8-2-科学效度（Scientific-Validity）：训练-测试集污染（Contamination）与基准质量审计（validity）" class="headerlink" title="8.2 科学效度（Scientific Validity）：训练-测试集污染（Contamination）与基准质量审计（validity）"></a>8.2 科学效度（Scientific Validity）：训练-测试集污染（Contamination）与基准质量审计（<code>validity</code>）</h3><h4 id="1-头号公敌：训练-测试集重叠-数据污染（Train-Test-Overlap-Contamination）"><a href="#1-头号公敌：训练-测试集重叠-数据污染（Train-Test-Overlap-Contamination）" class="headerlink" title="1. 头号公敌：训练-测试集重叠 &#x2F; 数据污染（Train-Test Overlap &#x2F; Contamination）"></a>1. 头号公敌：训练-测试集重叠 &#x2F; 数据污染（Train-Test Overlap &#x2F; Contamination）</h4><p>在机器学习 101 的第一堂课上，老师就会告诫：<strong>绝对不要在测试集上训练（Don’t train on your test set）</strong>！</p>
+<ul>
+<li><strong>前大模型时代的单纯岁月</strong>：像 ImageNet、SQuAD 这样的数据集都有严格界定的 Train Split 和 Test Split，所有研究者都在同一份公开训练集上训练、在同一份测试集上评测，界限分明。</li>
+<li><strong>大模型时代的“黑盒互联网乱世”</strong>：现代预训练语料动辄抓取整个互联网（数万亿 Token），且各大商业模型与开放权重模型往往<strong>完全不公开训练数据的具体构成</strong>！更微妙的是，数据污染往往不是研发者故意把测试集塞进训练集，而是<strong>互联网上充斥着对经典基准题目的讨论、改写、刷题博客或同源教材（Subtle Derivative Contamination）</strong>。</li>
+</ul>
+<p>面对无处不在的数据污染嫌疑，我们有哪些科学应对之道？Percy 总结了<strong>四条核心路线（Four Routes）</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    应对大模型训练-测试集数据污染 (Contamination) 的四大科学路线                  │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│  • 路线 1 (事后黑盒取证): 利用数据集样本可交换性检验 (Exchangeability Test, Oren et al., 2023)  │</span><br><span class="line">│  • 路线 2 (建立社区规范): 强制要求模型发布方披露训练-测试重叠统计 (Reporting Norms, Zhang 2024) │</span><br><span class="line">│  • 路线 3 (动态时效更新): 持续抓取模型知识截止日期后的全新网页/竞赛题 (LiveCodeBench 等)        │</span><br><span class="line">│  • 路线 4 (私有留出评测): 维护绝不公开上网的内部代码库或私人手稿 (最适合内部 Perplexity 迭代!)  │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>路线一：黑盒统计取证——利用数据点的可交换性（Exchangeability，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.17623">Oren, Meister, Chatterji, Ladhak &amp; Hashimoto, 2023</a>）</strong>：<br>如果一个模型是闭源黑盒（不公开训练集、不公开权重，仅支持查询对数概率 $\log p$），如何提供具有严格统计保证（$p$-value）的证据，证明它偷看了某个公开测试集 $D &#x3D; (x_1, x_2, \dots, x_n)$？<br>Tatsu 课题组提出了一个极其精妙的统计检验：<ul>
+<li><strong>核心洞察</strong>：公开测试集文件在存储在 GitHub 或网页上时，其内部的样本排列顺序 $(x_1, x_2, \dots, x_n)$ 是一个特定的<strong>官方标准顺序（Canonical Ordering）</strong>。但从数学本质上讲，测试集里的各道题目是独立同分布（或可交换 Exchangeable）的。</li>
+<li><strong>原假设 $H_0$（未发生污染）</strong>：如果模型从未在预训练语料中见过这个测试集文件，那么把这 $n$ 道题按<strong>官方标准顺序</strong>拼接起来喂给模型算出的联合对数似然 $\log p(x_1, x_2, \dots, x_n)$，与把这 $n$ 道题<strong>随机打乱顺序（Random Permutation $\pi$）<strong>后算出的对数似然 $\log p(x_{\pi(1)}, x_{\pi(2)}, \dots, x_{\pi(n)})$，在分布上应当是</strong>完全等价、没有显著差异的</strong>！</li>
+<li><strong>备择假设 $H_1$（发生污染）</strong>：如果模型在预训练时直接背诵了该测试集文件，由于自回归模型具有极强的跨样本顺序记忆倾向，<strong>它对官方标准顺序 $(x_1, \dots, x_n)$ 赋予的对数概率，会显著高于随机打乱顺序后的对数概率</strong>！通过对比标准顺序与 $M$ 个随机置换顺序的对数似然排名，就能在不看训练数据的情况下抓出数据污染现行！（详见本文课后练习 3 的数学推导）。</li>
+</ul>
+</li>
+<li><strong>路线二：推动学术与工业界报告规范（Reporting Norms，<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2410.08385">Zhang et al., 2024</a>）</strong>：<br>调查发现，在 30 家主流大模型研发机构中，仅有 9 家报告了训练-测试集重叠率（其中 4 家开源了训练数据，5 家公布了去重与重叠统计方法）。就像统计学论文必须报告置信区间（Confidence Intervals）一样，社区应建立硬性规范：<strong>任何宣称在公开基准（如 GPQA、MMLU）上取得高分的模型报告，都必须同步公开其训练-测试集 $n$-gram &#x2F; 语义重叠率审计报告</strong>。</li>
+<li><strong>路线三：动态滚动构建全新时效基准（Fresh Evals：如 <a target="_blank" rel="noopener" href="https://livecodebench.github.io/">LiveCodeBench</a>、UncheatableEval）</strong>：<br>放弃已被污染的静态老题库，每个月自动抓取各大编程竞赛（LeetCode、AtCoder、Codeforces）、最新 arXiv 论文或新发布 GitHub 仓库中**晚于模型训练截止日期（Cutoff Date）**的新题。<ul>
+<li><em>Percy 提醒的隐患</em>：<strong>时间戳（Timestamps）并不总是安全的防线</strong>！因为网上新发布的 GitHub 代码或新比赛题，很多也是从几年前的老代码库或老经典母题轻微改写（Copy&#x2F;Derive）而来的，模型依然可能通过老母题占到便宜。</li>
+</ul>
+</li>
+<li><strong>路线四：构建绝不公开的私有评测集（Private Evals）</strong>：<br>大型科技公司内部普遍使用未公开的私有代码库与内部业务文档进行评测；对于个人研究者或小团队，Percy 幽默地支招：<strong>你可以用你自己写的、从未发到网上的私人文档（例如读博期间被拒稿且从未挂上 arXiv 的草稿论文！）来评测模型的 Perplexity</strong>——因为只要从未触网，就 100% 绝对干净！</li>
+</ul>
+<h4 id="2-评测数据集本身的质量危机：错题、幻觉标签与智能体评测漏洞"><a href="#2-评测数据集本身的质量危机：错题、幻觉标签与智能体评测漏洞" class="headerlink" title="2. 评测数据集本身的质量危机：错题、幻觉标签与智能体评测漏洞"></a>2. 评测数据集本身的质量危机：错题、幻觉标签与智能体评测漏洞</h4><p>很多时候模型没拿到 100% 满分，不是因为模型笨，而是因为<strong>测试集里的题目本身就是坏的（Broken Questions &#x2F; Label Errors）</strong>！</p>
+<ul>
+<li><strong>静态基准的“铂金清洗”（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2502.03461">Platinum Benchmarks, Vendrow et al., 2025</a>）</strong>：<br>MIT Mądry 团队对 15 个最热门的公开基准（包括 GSM8K、MMLU、VQA 等）进行了逐题深度审计，发现当把所有前沿大模型都做错的题目拎出来看时，<strong>绝大部分所谓的“模型错误”实际上是数据集自身的错标、题干缺失关键条件（例如题干问“根据下方曲线求斜率”，但文本里根本没给曲线！）或存在歧义（例如看一张只露出婴儿上半身的模糊照片问“婴儿穿袜子了吗？”）</strong>！在剔除这些坏题构建出干净的 <strong>Platinum Benchmarks</strong> 后，前沿模型的真实可靠性与剩余真盲区才得以清晰显现。</li>
+<li><strong>智能体基准的系统性漏洞与 ABC 检查清单（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2507.02825">Zhu et al., 2025</a>）</strong>：<br>相比静态选择题，评估整个交互环境的 Agentic Benchmarks 更容易隐藏致命漏洞：<ol>
+<li><strong>测试样例覆盖不足（Insufficient Test Cases）</strong>：在原始 SWE-bench 中，有些任务的单元测试过于单薄，导致模型写的补丁哪怕破坏了边缘逻辑也能蒙混过关（这也是为什么 OpenAI 后来不得不耗费大量人力筛选重构出 <strong>SWE-bench Verified</strong>）；</li>
+<li><strong>奖励与判分函数设计漏洞（Reward Hacking &#x2F; Trivial Agent）</strong>：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2507.02825">Zhu et al. (2025)</a> 审计发现，在著名的工具调用基准 <strong>$\tau$-bench (TAU-bench)</strong> 中，由于判分脚本逻辑缺陷，<strong>一个什么都不干、每次直接输出空字符串（Empty Response）的摆烂 Agent 竟然能直接拿到 <code>38%</code> 的成功率</strong>！某些基准由于环境配置漏洞，会导致智能体性能被高估或低估达 <strong>100%（相对误差）</strong>！为此，作者提出了 <strong>Agentic Benchmark Checklist (ABC)</strong>（应用在 CVE-Bench 上直接消除了 <code>33%</code> 的虚高高估）。</li>
+</ol>
+</li>
+<li><strong>工程铁律：永远用肉眼和工具去审计运行轨迹（Inspect the Outputs &amp; Traces）！</strong><br>Percy 强烈推荐了开源定性分析工具 <strong><a target="_blank" rel="noopener" href="https://transluce.org/introducing-docent">Docent (Transluce)</a></strong>（利用大模型自动聚类、检索和审查海量的 Agent 交互轨迹日志以定位异常模式），并送给所有学生一句忠告：<strong>无论你是在设计一个新基准，还是在现有基准上评测你的模型，绝对不要只看终端打印出的那一个冷冰冰的平均准确率数字——永远打开预测结果和交互轨迹亲眼看一看（Always look at the outputs），确认你测量的真的是你想测量的能力！</strong></li>
+</ul>
+<h3 id="8-3-顶层方法论：我们究竟在为了什么目的、评估什么对象？（how-to-think-about-evaluation）"><a href="#8-3-顶层方法论：我们究竟在为了什么目的、评估什么对象？（how-to-think-about-evaluation）" class="headerlink" title="8.3 顶层方法论：我们究竟在为了什么目的、评估什么对象？（how_to_think_about_evaluation）"></a>8.3 顶层方法论：我们究竟在为了什么目的、评估什么对象？（<code>how_to_think_about_evaluation</code>）</h3><p>在全讲结尾，Percy 总结了思考任何评测问题时的两个元维度：</p>
+<h4 id="1-明确评测的四大不同目的（What’s-the-Point-of-Evaluation-）"><a href="#1-明确评测的四大不同目的（What’s-the-Point-of-Evaluation-）" class="headerlink" title="1. 明确评测的四大不同目的（What’s the Point of Evaluation?）"></a>1. 明确评测的四大不同目的（What’s the Point of Evaluation?）</h4><p>世界上<strong>不存在唯一万能的终极评测（No one true evaluation）</strong>，最佳评测方案完全取决于你试图回答什么问题：</p>
+<ul>
+<li><strong>目的 A（采购与选型决策 Purchase Decision）</strong>：企业或用户想在特定业务场景（如客服机器人、医疗文书）中从模型 A 和模型 B 之间做二选一 $\implies$ 应构建高度贴合自身业务分布与成本约束的垂直领域私有评测集。</li>
+<li><strong>目的 B（探索智能科学边界 Capability Measurement）</strong>：学术研究者想度量通用的流体推理或知识上限 $\implies$ 应选用如 HLE、ARC-AGI-3、GPQA 等高难度去污染基准。</li>
+<li><strong>目的 C（评估社会收益与风险 Policy &amp; Safety Governance）</strong>：监管机构或安全团队想评估模型的经济替代效应与安全隐患 $\implies$ 应采用 GDPval、AIR-Bench、HarmBench 与 Clio 式的真实流量审计。</li>
+<li><strong>目的 D（指导模型内部研发迭代 Model Development Feedback）</strong>：模型预训练算法工程师想快速决定架构修改或数据清洗配方是否有效 $\implies$ 需要的是<strong>跨算力尺度平滑演进、低噪声、高灵敏度</strong>的内部指标（如干净私有留出集上的 <strong>Perplexity &#x2F; BPB</strong> 与轻量级核心基准）。</li>
+</ul>
+<h4 id="2-明确评测的对象：是在评估“算法（Methods）”还是在评估“系统（Models-Systems）”？"><a href="#2-明确评测的对象：是在评估“算法（Methods）”还是在评估“系统（Models-Systems）”？" class="headerlink" title="2. 明确评测的对象：是在评估“算法（Methods）”还是在评估“系统（Models &#x2F; Systems）”？"></a>2. 明确评测的对象：是在评估“算法（Methods）”还是在评估“系统（Models &#x2F; Systems）”？</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[前基座模型时代: 评估方法 (Evaluating Methods)]</span><br><span class="line">  固定统一的数据集 (Train Split) + 固定算力 ──► 运行不同算法 A vs. B ──► 统一测试集 (Test Split)</span><br><span class="line">  • 唯一变量是“算法本身”，严格控制变量，极大促进了学术界的算法创新（如今的代表特例：Modded-NanoGPT Speedrun!）</span><br><span class="line"></span><br><span class="line">[现代大模型时代: 评估端到端产物 (Evaluating Models &amp; Agent Systems)]</span><br><span class="line">  各显神通 (Anything Goes: 私有数据 + 任意算力 + 后训练 + 复杂 Scaffold) ──► 最终黑盒模型/系统 ──► 评测基准</span><br><span class="line">  • 对下游用户极有实用价值（因为用户用的就是最终成品），但混杂了数据、算力与工程脚手架，无法归因单一算法优劣!</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Percy 强调：这两种游戏本身都有巨大的价值——像 <strong><a target="_blank" rel="noopener" href="https://github.com/KellerJordan/modded-nanogpt">Modded-NanoGPT Speedrun</a></strong>（以及 CS336 各次作业的 Leaderboard）那样锁定训练数据、锁定硬件时长，比拼谁能最快达到目标验证集 Loss，是在严格<strong>评估算法（Evaluating Methods）</strong>（正是这种受控竞赛孕育出了我们在 Lecture 11 学到的 Muon 优化器！）；而像 SWE-bench、Arena AI 这样不限训练数据与脚手架的榜单，则是在<strong>评估端到端模型与系统（Evaluating Models&#x2F;Systems）</strong>。<strong>最关键的是：在开始任何评测之前，必须先清晰声明你的“游戏规则（State the rules of the game）”！</strong></li>
+</ul>
+<h2 id="9-全景总结：大模型六大评测范式权衡速查表（Cheat-Sheet）"><a href="#9-全景总结：大模型六大评测范式权衡速查表（Cheat-Sheet）" class="headerlink" title="9. 全景总结：大模型六大评测范式权衡速查表（Cheat Sheet）"></a>9. 全景总结：大模型六大评测范式权衡速查表（Cheat Sheet）</h2><table>
+<thead>
+<tr>
+<th align="left">评测范式</th>
+<th align="left">代表基准 &#x2F; 平台</th>
+<th align="left">评分机制</th>
+<th align="left">难度上限</th>
+<th align="left">生态真实感 (Realism)</th>
+<th align="left">抗污染与效度挑战 (Validity)</th>
+<th align="left">最核心适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1. 困惑度 (Perplexity)</strong></td>
+<td align="left">PTB, WikiText-103, 1BW, LAMBADA, HellaSwag, 私有留出集</td>
+<td align="left">精确计算序列对数似然 $\exp(-\frac{1}{N}\sum \log p)$</td>
+<td align="left">连续无上限（以真实熵 $H(t)$ 为下界）</td>
+<td align="left">低（衡量分布拟合，非直接交互）</td>
+<td align="left">公开集易污染，但<strong>极易构建绝对干净的私人手稿&#x2F;内部代码留出集</strong>；黑盒榜单需防未归一化作弊</td>
+<td align="left"><strong>预训练内部迭代、Scaling Laws 拟合、数据配比消融（Assignment 3 &amp; 4 核心指标）</strong></td>
+</tr>
+<tr>
+<td align="left"><strong>2. 标准化考试 (Exams)</strong></td>
+<td align="left"><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2009.03300">MMLU</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.01574">MMLU-Pro</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2311.12022">GPQA</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2501.14249">HLE</a></td>
+<td align="left">多选题选项匹配或简答题精确&#x2F;规则匹配</td>
+<td align="left"><strong>极高</strong>（可召集全球博士出题至人类极限）</td>
+<td align="left"><strong>低</strong>（现实用户极少问闭合多选题）</td>
+<td align="left">静态公开题库极易被网络衍生讨论污染；饱和速度快（生命周期约 1–2 年）</td>
+<td align="left">度量专业学科知识储备与封闭式深度学术推理能力</td>
+</tr>
+<tr>
+<td align="left"><strong>3. 开放式对话 (Chat)</strong></td>
+<td align="left"><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2403.04132">Chatbot Arena</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2404.04475">AlpacaEval 2.0</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2406.04770">WildBench</a></td>
+<td align="left">人类盲测 Elo (Bradley-Terry) 或带 Rubric 的 LLM-as-a-Judge</td>
+<td align="left">中（受限于日常单轮&#x2F;多轮提问复杂度）</td>
+<td align="left"><strong>高</strong>（直接源自真实人类开放式提问）</td>
+<td align="left">需防范<strong>长度偏见（Length Bias）</strong>、格式偏见、阿谀奉承（Sycophancy）与外行裁判误判</td>
+<td align="left">评估后训练（SFT &#x2F; RLHF）指令遵循、文风对齐与日常助手体验</td>
+</tr>
+<tr>
+<td align="left"><strong>4. 自主智能体 (Agentic)</strong></td>
+<td align="left"><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.06770">SWE-bench</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2601.11868">Terminal-Bench 2.0</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2408.08926">Cybench</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2410.07095">MLE-bench</a></td>
+<td align="left">容器环境内执行单元测试、夺取 Flag 或 Kaggle 竞赛排名</td>
+<td align="left"><strong>极高</strong>（长周期多步工具交互）</td>
+<td align="left"><strong>极高</strong>（高度还原真实软件与工程工作流）</td>
+<td align="left"><strong>强耦合模型与脚手架（Scaffold）</strong>；需遵循 <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2507.02825">ABC 准则</a>防范测试不全与空响应漏洞</td>
+<td align="left">评估模型在真实工具环境中的长程规划、代码修复与自主执行能力</td>
+</tr>
+<tr>
+<td align="left"><strong>5. 纯流体推理 (Pure Reasoning)</strong></td>
+<td align="left"><a target="_blank" rel="noopener" href="https://arcprize.org/">ARC-AGI-1 &#x2F; 2 &#x2F; 3</a></td>
+<td align="left">2D 网格精确匹配或交互式环境通关步数</td>
+<td align="left">高（对 AI 极难，但受限于普通人类可解范围）</td>
+<td align="left">低（抽象几何网格与合成小游戏）</td>
+<td align="left">每题独特（抗简单记忆），但仍可能被合成先验刷榜；无法衡量超人类科学证明</td>
+<td align="left">剥离世界知识，专项检验测试时计算（Test-Time Compute）与即兴模式归纳</td>
+</tr>
+<tr>
+<td align="left"><strong>6. 安全与真实经济 (Safety &amp; Econ)</strong></td>
+<td align="left"><a target="_blank" rel="noopener" href="https://arxiv.org/abs/2402.04249">HarmBench</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2407.17436">AIR-Bench</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2510.04374">GDPval</a>, <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2505.23802">MedHELM</a></td>
+<td align="left">拒答率 &#x2F; ASR（攻击成功率）或专家&#x2F;LLM陪审团按行业细则打分</td>
+<td align="left">中～高</td>
+<td align="left"><strong>极高</strong>（对齐多国法规、GDP 44 职业与临床实务）</td>
+<td align="left">安全标准随国别文化动态变化；需防范 <a target="_blank" rel="noopener" href="https://www.google.com/search?q=https://arxiv.org/abs/2307.25863">GCG</a> 等梯度优化越狱攻击与隐私泄漏</td>
+<td align="left">企业级生产部署准入审查、安全红队测试与垂直行业（医疗&#x2F;金融）选型</td>
+</tr>
+</tbody></table>
+<h2 id="10-课后思考与自测练习（Review-Self-Check）"><a href="#10-课后思考与自测练习（Review-Self-Check）" class="headerlink" title="10. 课后思考与自测练习（Review &amp; Self-Check）"></a>10. 课后思考与自测练习（Review &amp; Self-Check）</h2><ol>
+<li><p><strong>全句困惑度（Full Perplexity）vs. 条件困惑度（Conditional Perplexity）与黑盒作弊构造</strong>：<br>假设测试集中有一条问答样本 <code>&quot;Q: Where is Stanford? A: California&quot;</code>，分词后共包含 $L &#x3D; 7$ 个 Token：前缀提示词 <code>prompt</code> 为前 5 个 Token <code>[&quot;Q:&quot;, &quot; Where&quot;, &quot; is&quot;, &quot; Stanford&quot;, &quot;?&quot;]</code>，目标回答 <code>response</code> 为后 2 个 Token <code>[&quot; A:&quot;, &quot; California&quot;]</code>。<br>假设某语言模型 $p$ 对这 7 个 Token 依次赋予的条件概率为：<br>$$p(x_1)&#x3D;e^{-4.0}, ; p(x_2\mid x_1)&#x3D;e^{-3.0}, ; p(x_3\mid x_{&lt;3})&#x3D;e^{-1.0}, ; p(x_4\mid x_{&lt;4})&#x3D;e^{-5.0}, ; p(x_5\mid x_{&lt;5})&#x3D;e^{-0.5}, ; p(x_6\mid x_{&lt;6})&#x3D;e^{-0.2}, ; p(x_7\mid x_{&lt;7})&#x3D;e^{-0.3}$$</p>
+<ul>
+<li>(a) 请分别计算该模型在这条样本上的<strong>全句困惑度（Full Perplexity）<strong>与仅针对回答部分的</strong>条件困惑度（Conditional Perplexity）</strong>（保留两位小数，已知 $e^{2.0} \approx 7.39, e^{0.25} \approx 1.28$）。为什么在评估问答能力时条件困惑度更合理？</li>
+<li>(b) 假设有人举办了一个黑盒 Perplexity 比赛（评测服务器把测试文本发给参赛者的函数 <code>log_prob_fn(tokens)</code>，直接用返回的数值算 Perplexity）。如果某个作弊者内部使用了一个正常的模型 $p(x_t \mid x_{&lt;t})$，但在返回对数概率时偷偷给每个 Token 的对数概率都加上了一个正数 $c &#x3D; +1.0$（即返回 $\tilde{\ell}<em>t &#x3D; \log p(x_t \mid x</em>{&lt;t}) + 1.0$）。请问他的 Perplexity 会变成原来的多少倍？为什么这个返回的 $\tilde{\ell}_t$ 违反了概率公理？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) <strong>全句困惑度</strong>对全部 7 个 Token 的负对数似然求平均：<br>$$\text{PPL}<em>{\text{full}} &#x3D; \exp!\left(\frac{4.0 + 3.0 + 1.0 + 5.0 + 0.5 + 0.2 + 0.3}{7}\right) &#x3D; \exp!\left(\frac{14.0}{7}\right) &#x3D; e^{2.0} \approx \mathbf{7.39}$$<br><strong>条件困惑度</strong>仅对后 2 个回答 Token（<code>[&quot; A:&quot;, &quot; California&quot;]</code>）的负对数似然求平均：<br>$$\text{PPL}</em>{\text{cond}} &#x3D; \exp!\left(\frac{0.2 + 0.3}{2}\right) &#x3D; e^{0.25} \approx \mathbf{1.28}$$<br><strong>工程原因</strong>：前缀 <code>&quot;Q: Where is Stanford?&quot;</code> 中包含了高达 $4.0 + 3.0 + 1.0 + 5.0 + 0.5 &#x3D; 13.5\text{ nats}$ 的背景提问不确定性（即用户本来可以问任何问题），全句 PPL 被提问本身的熵严重主导，掩盖了模型其实以极高置信度（$e^{-0.25} \approx 77.9%$）精准答出 <code>&quot;California&quot;</code> 的事实。</li>
+<li>(b) 给每个 Token 的对数似然加上 $+1.0$，会使平均负对数似然减小 $1.0$，从而使算出的 Perplexity 直接缩小为原来的 <strong>$\frac{1}{e} \approx 0.368\text{ 倍}$</strong>！这之所以是非法的，是因为此时对词表所有可能 Token 的伪概率求和变成了 $\sum_{v \in V} \exp(\log p(v \mid x_{&lt;t}) + 1) &#x3D; e \cdot \sum_{v \in V} p(v \mid x_{&lt;t}) &#x3D; \mathbf{e \approx 2.718 &gt; 1}$，违背了概率分布归一性公理 $\sum_{v \in V} p(v) &#x3D; 1$。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>Chatbot Arena 的 Elo 等级分与 AlpacaEval 2.0 长度去偏回归计算</strong>：</p>
+<ul>
+<li>(a) 在 Chatbot Arena 中，模型 $A$ 击败模型 $B$ 的概率公式为 $P(A \text{ beats } B) &#x3D; \frac{1}{1 + 10^{(\text{ELO}_B - \text{ELO}_A)&#x2F;400}}$。假设模型 $A$ 的等级分为 $\text{ELO}_A &#x3D; 1350$，模型 $B$ 的等级分为 $\text{ELO}_B &#x3D; 1150$。请计算在单局盲测中模型 $A$ 击败模型 $B$ 的理论概率（保留三位小数，已知 $10^{-0.5} &#x3D; \frac{1}{\sqrt{10}} \approx 0.3162$）。反之，如果观测到模型 $C$ 对阵模型 $B$（$\text{ELO}_B &#x3D; 1150$）时的长期真实胜率为 <strong>$90.91%$</strong>（即 $\frac{10}{11}$），请问模型 $C$ 的 $\text{ELO}_C$ 是多少？</li>
+<li>(b) 在 Length-Controlled AlpacaEval 2.0 中，假设拟合出的裁判偏好逻辑回归模型简化为：<br>$$P(\text{Model } m \text{ wins against Baseline } b) &#x3D; \sigma!\left(\theta_m - \theta_b + 0.5 \cdot \tanh!\left(\frac{\text{len}(z_m) - \text{len}(z_b)}{500}\right)\right)$$<br>其中 $\sigma(u) &#x3D; \frac{1}{1 + e^{-u}}$ 为标准 Sigmoid 函数，基准模型参数 $\theta_b &#x3D; 0$。某个经过“话痨微调”的模型 $m$ 真实能力参数仅为 $\theta_m &#x3D; -0.2$（实际上不如基准模型），但它在回答时平均每次比基准模型多写 $1000$ 个字符（使得 $\tanh(1000&#x2F;500) &#x3D; \tanh(2) \approx 0.964$）。请对比该模型在<strong>未去偏原始 AlpacaEval</strong> 下的表观胜率与在<strong>长度控制（Length-Controlled）AlpacaEval 2.0</strong> 下的真实去偏胜率！</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 代入 $\text{ELO}_B - \text{ELO}_A &#x3D; 1150 - 1350 &#x3D; -200$：<br>$$P(A \text{ beats } B) &#x3D; \frac{1}{1 + 10^{-200&#x2F;400}} &#x3D; \frac{1}{1 + 10^{-0.5}} \approx \frac{1}{1 + 0.3162} \approx \mathbf{0.760\text{ (即 } 76.0%\text{)}}$$<br>若模型 $C$ 对阵 $B$ 的胜率为 $\frac{10}{11}$，则 $\frac{1}{1 + 10^{(\text{ELO}_B - \text{ELO}_C)&#x2F;400}} &#x3D; \frac{10}{11} \implies 10^{(\text{ELO}_B - \text{ELO}_C)&#x2F;400} &#x3D; \frac{1}{10} &#x3D; 10^{-1}$，故 $\frac{\text{ELO}_B - \text{ELO}_C}{400} &#x3D; -1 \implies \text{ELO}_C &#x3D; \text{ELO}_B + 400 &#x3D; 1150 + 400 &#x3D; \mathbf{1550}$。</li>
+<li>(b) <strong>未去偏原始胜率</strong>：代入 $\Delta \text{len} &#x3D; +1000$，得对数几率（Logit）为 $u_{\text{raw}} &#x3D; -0.2 - 0 + 0.5 \times 0.964 &#x3D; \mathbf{+0.282} &gt; 0$，对应的表观胜率为 $\sigma(0.282) &#x3D; \frac{1}{1 + e^{-0.282}} \approx \mathbf{57.0%}$（看起来明显击败了基准模型！）。<br><strong>长度控制（Length-Controlled）去偏胜率</strong>：预测时强行干预令 $\text{len}(z_m) - \text{len}(z_b) &#x3D; 0$（即 $\tanh(0) &#x3D; 0$），此时净对数几率为 $u_{\text{LC}} &#x3D; \theta_m - \theta_b &#x3D; \mathbf{-0.20} &lt; 0$，对应的去偏胜率回落至 $\sigma(-0.20) &#x3D; \frac{1}{1 + e^{0.20}} \approx \mathbf{45.0%}$，成功识破了靠凑字数刷榜的伪装！</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>利用可交换性（Exchangeability）进行黑盒测试集污染置换检验（<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2310.17623">Oren et al., 2023</a>）</strong>：<br>假设你想检验某闭源模型 $p$ 是否在预训练时偷看了包含 $n$ 道题目的公开基准测试集 $D_{\text{canon}} &#x3D; (x_1, x_2, \dots, x_n)$。<br>你生成了 $M &#x3D; 99$ 个独立均匀随机打乱题目顺序的置换版本 $D_{\pi_1}, D_{\pi_2}, \dots, D_{\pi_{99}}$，并分别调用模型计算了官方标准顺序的对数似然 $L_0 &#x3D; \log p(D_{\text{canon}})$ 以及 99 个随机置换顺序的对数似然 $L_1, L_2, \dots, L_{99}$。</p>
+<ul>
+<li>(a) 如果原假设 $H_0$（模型未受该测试集文件污染，且测试集各题满足可交换性）成立，那么在全部 $M + 1 &#x3D; 100$ 个对数似然数值 ${L_0, L_1, \dots, L_{99}}$ 中，官方标准顺序的似然 $L_0$ 恰好排在**严格第 1 名（即 $L_0 &gt; \max_{1 \le k \le 99} L_k$）**的概率是多少？此时对应的非参数置换检验 $p$-value 是多少？</li>
+<li>(b) 为什么在计算每个置换序列 $D_\pi &#x3D; (x_{\pi(1)}, \dots, x_{\pi(n)})$ 的对数似然时，必须将多道题目拼接在同一个上下文窗口内计算 $\sum_{i&#x3D;1}^n \log p\big(x_{\pi(i)} \mid x_{\pi(1)}, \dots, x_{\pi(i-1)}\big)$，而不能把每道题单独喂给模型计算 $\sum_{i&#x3D;1}^n \log p(x_{\pi(i)})$？</li>
+<li><em>参考解答</em>：<ul>
+<li>(a) 在原假设 $H_0$ 下，由于数据集满足可交换性且模型从未见过官方文件的特定排列顺序，$L_0, L_1, \dots, L_{99}$ 这 $100$ 个随机变量是完全对称（可交换）的，任何一个排列取得最大值的概率均相等，等于 $\frac{1}{M + 1} &#x3D; \frac{1}{99 + 1} &#x3D; \mathbf{0.01\text{ (即 } 1%\text{)}}$。因此，当观测到 $L_0$ 高居全部 100 个排列的榜首时，拒绝“未污染”原假设的精确置换检验 <strong>$p\text{-value} &#x3D; \frac{1}{100} &#x3D; \mathbf{0.01 &lt; 0.05}$</strong>，具有显著的统计学证据表明该模型记忆了测试集的官方样本顺序！</li>
+<li>(b) 因为加法满足交换律！如果把每道题单独隔离开计算无条件对数似然再相加，由于 $\sum_{i&#x3D;1}^n \log p(x_{\pi(i)}) \equiv \sum_{i&#x3D;1}^n \log p(x_i)$，任何置换顺序算出来的总和在数学上都<strong>恒等不变</strong>！只有将多道题首尾相接放入同一个上下文窗口内，利用自回归条件概率 $\log p(x_{\pi(i)} \mid x_{\pi(&lt;i)})$ 捕捉<strong>跨题目的转移概率（Cross-Example Transition Probability）</strong>，才能检测出模型是否背诵了“第 $i-1$ 题后面紧跟着第 $i$ 题”的文件顺序特征。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/10/26/cs336_lecture_12_notes/">https://kanosa0101.github.io/2026/10/26/cs336_lecture_12_notes/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/CS336/">CS336</a><a class="post-meta__tags" href="/tags/%E5%A4%A7%E6%A8%A1%E5%9E%8B/">大模型</a><a class="post-meta__tags" href="/tags/%E6%A8%A1%E5%9E%8B%E8%AF%84%E6%B5%8B/">模型评测</a><a class="post-meta__tags" href="/tags/%E5%9B%B0%E6%83%91%E5%BA%A6/">困惑度</a><a class="post-meta__tags" href="/tags/%E5%9F%BA%E5%87%86%E6%B5%8B%E8%AF%95/">基准测试</a><a class="post-meta__tags" href="/tags/%E6%B1%A1%E6%9F%93%E6%A3%80%E6%B5%8B/">污染检测</a><a class="post-meta__tags" href="/tags/HELM/">HELM</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/10/26/cs336_lecture_11_notes/" title="Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 11 YouTube 视频 | 官方幻灯片 (lecture_11.pdf) | Assignment 3 指导手册与代码库  1. 引言：从经典 Chinchilla 到前沿开源大模型的实战扩展工程在两讲之前的 Lecture 9（Scaling Laws Part 1）中，Tatsu 带我们系统梳理了以 Hestness et al. (2017)、Kaplan et al. (2020) 和 Hoffmann et al. (2022, Chinchilla) 为代表的“经典扩展定律法典（Classical Scaling Laws Canon）”。然而，经典文献截止于 2022 年前后，主要回答了宏观算力分配问题（即给定...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/10/25/cs336_lecture_07_notes/" title="Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL &amp; DDP)课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Percy Liang课程视频与代码讲义：Lecture 7 YouTube 视频 | Executable Lecture 源码 (lecture_07.py &#x2F; Trace)关联作业：Assignment 2 — Systems &amp; Parallelism（从零手写 Distributed Data Parallel (DDP)、通信与计算重叠、优化器状态分片 ZeRO-1）  课程编排说明（Spring 2026 vs. Spring 2025 课表顺序对调）：在 Spring 2026 学期中，课程组将两节并行课的顺序做了优化调整——Lecture 7（本讲，Percy Liang 主讲） 率先通过纯可执行代码 lecture_07.py 从底...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_09_notes/" title="Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 9 YouTube 视频 | 官方幻灯片 (lecture_09.pdf) | Assignment 3 指导手册与代码库  1. 引言：为什么大模型工程需要扩展定律（Scaling Laws）？在经历了前四讲的**模型架构（Assignment 1）与第 5～8 讲的底层硬件与分布式系统（Assignment 2）**之后，从 Lecture 9 开始，课程正式进入第三大核心支柱——Scaling Laws（扩展定律，对应 Assignment 3）。由于排课原因，我们的节奏将是：本讲（Lecture 9）拆解 Scaling Laws 基础理论与经典范式 $\rightarrow$ 下一讲（Lecture 10）由 Percy...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_08_notes/" title="Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲人：Tatsunori Hashimoto (Tatsu)课程视频与讲义：Lecture 8 YouTube 视频 | 官方幻灯片 (lecture_08.pdf) | 配套参考：Google《How to Scale Your Model》关联作业：Assignment 2 — Systems &amp; Parallelism（实现 DDP 梯度分桶重叠、实现 ZeRO-1 优化器分片 &#x2F; FSDP、推导多维并行最佳拓扑配置） 1. 课程全景导读：当整个数据中心成为“基本计算单元”在 Lecture 7（分布式通信原语与 PyTorch 实战） 中，Percy Liang 带领我们从代码层面认识了 All-Reduce、All-Gather、...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_10_notes/" title="Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Percy Liang本讲资源：Lecture 10 YouTube 视频 | 交互式执行轨迹 (lecture_10.py) | 源码仓库 (spring2025-lectures/lecture_10.py) | Google《How to Scale Your Model》Inference 章节  1. 引言：为什么大模型推理系统（Inference Systems）如此重要？在上一讲（Lecture 9）中，Tatsu 带我们探讨了预训练的扩展定律（Scaling Laws），并在结尾指出：现代工业界为了压低部署成本，纷纷放弃 Chinchilla 的 20:1 比例，转而通过“蓄意过训练（Overtraining）”打造小巧强悍的模型。本讲（Lecture 10）作为纯代码交互式讲义（lecture_10.py），由 ...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_11_notes/" title="Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-26</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2) 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教授：Tatsunori Hashimoto (Tatsu)本讲资源：Lecture 11 YouTube 视频 | 官方幻灯片 (lecture_11.pdf) | Assignment 3 指导手册与代码库  1. 引言：从经典 Chinchilla 到前沿开源大模型的实战扩展工程在两讲之前的 Lecture 9（Scaling Laws Part 1）中，Tatsu 带我们系统梳理了以 Hestness et al. (2017)、Kaplan et al. (2020) 和 Hoffmann et al. (2022, Chinchilla) 为代表的“经典扩展定律法典（Classical Scaling Laws Canon）”。然而，经典文献截止于 2022 年前后，主要回答了宏观算力分配问题（即给定...</div></div></div></a><a class="pagination-related" href="/2026/10/25/cs336_lecture_01_notes/" title="Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-25</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lecture 1 深度课程笔记：Overview &amp; Tokenization 课程主页：Stanford CS336: Language Modeling from Scratch (Spring 2026)主讲教师：Percy Liang &amp; Tatsunori Hashimoto（助教团队：Marcel Rød, Herman Brunborg, Steven Cao）配套资源：Lecture 1 视频 · 课件源码 (lecture_01.py) · 交互式执行轨迹 (Edtrace) · Assignment 1 代码仓库   1. 为什么要开设 CS336：从“调用 API”回归底层构建1.1 抽象层上移带来的“技术断层”与抽象泄漏在过去十年中，AI 研究者与底层技术栈的关系经历了显著的范式转移：    时代阶段 核心研究范式 代表性模型与操作 抽象层级特征    2016 年前后 从零实现与训练 (From Scratch) LSTM、早期 Seq2Seq 研究者自己编写模型结构、优化器与训...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">13</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">56</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Stanford-CS336-Spring-2026-Lecture-12-%E6%B7%B1%E5%BA%A6%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9AEvaluation"><span class="toc-number">1.</span> <span class="toc-text">Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%BC%95%E8%A8%80%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E5%A4%A7%E6%A8%A1%E5%9E%8B%E8%AF%84%E6%B5%8B%EF%BC%88Evaluation%EF%BC%89%E4%B8%8D%E6%98%AF%E7%AE%80%E5%8D%95%E7%9A%84%E2%80%9C%E8%B7%91%E5%88%86%E2%80%9D%EF%BC%9F"><span class="toc-number">1.1.</span> <span class="toc-text">1. 引言：为什么大模型评测（Evaluation）不是简单的“跑分”？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E8%AF%84%E6%B5%8B%E7%9A%84%E5%8C%97%E6%9E%81%E6%98%9F%E6%95%88%E5%BA%94%E4%B8%8E%E6%A0%B8%E5%BF%83%E6%8C%91%E6%88%98%EF%BC%88Abstract-Construct-to-Concrete-Metric%EF%BC%89"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 评测的北极星效应与核心挑战（Abstract Construct $\to$ Concrete Metric）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%AE%9A%E4%B9%89%E2%80%9C%E4%BB%80%E4%B9%88%E6%98%AF%E5%A5%BD%E6%A8%A1%E5%9E%8B%EF%BC%88What-is-Good-%EF%BC%89%E2%80%9D%E7%9A%84%E5%9B%9B%E7%A7%8D%E4%B8%8D%E5%90%8C%E8%A7%86%E8%A7%92"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 定义“什么是好模型（What is Good?）”的四种不同视角</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E6%94%AF%E6%9F%B1%E4%B8%80%EF%BC%9A%E5%9B%B0%E6%83%91%E5%BA%A6%EF%BC%88Perplexity%EF%BC%89%E2%80%94%E2%80%94-%E4%BB%8E%E6%A6%82%E7%8E%87%E5%88%86%E5%B8%83%E6%9C%AC%E6%BA%90%E7%9C%8B%E8%AF%84%E6%B5%8B%EF%BC%88perplexity%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">2. 支柱一：困惑度（Perplexity）—— 从概率分布本源看评测（perplexity）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%BB%8E%E7%BB%8F%E5%85%B8%E2%80%9C%E5%9F%9F%E5%86%85%E8%AF%84%E6%B5%8B%E2%80%9D%E5%88%B0-GPT-2-%E7%9A%84%E2%80%9C%E9%9B%B6%E6%A0%B7%E6%9C%AC%E5%9F%9F%E5%A4%96%E8%AF%84%E6%B5%8B%E2%80%9D%E8%8C%83%E5%BC%8F%E8%BD%AC%E7%A7%BB"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 从经典“域内评测”到 GPT-2 的“零样本域外评测”范式转移</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E2%80%9CPerplexity-Is-All-You-Need%E2%80%9D-%E7%9A%84%E6%9E%81%E9%99%90%E4%BF%A1%E4%BB%B0-vs-%E2%80%9CPerplexity-%E7%AE%A1%E5%BE%97%E5%A4%AA%E5%AE%BD%E4%BA%86%E2%80%9D"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 “Perplexity Is All You Need” 的极限信仰 vs. “Perplexity 管得太宽了”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E2%80%9C%E4%BC%AA%E8%A3%85%E6%88%90%E5%87%86%E7%A1%AE%E7%8E%87%E7%9A%84%E5%9B%B0%E6%83%91%E5%BA%A6%E2%80%9D%EF%BC%88Perplexity-in-Disguise%EF%BC%89%E4%B8%8E%E6%8E%92%E8%A1%8C%E6%A6%9C%E4%BD%9C%E5%BC%8A%E9%99%B7%E9%98%B1"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 “伪装成准确率的困惑度”（Perplexity in Disguise）与排行榜作弊陷阱</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%94%AF%E6%9F%B1%E4%BA%8C%EF%BC%9A%E6%A0%87%E5%87%86%E5%8C%96%E8%80%83%E8%AF%95%E5%9F%BA%E5%87%86%EF%BC%88Exam-Benchmarks%EF%BC%89%E2%80%94%E2%80%94-%E4%BB%8E-MMLU-%E5%88%B0-Humanity%E2%80%99s-Last-Exam%EF%BC%88exam-benchmarks%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">3. 支柱二：标准化考试基准（Exam Benchmarks）—— 从 MMLU 到 Humanity’s Last Exam（exam_benchmarks）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%94%AF%E6%9F%B1%E4%B8%89%EF%BC%9A%E5%BC%80%E6%94%BE%E5%BC%8F%E5%AF%B9%E8%AF%9D%E5%9F%BA%E5%87%86%EF%BC%88Chat-Benchmarks%EF%BC%89%E2%80%94%E2%80%94-%E4%BA%BA%E7%B1%BB%E7%9B%B2%E6%B5%8B-Elo-%E4%B8%8E-LLM-as-a-Judge%EF%BC%88chat-benchmarks%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">4. 支柱三：开放式对话基准（Chat Benchmarks）—— 人类盲测 Elo 与 LLM-as-a-Judge（chat_benchmarks）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%BC%97%E5%8C%85%E4%BA%BA%E7%B1%BB%E6%88%90%E5%AF%B9%E7%9B%B2%E6%B5%8B%E4%B8%8E-Elo-%E7%AD%89%E7%BA%A7%E5%88%86%E6%8E%A8%E5%AF%BC%EF%BC%88Chatbot-Arena-Arena-AI-Chiang-et-al-2024%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 众包人类成对盲测与 Elo 等级分推导（Chatbot Arena &#x2F; Arena AI, Chiang et al., 2024）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E8%87%AA%E5%8A%A8%E8%A3%81%E5%88%A4%EF%BC%88LLM-as-a-Judge%EF%BC%89%E4%B8%8E%E9%95%BF%E5%BA%A6%E5%81%8F%E8%A7%81%E5%8E%BB%E5%81%8F%EF%BC%88AlpacaEval-2-0-WildBench%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 大模型自动裁判（LLM-as-a-Judge）与长度偏见去偏（AlpacaEval 2.0 &amp; WildBench）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-AlpacaEval-Li-et-al-2023-%E4%B8%8E-Length-Controlled-AlpacaEval-2-0-Dubois-Galambosi-Liang-Hashimoto-2024"><span class="toc-number">1.4.2.1.</span> <span class="toc-text">1. AlpacaEval (Li et al., 2023) 与 Length-Controlled AlpacaEval 2.0 (Dubois, Galambosi, Liang &amp; Hashimoto, 2024)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-WildBench-Lin-et-al-2024-%EF%BC%9A%E5%BC%95%E5%85%A5%E4%BB%BB%E5%8A%A1%E4%B8%93%E5%B1%9E%E8%AF%84%E5%88%86%E7%BB%86%E5%88%99%E6%B8%85%E5%8D%95%EF%BC%88Task-Specific-Checklists%EF%BC%89"><span class="toc-number">1.4.2.2.</span> <span class="toc-text">2. WildBench (Lin et al., 2024)：引入任务专属评分细则清单（Task-Specific Checklists）</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E6%94%AF%E6%9F%B1%E5%9B%9B%EF%BC%9A%E8%87%AA%E4%B8%BB%E6%99%BA%E8%83%BD%E4%BD%93%E5%9F%BA%E5%87%86%EF%BC%88Agentic-Benchmarks%EF%BC%89%E2%80%94%E2%80%94-%E4%BB%8E%E2%80%9C%E8%AF%84%E4%BC%B0%E6%A8%A1%E5%9E%8B%E8%AF%B4%E4%BB%80%E4%B9%88%E2%80%9D%E5%88%B0%E2%80%9C%E8%AF%84%E4%BC%B0%E6%A8%A1%E5%9E%8B%E5%81%9A%E4%BB%80%E4%B9%88%E2%80%9D%EF%BC%88agentic-benchmarks%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">5. 支柱四：自主智能体基准（Agentic Benchmarks）—— 从“评估模型说什么”到“评估模型做什么”（agentic_benchmarks）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%99%BA%E8%83%BD%E4%BD%93%E7%9A%84%E6%A0%B8%E5%BF%83%E7%AD%89%E5%BC%8F%E4%B8%8E%E5%9B%9B%E5%A4%A7%E4%BB%A3%E8%A1%A8%E6%80%A7%E5%9F%BA%E5%87%86"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 智能体的核心等式与四大代表性基准</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E6%99%BA%E8%83%BD%E4%BD%93%E8%84%9A%E6%89%8B%E6%9E%B6%EF%BC%88Agent-Scaffolds%EF%BC%89%E5%AF%B9%E8%AF%84%E6%B5%8B%E7%BB%93%E6%9E%9C%E6%9C%89%E5%86%B3%E5%AE%9A%E6%80%A7%E5%BD%B1%E5%93%8D%EF%BC%9F"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 为什么智能体脚手架（Agent Scaffolds）对评测结果有决定性影响？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E6%94%AF%E6%9F%B1%E4%BA%94%EF%BC%9A%E7%BA%AF%E6%B5%81%E4%BD%93%E6%8E%A8%E7%90%86%E5%9F%BA%E5%87%86%EF%BC%88Pure-Reasoning%EF%BC%89%E2%80%94%E2%80%94-%E5%89%A5%E7%A6%BB%E4%B8%96%E7%95%8C%E7%9F%A5%E8%AF%86%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%88pure-reasoning-benchmarks%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">6. 支柱五：纯流体推理基准（Pure Reasoning）—— 剥离世界知识的尝试（pure_reasoning_benchmarks）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E4%BB%8E-ARC-AGI-1-%E5%88%B0-ARC-AGI-3%EF%BC%882019%E2%80%932026%EF%BC%89%E7%9A%84%E4%B8%89%E4%BB%A3%E6%BC%94%E8%BF%9B%E4%B8%8E%E5%90%AF%E7%A4%BA"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 从 ARC-AGI-1 到 ARC-AGI-3（2019–2026）的三代演进与启示</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E6%94%AF%E6%9F%B1%E5%85%AD%EF%BC%9A%E5%AE%89%E5%85%A8%E4%B8%8E%E7%BA%A2%E9%98%9F%E5%9F%BA%E5%87%86%EF%BC%88Safety-Benchmarks%EF%BC%89%E2%80%94%E2%80%94-%E5%90%88%E8%A7%84%E6%8B%92%E7%AD%94%E3%80%81%E5%AF%B9%E6%8A%97%E8%B6%8A%E7%8B%B1%E4%B8%8E%E5%8F%8C%E7%94%A8%E9%80%94%E5%9B%B0%E5%A2%83%EF%BC%88safety-benchmarks%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">7. 支柱六：安全与红队基准（Safety Benchmarks）—— 合规拒答、对抗越狱与双用途困境（safety_benchmarks）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E6%A0%87%E5%87%86%E6%8B%92%E7%AD%94%E5%9F%BA%E5%87%86%E3%80%81%E6%B3%95%E8%A7%84%E5%AF%B9%E9%BD%90%E5%88%86%E7%B1%BB%E4%B8%8E%E8%87%AA%E5%8A%A8%E5%AF%B9%E6%8A%97%E8%B6%8A%E7%8B%B1%EF%BC%88GCG%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 标准拒答基准、法规对齐分类与自动对抗越狱（GCG）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E4%B8%BA%E4%BB%80%E4%B9%88-AI-%E5%AE%89%E5%85%A8%E8%AF%84%E6%B5%8B%E5%A6%82%E6%AD%A4%E6%A3%98%E6%89%8B%EF%BC%9F%EF%BC%88%E4%B8%89%E5%A4%A7%E6%B7%B1%E5%B1%82%E5%BC%A0%E5%8A%9B%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 为什么 AI 安全评测如此棘手？（三大深层张力）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%85%83%E8%AF%84%E6%B5%8B%E5%B7%A5%E7%A8%8B%E5%87%86%E5%88%99%EF%BC%9A%E7%9C%9F%E5%AE%9E%E6%84%9F%EF%BC%88%E7%94%9F%E6%80%81%E6%95%88%E5%BA%A6%EF%BC%89%E3%80%81%E9%98%B2%E6%B1%A1%E6%9F%93%EF%BC%88%E7%A7%91%E5%AD%A6%E6%95%88%E5%BA%A6%EF%BC%89%E4%B8%8E%E6%B8%B8%E6%88%8F%E8%A7%84%E5%88%99"><span class="toc-number">1.8.</span> <span class="toc-text">8. 元评测工程准则：真实感（生态效度）、防污染（科学效度）与游戏规则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E7%94%9F%E6%80%81%E6%95%88%E5%BA%A6%EF%BC%88Ecological-Validity-Realism%EF%BC%89%EF%BC%9A%E8%AF%84%E6%B5%8B%E6%9C%89%E5%A4%9A%E8%B4%B4%E8%BF%91%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%EF%BC%9F%EF%BC%88realism%EF%BC%89"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 生态效度（Ecological Validity &#x2F; Realism）：评测有多贴近真实世界？（realism）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E7%A7%91%E5%AD%A6%E6%95%88%E5%BA%A6%EF%BC%88Scientific-Validity%EF%BC%89%EF%BC%9A%E8%AE%AD%E7%BB%83-%E6%B5%8B%E8%AF%95%E9%9B%86%E6%B1%A1%E6%9F%93%EF%BC%88Contamination%EF%BC%89%E4%B8%8E%E5%9F%BA%E5%87%86%E8%B4%A8%E9%87%8F%E5%AE%A1%E8%AE%A1%EF%BC%88validity%EF%BC%89"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 科学效度（Scientific Validity）：训练-测试集污染（Contamination）与基准质量审计（validity）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%A4%B4%E5%8F%B7%E5%85%AC%E6%95%8C%EF%BC%9A%E8%AE%AD%E7%BB%83-%E6%B5%8B%E8%AF%95%E9%9B%86%E9%87%8D%E5%8F%A0-%E6%95%B0%E6%8D%AE%E6%B1%A1%E6%9F%93%EF%BC%88Train-Test-Overlap-Contamination%EF%BC%89"><span class="toc-number">1.8.2.1.</span> <span class="toc-text">1. 头号公敌：训练-测试集重叠 &#x2F; 数据污染（Train-Test Overlap &#x2F; Contamination）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E8%AF%84%E6%B5%8B%E6%95%B0%E6%8D%AE%E9%9B%86%E6%9C%AC%E8%BA%AB%E7%9A%84%E8%B4%A8%E9%87%8F%E5%8D%B1%E6%9C%BA%EF%BC%9A%E9%94%99%E9%A2%98%E3%80%81%E5%B9%BB%E8%A7%89%E6%A0%87%E7%AD%BE%E4%B8%8E%E6%99%BA%E8%83%BD%E4%BD%93%E8%AF%84%E6%B5%8B%E6%BC%8F%E6%B4%9E"><span class="toc-number">1.8.2.2.</span> <span class="toc-text">2. 评测数据集本身的质量危机：错题、幻觉标签与智能体评测漏洞</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E9%A1%B6%E5%B1%82%E6%96%B9%E6%B3%95%E8%AE%BA%EF%BC%9A%E6%88%91%E4%BB%AC%E7%A9%B6%E7%AB%9F%E5%9C%A8%E4%B8%BA%E4%BA%86%E4%BB%80%E4%B9%88%E7%9B%AE%E7%9A%84%E3%80%81%E8%AF%84%E4%BC%B0%E4%BB%80%E4%B9%88%E5%AF%B9%E8%B1%A1%EF%BC%9F%EF%BC%88how-to-think-about-evaluation%EF%BC%89"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 顶层方法论：我们究竟在为了什么目的、评估什么对象？（how_to_think_about_evaluation）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E6%98%8E%E7%A1%AE%E8%AF%84%E6%B5%8B%E7%9A%84%E5%9B%9B%E5%A4%A7%E4%B8%8D%E5%90%8C%E7%9B%AE%E7%9A%84%EF%BC%88What%E2%80%99s-the-Point-of-Evaluation-%EF%BC%89"><span class="toc-number">1.8.3.1.</span> <span class="toc-text">1. 明确评测的四大不同目的（What’s the Point of Evaluation?）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E6%98%8E%E7%A1%AE%E8%AF%84%E6%B5%8B%E7%9A%84%E5%AF%B9%E8%B1%A1%EF%BC%9A%E6%98%AF%E5%9C%A8%E8%AF%84%E4%BC%B0%E2%80%9C%E7%AE%97%E6%B3%95%EF%BC%88Methods%EF%BC%89%E2%80%9D%E8%BF%98%E6%98%AF%E5%9C%A8%E8%AF%84%E4%BC%B0%E2%80%9C%E7%B3%BB%E7%BB%9F%EF%BC%88Models-Systems%EF%BC%89%E2%80%9D%EF%BC%9F"><span class="toc-number">1.8.3.2.</span> <span class="toc-text">2. 明确评测的对象：是在评估“算法（Methods）”还是在评估“系统（Models &#x2F; Systems）”？</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E5%85%A8%E6%99%AF%E6%80%BB%E7%BB%93%EF%BC%9A%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%85%AD%E5%A4%A7%E8%AF%84%E6%B5%8B%E8%8C%83%E5%BC%8F%E6%9D%83%E8%A1%A1%E9%80%9F%E6%9F%A5%E8%A1%A8%EF%BC%88Cheat-Sheet%EF%BC%89"><span class="toc-number">1.9.</span> <span class="toc-text">9. 全景总结：大模型六大评测范式权衡速查表（Cheat Sheet）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E8%AF%BE%E5%90%8E%E6%80%9D%E8%80%83%E4%B8%8E%E8%87%AA%E6%B5%8B%E7%BB%83%E4%B9%A0%EF%BC%88Review-Self-Check%EF%BC%89"><span class="toc-number">1.10.</span> <span class="toc-text">10. 课后思考与自测练习（Review &amp; Self-Check）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_12_notes/" title="Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation">Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation</a><time datetime="2026-10-26T00:53:00.000Z" title="发表于 2026-10-26 08:53:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_11_notes/" title="Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)">Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)</a><time datetime="2026-10-26T00:52:00.000Z" title="发表于 2026-10-26 08:52:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_10_notes/" title="Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference">Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference</a><time datetime="2026-10-26T00:51:00.000Z" title="发表于 2026-10-26 08:51:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/26/cs336_lecture_09_notes/" title="Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)">Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)</a><time datetime="2026-10-26T00:50:00.000Z" title="发表于 2026-10-26 08:50:00">2026-10-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/25/cs336_lecture_08_notes/" title="Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)">Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron &amp; 3D Parallelism)</a><time datetime="2026-10-25T08:24:00.000Z" title="发表于 2026-10-25 16:24:00">2026-10-25</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>
