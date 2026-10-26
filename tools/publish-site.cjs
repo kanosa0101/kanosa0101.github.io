@@ -54,7 +54,7 @@ async function publishArticle({ root, input, category, expectedHash, onProgress 
     onProgress({ stage: `准备发布副本：${article.localImages} 处本地图片，${article.assets.length} 个去重文件` });
     const build = path.join(cache, 'build');
     await fs.mkdir(build, { recursive: true });
-    for (const directory of ['source', 'themes']) {
+    for (const directory of ['source', 'themes', 'scripts']) {
       await fs.rm(path.join(build, directory), { recursive: true, force: true });
       await fs.cp(path.join(root, directory), path.join(build, directory), { recursive: true,
         filter: file => !['.git', 'node_modules'].includes(path.basename(file)) });
@@ -130,7 +130,7 @@ async function buildPreviewArticle({ root, input, category, onProgress = () => {
   onProgress({ stage: `准备预览副本：${article.localImages} 处本地图片，${article.assets.length} 个去重文件` });
   const build = path.join(cache, 'build');
   await fs.mkdir(build, { recursive: true });
-  for (const directory of ['source', 'themes']) {
+  for (const directory of ['source', 'themes', 'scripts']) {
     await fs.rm(path.join(build, directory), { recursive: true, force: true });
     await fs.cp(path.join(root, directory), path.join(build, directory), {
       recursive: true,
