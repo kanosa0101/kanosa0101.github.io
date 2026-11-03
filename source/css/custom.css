@@ -75,8 +75,8 @@ body:not(.read-mode) .layout > #page {
     box-sizing: border-box !important;
   }
 
-  #content-inner.layout > #aside-content,
-  #aside-content {
+  #content-inner.layout:not(.hide-aside) > #aside-content,
+  body:not(.type-about) #content-inner:not(.hide-aside) > #aside-content {
     width: 290px !important;
     min-width: 290px !important;
     max-width: 290px !important;
@@ -794,6 +794,12 @@ button:focus-visible,
 
 /* 5.0 彻底解绑外层容器 & 单栏全宽居中沉浸模式 */
 .page.type-about #aside-content,
+#body-wrap.type-about #aside-content,
+#body-wrap.page.type-about #aside-content,
+#body-wrap.type-about #content-inner.layout > #aside-content,
+#content-inner.layout.hide-aside > #aside-content,
+#content-inner.layout:has(.about-layout-container) > #aside-content,
+#content-inner.layout:has(.island-container) > #aside-content,
 .layout:has(.about-layout-container) > #aside-content,
 .layout:has(.island-container) > #aside-content {
   display: none !important;
@@ -813,6 +819,8 @@ button:focus-visible,
 }
 
 .page.type-about #content-inner.layout > div:first-child,
+#body-wrap.type-about #content-inner.layout > div:first-child,
+#content-inner.layout.hide-aside > div:first-child,
 .page.type-about .layout > div:first-child,
 .layout:has(.about-layout-container) > div:first-child,
 .layout:has(.island-container) > div:first-child,

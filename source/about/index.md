@@ -2,6 +2,7 @@
 title: 关于我
 date: 2025-11-23 18:51:50
 type: about
+aside: false
 ---
 
 <div class="about-layout-container">
