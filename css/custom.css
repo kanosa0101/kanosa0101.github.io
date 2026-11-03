@@ -1,3 +1,7 @@
+@import url('./_transition.css');
+@import url('./_hex-wheel.css');
+@import url('./_about.css');
+
 /* Site customizations live outside the Butterfly theme. */
 :root {
   --blog-card-bg: rgba(246, 243, 235, 0.94);
