@@ -789,87 +789,131 @@ button:focus-visible,
 }
 
 /* --------------------------------------
-   5. Bento Grid 2.0 便当盒主页与双轨跑马灯样式
+   5. 独立悬浮岛屿架构 (5 大核心板块解绑容器 + ABC 交互机制)
    -------------------------------------- */
-.bento-about-container {
+
+/* 5.0 彻底解绑外层容器：清除 #page 的背景、边框、阴影与内边距 */
+.page.type-about .layout > #page,
+.page.type-about .layout > div:first-child,
+#page:has(.island-container) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.page.type-about #article-container,
+#page:has(.island-container) > #article-container {
+  padding: 0 !important;
+}
+
+.page.type-about #page-head,
+.page.type-about .page-title,
+#page:has(.island-container) > .page-title {
+  display: none !important;
+}
+
+/* 5.1 岛屿容器与通用独立悬浮岛屿卡片 */
+.island-container {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 26px;
   width: 100%;
 }
 
-.bento-hero {
+.island-card {
   position: relative;
-  overflow: hidden;
-  padding: 2.5rem 2.2rem;
   border-radius: 20px;
   background: var(--blog-card-bg);
   border: 1px solid var(--blog-card-border);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   box-shadow: 0 10px 30px rgba(13, 24, 31, 0.08);
+  padding: 2.2rem;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.4s ease,
+              opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+
+  /* 机制 B：滚动升起平滑揭示 (Scroll Reveal) 初始态 */
+  opacity: 0;
+  transform: translateY(24px);
+  will-change: transform, opacity;
 }
 
-.bento-hero-top {
+.island-card.island-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island-card {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+.island-card:hover {
+  border-color: rgba(19, 194, 194, 0.38);
+  box-shadow: 0 14px 38px rgba(13, 24, 31, 0.12);
+}
+
+/* 通用岛屿头部 */
+.island-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  gap: 12px;
 }
 
-.bento-cyber-badge {
-  display: inline-flex;
+.island-title {
+  font-size: 1.22rem;
+  font-weight: 800;
+  display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 14px;
-  border-radius: 20px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  font-family: Consolas, monospace;
-  background: rgba(19, 194, 194, 0.12);
-  border: 1px solid rgba(19, 194, 194, 0.35);
+  gap: 9px;
+  margin: 0;
+}
+
+.island-title i {
   color: #13c2c2;
 }
 
-html[data-theme="dark"] .bento-cyber-badge {
-  background: rgba(19, 194, 194, 0.18);
-  color: #9fe8ef;
+.island-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  opacity: 0.78;
+  font-weight: 400;
 }
 
-.tab-nav-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  color: #ffe0a3;
-  background: rgba(255, 224, 163, 0.12);
-  border: 1px solid rgba(255, 224, 163, 0.3);
-  padding: 4px 12px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+/* 5.2 岛屿 1：Hero 核心身份岛屿 */
+.hero-island {
+  position: relative;
+  padding: 2.6rem 2.4rem;
 }
 
-.tab-nav-hint:hover {
-  background: rgba(255, 224, 163, 0.25);
-  transform: translateY(-1px);
+.hero-island::after {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(19, 194, 194, 0.12) 0%, transparent 70%);
+  pointer-events: none;
 }
 
-.tab-nav-hint kbd {
-  background: rgba(255, 224, 163, 0.25);
-  border: 1px solid rgba(255, 224, 163, 0.4);
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-family: Consolas, monospace;
-  font-size: 0.72rem;
-}
-
-.bento-hero-title {
+.hero-island-title {
   font-size: clamp(2rem, 4.5vw, 2.7rem);
   font-weight: 800;
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   line-height: 1.25;
 }
 
@@ -885,15 +929,29 @@ html[data-theme="dark"] .gradient-text {
   background-image: linear-gradient(110deg, #9fe8ef 5%, #fff0b5 48%, #ffc4d8 90%);
 }
 
-.bento-hero-desc {
-  font-size: 1.05rem;
+.hero-island-subtitle {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: #13c2c2;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-theme="dark"] .hero-island-subtitle {
+  color: #9fe8ef;
+}
+
+.hero-island-desc {
+  font-size: 1.02rem;
   line-height: 1.85;
   opacity: 0.92;
   margin-bottom: 22px;
   max-width: 860px;
 }
 
-.bento-hero-actions {
+.hero-island-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -938,95 +996,33 @@ html[data-theme="dark"] .secondary-btn {
   transform: translateY(-2px);
 }
 
-.bento-grid-row {
+/* 5.3 岛屿 2：实时基座与工程特质看板 */
+.status-traits-grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: 7fr 5fr;
   gap: 20px;
-  width: 100%;
-}
-
-.bento-col-7 {
-  grid-column: span 7;
-}
-
-.bento-col-5 {
-  grid-column: span 5;
-}
-
-.bento-col-4 {
-  grid-column: span 4;
-}
-
-.bento-col-12 {
-  grid-column: span 12;
+  align-items: stretch;
 }
 
 @media screen and (max-width: 860px) {
-  .bento-col-7,
-  .bento-col-5,
-  .bento-col-4 {
-    grid-column: span 12;
+  .status-traits-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-.bento-status-card {
-  padding: 1.8rem;
-  border-radius: 18px;
-  background: var(--blog-card-bg);
+.status-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.02);
+  padding: 1.5rem;
+  border-radius: 16px;
   border: 1px solid var(--blog-card-border);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 24px rgba(13, 24, 31, 0.08);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
 }
 
-.bento-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.bento-card-title {
-  font-size: 1.15rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-}
-
-.bento-card-title i {
-  color: #13c2c2;
-}
-
-.live-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #52c41a;
-  background: rgba(82, 196, 26, 0.12);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #52c41a;
-  box-shadow: 0 0 6px #52c41a;
-  animation: dotBlink 1.2s infinite alternate;
-}
-
-.status-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+html[data-theme="dark"] .status-info-col {
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .status-row {
@@ -1048,7 +1044,28 @@ html[data-theme="dark"] .secondary-btn {
   font-weight: 600;
 }
 
-.bento-traits-grid {
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #52c41a;
+  background: rgba(82, 196, 26, 0.12);
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #52c41a;
+  box-shadow: 0 0 8px #52c41a;
+  animation: dotBlink 1.2s infinite alternate;
+}
+
+.traits-subgrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
@@ -1056,7 +1073,7 @@ html[data-theme="dark"] .secondary-btn {
 }
 
 @media screen and (max-width: 480px) {
-  .bento-traits-grid {
+  .traits-subgrid {
     grid-template-columns: 1fr;
   }
 }
@@ -1064,14 +1081,16 @@ html[data-theme="dark"] .secondary-btn {
 .trait-mini-card {
   padding: 1.2rem;
   border-radius: 14px;
-  background: var(--blog-card-bg);
+  background: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--blog-card-border);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+html[data-theme="dark"] .trait-mini-card {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .trait-mini-card:hover {
@@ -1099,26 +1118,7 @@ html[data-theme="dark"] .secondary-btn {
   opacity: 0.8;
 }
 
-.bento-marquee-container {
-  padding: 1.8rem 1.6rem;
-  border-radius: 20px;
-  background: var(--blog-card-bg);
-  border: 1px solid var(--blog-card-border);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 8px 26px rgba(13, 24, 31, 0.08);
-  overflow: hidden;
-}
-
-.marquee-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
+/* 5.4 岛屿 3：双轨无缝无限流技术跑马灯 */
 .marquee-hint {
   font-size: 0.8rem;
   color: #13c2c2;
@@ -1151,7 +1151,7 @@ html[data-theme="dark"] .secondary-btn {
   animation: marqueeScrollRight 34s linear infinite;
 }
 
-.bento-marquee-container:hover .marquee-track {
+.marquee-island:hover .marquee-track {
   animation-play-state: paused;
 }
 
@@ -1198,26 +1198,54 @@ html[data-theme="dark"] .tech-chip {
   100% { transform: translateX(0); }
 }
 
-.bento-project-card {
+/* 5.5 岛屿 4：代表性作品集与机制 C 聚光灯边缘 */
+.projects-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 10px;
+}
+
+@media screen and (max-width: 960px) {
+  .projects-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.island-project-card {
+  position: relative;
   padding: 1.8rem;
   border-radius: 18px;
   background: var(--blog-card-bg);
   border: 1px solid var(--blog-card-border);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 8px 24px rgba(13, 24, 31, 0.08);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
-  position: relative;
   overflow: hidden;
 }
 
-.bento-project-card:hover {
+/* 机制 C：径向聚光灯跟随光圈 */
+.island-project-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(400px circle at var(--mouse-x, -200px) var(--mouse-y, -200px), rgba(19, 194, 194, 0.16), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.island-project-card:hover::before {
+  opacity: 1;
+}
+
+.island-project-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(19, 194, 194, 0.45);
-  box-shadow: 0 14px 34px rgba(19, 194, 194, 0.16);
+  border-color: rgba(19, 194, 194, 0.5);
+  box-shadow: 0 16px 36px rgba(19, 194, 194, 0.16);
 }
 
 .project-top-row {
@@ -1225,6 +1253,8 @@ html[data-theme="dark"] .tech-chip {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
+  position: relative;
+  z-index: 2;
 }
 
 .project-badge {
@@ -1235,6 +1265,9 @@ html[data-theme="dark"] .tech-chip {
   background: rgba(24, 144, 255, 0.12);
   color: #1890ff;
   border: 1px solid rgba(24, 144, 255, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 html[data-theme="dark"] .project-badge {
@@ -1271,19 +1304,65 @@ html[data-theme="dark"] .project-link-btn {
   font-weight: 800;
   margin: 0 0 10px;
   line-height: 1.35;
+  position: relative;
+  z-index: 2;
 }
 
 .project-summary {
   font-size: 0.92rem;
   line-height: 1.7;
   opacity: 0.88;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+/* 核心特性与架构突破拆解 */
+.project-breakdown {
+  margin: 12px 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(19, 194, 194, 0.05);
+  border-left: 3px solid #13c2c2;
+  font-size: 0.84rem;
+  position: relative;
+  z-index: 2;
+}
+
+html[data-theme="dark"] .project-breakdown {
+  background: rgba(19, 194, 194, 0.1);
+}
+
+.breakdown-title {
+  font-weight: 700;
+  color: #13c2c2;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+html[data-theme="dark"] .breakdown-title {
+  color: #9fe8ef;
+}
+
+.breakdown-list {
+  margin: 0;
+  padding-left: 16px;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.breakdown-list li {
+  margin-bottom: 4px;
 }
 
 .project-tech-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  position: relative;
+  z-index: 2;
 }
 
 .project-pill {
@@ -1300,20 +1379,16 @@ html[data-theme="dark"] .project-pill {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.bento-timeline-card {
-  padding: 1.8rem;
-  border-radius: 18px;
-  background: var(--blog-card-bg);
-  border: 1px solid var(--blog-card-border);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 8px 24px rgba(13, 24, 31, 0.08);
+/* 5.6 岛屿 5：生涯与学术时间线 */
+.timeline-island {
+  position: relative;
 }
 
 .timeline-milestone {
   display: flex;
   gap: 16px;
-  margin-top: 14px;
+  margin-top: 10px;
+  align-items: flex-start;
 }
 
 .milestone-dot {
@@ -1321,20 +1396,20 @@ html[data-theme="dark"] .project-pill {
   height: 14px;
   border-radius: 50%;
   background: #13c2c2;
-  box-shadow: 0 0 10px #13c2c2;
+  box-shadow: 0 0 12px #13c2c2;
   margin-top: 5px;
   flex-shrink: 0;
 }
 
 .milestone-content h4 {
-  margin: 0 0 6px;
-  font-size: 1.1rem;
+  margin: 0 0 8px;
+  font-size: 1.15rem;
   font-weight: 800;
 }
 
 .milestone-content p {
   margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.7;
+  font-size: 0.94rem;
+  line-height: 1.75;
   opacity: 0.88;
 }
