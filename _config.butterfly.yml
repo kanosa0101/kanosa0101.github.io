@@ -987,7 +987,7 @@ note:
 
 # https://github.com/MoOx/pjax
 pjax:
-  enable: false
+  enable: true
   # Exclude the specified pages from pjax, such as '/music/'
   exclude:
     # - /xxxxxx/
@@ -1063,7 +1063,8 @@ inject:
   head:
     - <link rel="stylesheet" href="/css/custom.css">
   bottom:
-    # - <script src="xxxx"></script>
+    - <script src="/js/hex-transition.js"></script>
+    - <script src="/js/hex-wheel.js"></script>
 
 # CDN Settings
 # Don't modify the following settings unless you know how they work
