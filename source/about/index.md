@@ -4,6 +4,8 @@ date: 2025-11-23 18:51:50
 type: about
 ---
 
+<div class="about-layout-container">
+
 <div class="island-container">
 
 <!-- 岛屿 1：Hero 核心身份岛屿 -->
@@ -26,27 +28,6 @@ type: about
 </div>
 </div>
 </section>
-
-<!-- 页面板块专属战术副导航栏 (Sticky Pill Dock) -->
-<nav class="about-subnav" id="about-subnav" aria-label="页面板块快速导航">
-<div class="subnav-capsule">
-<a class="subnav-item active" href="#about-hero" data-target="about-hero">
-<i class="fas fa-user-astronaut"></i> 概览
-</a>
-<a class="subnav-item" href="#about-status" data-target="about-status">
-<i class="fas fa-satellite-dish"></i> 状态特质
-</a>
-<a class="subnav-item" href="#about-tech" data-target="about-tech">
-<i class="fas fa-stream"></i> 技术生态
-</a>
-<a class="subnav-item" href="#about-projects" data-target="about-projects">
-<i class="fas fa-cubes"></i> 代表作品
-</a>
-<a class="subnav-item" href="#about-timeline" data-target="about-timeline">
-<i class="fas fa-graduation-cap"></i> 发展轨迹
-</a>
-</div>
-</nav>
 
 <!-- 岛屿 2：实时基座与工程特质看板 -->
 <section class="island-card status-island" id="about-status">
@@ -267,5 +248,36 @@ type: about
 </div>
 </div>
 </section>
+
+</div>
+
+<!-- 侧边板块导览目录 (TOC 风格侧边轨) -->
+<aside class="about-side-toc" id="about-side-toc" aria-label="页面板块导览">
+<div class="side-toc-card">
+<div class="side-toc-title"><i class="fas fa-compass"></i> 本页导览</div>
+<nav class="side-toc-list">
+<a class="side-toc-item active" href="#about-hero" data-target="about-hero">
+<span class="toc-num">01</span>
+<span class="toc-text">概览</span>
+</a>
+<a class="side-toc-item" href="#about-status" data-target="about-status">
+<span class="toc-num">02</span>
+<span class="toc-text">实时基座</span>
+</a>
+<a class="side-toc-item" href="#about-tech" data-target="about-tech">
+<span class="toc-num">03</span>
+<span class="toc-text">技术生态</span>
+</a>
+<a class="side-toc-item" href="#about-projects" data-target="about-projects">
+<span class="toc-num">04</span>
+<span class="toc-text">代表作品</span>
+</a>
+<a class="side-toc-item" href="#about-timeline" data-target="about-timeline">
+<span class="toc-num">05</span>
+<span class="toc-text">发展轨迹</span>
+</a>
+</nav>
+</div>
+</aside>
 
 </div>
