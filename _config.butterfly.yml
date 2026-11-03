@@ -1065,6 +1065,8 @@ inject:
   bottom:
     - <script src="/js/hex-transition.js"></script>
     - <script src="/js/hex-wheel.js"></script>
+    - <script src="/js/pointer.js"></script>
+    - <script src="/js/island-effects.js"></script>
 
 # CDN Settings
 # Don't modify the following settings unless you know how they work
