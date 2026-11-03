@@ -10,7 +10,7 @@ type: about
 <div class="bento-hero">
 <div class="bento-hero-top">
 <div class="bento-cyber-badge"><i class="fas fa-terminal"></i> kanosa://fullstack-engineer</div>
-<div class="tab-nav-hint"><i class="fas fa-keyboard"></i> 按下 <kbd>Tab</kbd> 呼出战术六边形导航</div>
+<div class="tab-nav-hint" onclick="window.openHexWheel &amp;&amp; window.openHexWheel()"><i class="fas fa-keyboard"></i> 按下 <kbd>Tab</kbd> 呼出战术六边形导航</div>
 </div>
 <h1 class="bento-hero-title">我是 <span class="gradient-text">kanosa</span></h1>
 <p class="bento-hero-desc">

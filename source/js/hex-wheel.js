@@ -1,6 +1,6 @@
 /**
  * kanosa's blog - Hexagonal Tactical Wheel Menu
- * Tab 键触发六边形战术轮盘导航系统
+ * Tab 键战术六边形轮盘导航系统
  */
 (function() {
   'use strict';
@@ -21,7 +21,7 @@
   function createWheelDOM() {
     if (document.getElementById('hex-wheel-overlay')) {
       wheelEl = document.getElementById('hex-wheel-overlay');
-      return;
+      return wheelEl;
     }
 
     wheelEl = document.createElement('div');
@@ -29,7 +29,6 @@
     wheelEl.className = 'hex-wheel-backdrop';
     wheelEl.setAttribute('aria-hidden', 'true');
 
-    // 组装 6 个六边形节点
     const nodesHtml = WHEEL_ITEMS.map((item, idx) => `
       <div class="hex-nav-node node-pos-${idx}" data-index="${idx}" data-path="${item.path}" title="${item.name} (${item.key})">
         <div class="hex-node-body">
@@ -48,16 +47,12 @@
 
     wheelEl.innerHTML = `
       <div class="hex-wheel-modal">
-        <!-- 背景科幻光晕 -->
+        <button class="hex-wheel-close-btn" title="关闭轮盘 (Esc)" aria-label="关闭">&times;</button>
         <div class="hex-wheel-glow"></div>
-
-        <!-- 外围六边形节点容器 -->
         <div class="hex-nodes-track">
           ${nodesHtml}
         </div>
-
-        <!-- 中央枢纽 Core Hub -->
-        <div class="hex-center-hub" id="hex-wheel-hub">
+        <div class="hex-center-hub" id="hex-wheel-hub" title="点击跳转">
           <div class="hub-hexagon-wrap">
             <svg class="hub-vector" viewBox="0 0 140 161.66">
               <polygon class="hub-poly-glow" points="70 0, 140 40.41, 140 121.24, 70 161.66, 0 121.24, 0 40.41" />
@@ -72,12 +67,10 @@
           </div>
           <div class="hub-orbit-ring"></div>
         </div>
-
-        <!-- 底部快捷指令栏 -->
         <div class="hex-wheel-footer">
           <div class="footer-chip"><kbd>Tab</kbd> 顺时针轮转</div>
           <div class="footer-chip"><kbd>1-6</kbd> 快速激活</div>
-          <div class="footer-chip"><kbd>Enter</kbd> / 点击确认</div>
+          <div class="footer-chip"><kbd>Enter</kbd> / 点击 确认</div>
           <div class="footer-chip"><kbd>Esc</kbd> 退出</div>
         </div>
       </div>
@@ -85,13 +78,14 @@
 
     document.body.appendChild(wheelEl);
     bindEvents();
+    return wheelEl;
   }
 
   function updateActiveState(index) {
     activeIndex = (index + WHEEL_ITEMS.length) % WHEEL_ITEMS.length;
     const item = WHEEL_ITEMS[activeIndex];
 
-    // 更新外围节点样式
+    if (!wheelEl) return;
     const nodes = wheelEl.querySelectorAll('.hex-nav-node');
     nodes.forEach((node, i) => {
       if (i === activeIndex) {
@@ -101,7 +95,6 @@
       }
     });
 
-    // 更新中央枢纽信息
     const hubIcon = document.getElementById('wheel-hub-icon');
     const hubTitle = document.getElementById('wheel-hub-title');
     const hubSub = document.getElementById('wheel-hub-sub');
@@ -114,11 +107,10 @@
   }
 
   function openWheel() {
-    if (!wheelEl) createWheelDOM();
+    createWheelDOM();
     isOpen = true;
     wheelEl.classList.add('is-open');
 
-    // 智能推断当前所在路由对应的索引
     const curPath = window.location.pathname;
     let initialIdx = 0;
     if (curPath.includes('/about')) initialIdx = 5;
@@ -142,22 +134,26 @@
     closeWheel();
     if (window.triggerHexTransition) {
       window.triggerHexTransition(item.path);
-    } else if (window.pjax) {
-      window.pjax.loadUrl(item.path);
     } else {
       window.location.href = item.path;
     }
   }
 
   function bindEvents() {
-    // 鼠标点击遮罩外部关闭
     wheelEl.addEventListener('click', function(e) {
       if (e.target === wheelEl || e.target.classList.contains('hex-wheel-modal')) {
         closeWheel();
       }
     });
 
-    // 节点鼠标移入与点击
+    const closeBtn = wheelEl.querySelector('.hex-wheel-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        closeWheel();
+      });
+    }
+
     const nodes = wheelEl.querySelectorAll('.hex-nav-node');
     nodes.forEach(node => {
       node.addEventListener('mouseenter', function() {
@@ -167,11 +163,12 @@
 
       node.addEventListener('click', function(e) {
         e.stopPropagation();
+        const idx = parseInt(this.getAttribute('data-index'), 10);
+        activeIndex = idx;
         navigateToActive();
       });
     });
 
-    // 点击中央枢纽也可直接激活当前项
     const hub = document.getElementById('hex-wheel-hub');
     if (hub) {
       hub.addEventListener('click', function(e) {
@@ -181,20 +178,25 @@
     }
   }
 
+  // 暴露给全局调用
+  window.openHexWheel = openWheel;
+  window.closeHexWheel = closeWheel;
+
   // 全局键盘监听
   window.addEventListener('keydown', function(e) {
-    // 如果焦点在输入框/富文本中，不拦截 Tab 键
     const activeTagName = (document.activeElement && document.activeElement.tagName) || '';
-    if (['INPUT', 'TEXTAREA'].includes(activeTagName) || document.activeElement.isContentEditable) {
+    if (['INPUT', 'TEXTAREA'].includes(activeTagName) || (document.activeElement && document.activeElement.isContentEditable)) {
       return;
     }
 
-    if (e.key === 'Tab') {
+    const isTab = (e.key === 'Tab' || e.code === 'Tab' || e.keyCode === 9);
+
+    if (isTab) {
       e.preventDefault();
+      e.stopPropagation();
       if (!isOpen) {
         openWheel();
       } else {
-        // 已开启时，按 Tab 顺时针轮转
         updateActiveState(activeIndex + 1);
       }
       return;
@@ -202,30 +204,28 @@
 
     if (!isOpen) return;
 
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' || e.keyCode === 27) {
       e.preventDefault();
       closeWheel();
       return;
     }
 
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === 'Enter' || e.keyCode === 13 || e.key === ' ') {
       e.preventDefault();
       navigateToActive();
       return;
     }
 
-    // 支持数字键 1 - 6 直达
     if (['1', '2', '3', '4', '5', '6'].includes(e.key)) {
       e.preventDefault();
       const targetIdx = parseInt(e.key, 10) - 1;
       updateActiveState(targetIdx);
-      setTimeout(() => {
+      setTimeout(function() {
         navigateToActive();
       }, 120);
       return;
     }
 
-    // 方向键支持
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault();
       updateActiveState(activeIndex + 1);
@@ -235,7 +235,6 @@
     }
   }, true);
 
-  // 初始化
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', createWheelDOM);
   } else {

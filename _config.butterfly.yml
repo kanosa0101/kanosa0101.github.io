@@ -987,7 +987,7 @@ note:
 
 # https://github.com/MoOx/pjax
 pjax:
-  enable: true
+  enable: false
   # Exclude the specified pages from pjax, such as '/music/'
   exclude:
     # - /xxxxxx/
