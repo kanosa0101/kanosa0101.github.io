@@ -2,13 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 9 深度课程笔记：Scaling Laws (Part 1)
 date: 2026-10-26 08:50:00
 tags:
-  - 大模型
-  - Scaling Laws
-  - 缩放定律
-  - Chinchilla
-  - Kaplan
-  - 算力优化
   - CS336
+  - 大模型
+  - 缩放定律
 categories:
   - [笔记, CS336]
 description: 深入剖析 Stanford CS336 Lecture 9，系统推导大语言模型缩放定律（Scaling Laws）：从 Kaplan 幂律到 Chinchilla 最优算力分配、6ND 浮点运算黄金近似严格推导、超额训练（Over-training）权衡与数据吞吐边界。

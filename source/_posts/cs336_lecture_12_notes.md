@@ -2,13 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 12 深度课程笔记：Evaluation
 date: 2026-10-26 08:53:00
 tags:
+  - CS336
   - 大模型
   - 模型评测
-  - 困惑度
-  - 基准测试
-  - 污染检测
-  - HELM
-  - CS336
 categories:
   - [笔记, CS336]
 description: 系统总结 Stanford CS336 Lecture 12，全方位拆解大模型评测体系：困惑度（Perplexity）数学局限、标准化考试/Agentic/推理与安全基准测试、生态效度（Ecological Validity）以及测试集污染检测方法。

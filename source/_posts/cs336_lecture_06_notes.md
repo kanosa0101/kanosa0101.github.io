@@ -5,12 +5,9 @@ categories:
   - 笔记
   - CS336
 tags:
-  - 大语言模型
   - CS336
-  - Triton
-  - CUDA
-  - GPU
-  - Kernel编程
+  - 大模型
+  - 算力与硬件
 description: Stanford CS336 深度精读笔记第 6 讲：基于 Triton 的高性能 GPU Kernel 实战。从 A100/H100/B200 硬件物理约束（Occupancy、Bank Conflict、Coalescing）出发，实测对比 GeLU 算子融合的 11 倍加速，并四级进阶手写 Triton 算子：逐元素融合、行归约 Softmax、跨块循环规约与二维分块矩阵乘法（tl.dot）。
 mathjax: true
 ---

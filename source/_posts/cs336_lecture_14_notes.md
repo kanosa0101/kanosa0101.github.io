@@ -2,13 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 14 深度课程笔记：Data (Part 2)
 date: 2026-10-26 14:31:00
 tags:
-  - 大模型
-  - 数据清洗
-  - MinHash
-  - LSH去重
-  - 数据混合
-  - 合成数据
   - CS336
+  - 大模型
+  - 数据工程
 categories:
   - [笔记, CS336]
 description: 深入剖析 Stanford CS336 Lecture 14：数据工程深水区实战，涵盖文本启发式过滤、FastText 质量分类、MinHash LSH 局部敏感哈希海量去重数学原理、数据配比（Data Mixing）定律及后训练合成数据构造机制。

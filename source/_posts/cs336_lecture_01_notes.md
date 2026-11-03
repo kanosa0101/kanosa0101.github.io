@@ -5,11 +5,9 @@ categories:
   - 笔记
   - CS336
 tags:
-  - 大语言模型
   - CS336
-  - Tokenization
-  - BPE
-  - 分布式系统
+  - 大模型
+  - 模型架构
 description: Stanford CS336 语言模型从零构建第一讲深度笔记：系统剖析抽象层上移与泄漏、大模型效率黄金法则、五大核心模块演进，以及字节级 BPE 分词器的形式化定义、算法推导与从零代码实现。
 mathjax: true
 ---

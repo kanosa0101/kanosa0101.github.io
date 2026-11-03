@@ -6,8 +6,8 @@ type: about
 
 <div class="island-container">
 
-<!-- 岛屿 1：Hero 核心身份岛屿 (已移除顶部胶囊标牌与 Tab 提示) -->
-<section class="island-card hero-island">
+<!-- 岛屿 1：Hero 核心身份岛屿 -->
+<section class="island-card hero-island" id="about-hero">
 <div class="hero-island-inner">
 <h1 class="hero-island-title">我是 <span class="gradient-text">kanosa</span></h1>
 <p class="hero-island-subtitle">
@@ -27,8 +27,29 @@ type: about
 </div>
 </section>
 
+<!-- 页面板块专属战术副导航栏 (Sticky Pill Dock) -->
+<nav class="about-subnav" id="about-subnav" aria-label="页面板块快速导航">
+<div class="subnav-capsule">
+<a class="subnav-item active" href="#about-hero" data-target="about-hero">
+<i class="fas fa-user-astronaut"></i> 概览
+</a>
+<a class="subnav-item" href="#about-status" data-target="about-status">
+<i class="fas fa-satellite-dish"></i> 状态特质
+</a>
+<a class="subnav-item" href="#about-tech" data-target="about-tech">
+<i class="fas fa-stream"></i> 技术生态
+</a>
+<a class="subnav-item" href="#about-projects" data-target="about-projects">
+<i class="fas fa-cubes"></i> 代表作品
+</a>
+<a class="subnav-item" href="#about-timeline" data-target="about-timeline">
+<i class="fas fa-graduation-cap"></i> 发展轨迹
+</a>
+</div>
+</nav>
+
 <!-- 岛屿 2：实时基座与工程特质看板 -->
-<section class="island-card status-island">
+<section class="island-card status-island" id="about-status">
 <div class="island-header">
 <h3 class="island-title"><i class="fas fa-satellite-dish"></i> 实时基座 &amp; 工程特质</h3>
 <span class="live-indicator"><span class="live-dot"></span> ACTIVE</span>
@@ -78,7 +99,7 @@ type: about
 </section>
 
 <!-- 岛屿 3：双轨无缝无限流技术跑马灯 -->
-<section class="island-card marquee-island">
+<section class="island-card marquee-island" id="about-tech">
 <div class="island-header">
 <h3 class="island-title"><i class="fas fa-stream"></i> 技术栈全景与生态沉淀</h3>
 <span class="marquee-hint"><i class="fas fa-hand-pointer"></i> 悬停暂停 · 无限流动传送带</span>
@@ -137,7 +158,7 @@ type: about
 </section>
 
 <!-- 岛屿 4：代表性作品集与核心架构拆解 (严格展示 PromptX, DocuMind, Moodisle) -->
-<section class="island-card projects-island">
+<section class="island-card projects-island" id="about-projects">
 <div class="island-header">
 <div>
 <h3 class="island-title"><i class="fas fa-folder-open"></i> 代表性作品集 &amp; 架构拆解</h3>
@@ -232,7 +253,7 @@ type: about
 </section>
 
 <!-- 岛屿 5：生涯与学术时间线 -->
-<section class="island-card timeline-island">
+<section class="island-card timeline-island" id="about-timeline">
 <div class="island-header">
 <h3 class="island-title"><i class="fas fa-graduation-cap"></i> 学术与成长时间线</h3>
 </div>

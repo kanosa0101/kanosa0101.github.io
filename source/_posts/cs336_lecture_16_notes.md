@@ -2,14 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 16 深度课程笔记：Post-Training (Part 2)
 date: 2026-10-26 14:33:00
 tags:
+  - CS336
   - 大模型
   - 强化学习
-  - RLVR
-  - PPO
-  - GRPO
-  - DeepSeek-R1
-  - Agentic RL
-  - CS336
 categories:
   - [笔记, CS336]
 description: 深度拆解 Stanford CS336 Lecture 16：前沿推理模型与强化学习实战，深入解析可验证奖励强化学习（RLVR）、PPO 实现陷阱、GRPO 与 Dr. GRPO 策略梯度严格推导，全景还原 DeepSeek-R1 / Kimi k1.5 / Qwen 3 的长思维链与 Agentic RL 架构。

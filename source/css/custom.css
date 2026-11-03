@@ -792,10 +792,33 @@ button:focus-visible,
    5. 独立悬浮岛屿架构 (5 大核心板块解绑容器 + ABC 交互机制)
    -------------------------------------- */
 
-/* 5.0 彻底解绑外层容器：清除 #page 的背景、边框、阴影与内边距 */
-.page.type-about .layout > #page,
+/* 5.0 彻底解绑外层容器 & 单栏全宽居中沉浸模式 */
+.page.type-about #aside-content,
+.layout:has(.island-container) > #aside-content {
+  display: none !important;
+}
+
+.page.type-about #content-inner.layout,
+.page.type-about .layout,
+#content-inner.layout:has(.island-container) {
+  max-width: 1120px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  justify-content: center !important;
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+.page.type-about #content-inner.layout > div:first-child,
 .page.type-about .layout > div:first-child,
+.layout:has(.island-container) > div:first-child,
+.page.type-about #page,
 #page:has(.island-container) {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 100% !important;
+  margin: 0 auto !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -823,8 +846,106 @@ button:focus-visible,
   width: 100%;
 }
 
+/* 5.1.1 页面板块专属战术副导航栏 (Sticky Pill Dock) */
+.about-subnav {
+  position: sticky;
+  top: 72px;
+  z-index: 85;
+  margin: -6px auto 4px;
+  width: fit-content;
+  max-width: 100%;
+  pointer-events: auto;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.subnav-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 30px;
+  background: var(--blog-card-bg);
+  border: 1px solid var(--blog-card-border);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(13, 24, 31, 0.12);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.subnav-capsule::-webkit-scrollbar {
+  display: none;
+}
+
+.subnav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--font-color);
+  opacity: 0.78;
+  text-decoration: none !important;
+  white-space: nowrap;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.subnav-item i {
+  font-size: 0.85rem;
+  transition: transform 0.25s ease;
+}
+
+.subnav-item:hover {
+  opacity: 1;
+  color: #13c2c2;
+  background: rgba(19, 194, 194, 0.08);
+  transform: translateY(-1px);
+}
+
+.subnav-item.active {
+  opacity: 1;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #1890ff 0%, #13c2c2 100%);
+  box-shadow: 0 4px 14px rgba(19, 194, 194, 0.35);
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .subnav-item.active {
+  background: linear-gradient(135deg, #13c2c2 0%, #4e8ef7 100%);
+  color: #0b1319 !important;
+  box-shadow: 0 4px 16px rgba(19, 194, 194, 0.4);
+}
+
+.subnav-item.active i {
+  transform: scale(1.1);
+}
+
+@media screen and (max-width: 768px) {
+  .about-subnav {
+    top: 60px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .subnav-capsule {
+    padding: 5px 8px;
+    gap: 4px;
+  }
+
+  .subnav-item {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+}
+
 .island-card {
   position: relative;
+  scroll-margin-top: 135px;
   border-radius: 20px;
   background: var(--blog-card-bg);
   border: 1px solid var(--blog-card-border);

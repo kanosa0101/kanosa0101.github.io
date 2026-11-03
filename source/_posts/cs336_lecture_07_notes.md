@@ -2,14 +2,10 @@
 title: Stanford CS336 (Spring 2026) Lecture 7 深度课程笔记：Parallelism I (Collectives, NCCL & DDP)
 date: 2026-10-25 16:16:00
 tags:
+  - CS336
   - 大模型
   - 分布式训练
   - PyTorch
-  - NCCL
-  - DDP
-  - 张量并行
-  - 流水线并行
-  - CS336
 categories:
   - [笔记, CS336]
 description: 深入解析 Stanford CS336 Lecture 7，涵盖万卡集群存储与带宽层级、8大集合通信原语数学推导与 PyTorch 实现、NCCL 总线带宽测算算法、DDP 数据并行实战与反向传播通信重叠，以及张量并行（TP）与流水线并行（PP）的核心原语。

@@ -2,13 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 11 深度课程笔记：Scaling Laws (Part 2)
 date: 2026-10-26 08:52:00
 tags:
-  - 大模型
-  - Scaling Laws
-  - WSD调度
-  - 超参数缩放
-  - Muon优化器
-  - muP
   - CS336
+  - 大模型
+  - 缩放定律
 categories:
   - [笔记, CS336]
 description: 深度解析 Stanford CS336 Lecture 11，揭秘前沿大模型缩放实战秘籍：退火与 WSD 学习率调度、超参数跨尺度预测、最大更新参数化（muP）数学推导与正交化 Muon 优化器前沿架构。

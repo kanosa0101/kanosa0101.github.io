@@ -2,15 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 17 深度课程笔记：Multimodal Models
 date: 2026-10-26 14:34:00
 tags:
+  - CS336
   - 大模型
   - 多模态
-  - CLIP
-  - SigLIP
-  - LLaVA
-  - Qwen-VL
-  - Chameleon
-  - VQ-VAE
-  - CS336
 categories:
   - [笔记, CS336]
 description: 全景解析 Stanford CS336 Lecture 17：多模态大模型前沿架构，涵盖对比学习视觉编码器（CLIP / SigLIP）、LLaVA 与 Qwen3-VL 跨模态演进（AnyRes / Interleaved M-RoPE / DeepStack），以及 Chameleon 离散自回归全模态架构与图文熵差范数爆炸化解方案。

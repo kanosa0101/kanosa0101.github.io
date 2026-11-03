@@ -2,14 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 8 深度课程笔记：Parallelism II (ZeRO, Megatron & 3D Parallelism)
 date: 2026-10-25 16:24:00
 tags:
+  - CS336
   - 大模型
   - 分布式训练
-  - ZeRO
-  - FSDP
-  - 流水线并行
-  - 序列并行
-  - 专家并行
-  - CS336
 categories:
   - [笔记, CS336]
 description: 深入剖析 Stanford CS336 Lecture 8，全景解析 4D/5D 混合并行系统设计：超算互连网络哲学（Fat-Tree vs 3D Torus）、静态显存 16B 账单与 ZeRO 1/2/3 / FSDP 零冗余分片、1F1B 与零气泡流水线调度、Megatron-SP 序列并行以及 Llama 3 405B / DeepSeek-V3 工业级万卡混合并行实战架构。

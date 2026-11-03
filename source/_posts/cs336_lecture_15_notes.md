@@ -2,14 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 15 深度课程笔记：Post-Training (Part 1)
 date: 2026-10-26 14:32:00
 tags:
-  - 大模型
-  - 后训练
-  - SFT
-  - 对齐算法
-  - RLHF
-  - DPO
-  - 知识幻觉
   - CS336
+  - 大模型
+  - 后训练与对齐
 categories:
   - [笔记, CS336]
 description: 系统推演 Stanford CS336 Lecture 15：大语言模型后训练核心算法与工程实践，系统剖析 SFT 指令微调数据工程、知识与幻觉解耦、安全对齐边界，以及 Mid-Training 退火混入和从 RLHF 到 DPO 的闭式解数学推导。

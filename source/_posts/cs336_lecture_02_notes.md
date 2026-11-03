@@ -5,13 +5,10 @@ categories:
   - 笔记
   - CS336
 tags:
-  - 大语言模型
   - CS336
+  - 大模型
+  - 算力与硬件
   - PyTorch
-  - einops
-  - 资源记账
-  - FLOPs
-  - 显存优化
 description: Stanford CS336 语言模型从零构建第二讲深度笔记：系统剖析浮点精度（FP32到NVFP4）、优雅的 einops 张量代数、算术强度与 Roofline 性能分析模型、训练显存四大金刚精算以及梯度累积与激活检查点优化。
 mathjax: true
 ---

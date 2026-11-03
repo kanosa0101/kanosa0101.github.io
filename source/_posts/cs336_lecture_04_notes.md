@@ -5,12 +5,9 @@ categories:
   - 笔记
   - CS336
 tags:
-  - 大语言模型
   - CS336
-  - Attention
-  - MoE
-  - Mamba
-  - DeepSeek
+  - 大模型
+  - 模型架构
 description: Stanford CS336 深度笔记第 4 讲：打破标准 Transformer 的扩展瓶颈。全面拆解线性注意力（Linear Attention）、状态空间模型（Mamba-2 与 Gated DeltaNet）、动态稀疏注意力（DSA），以及混合专家模型（MoE）的路由机制、细粒度切分、无辅助损失动态偏置与 DeepSeek 架构演进。
 mathjax: true
 ---

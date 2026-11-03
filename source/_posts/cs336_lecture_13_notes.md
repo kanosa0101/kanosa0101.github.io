@@ -2,13 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 13 深度课程笔记：Data (Part 1)
 date: 2026-10-26 14:30:00
 tags:
-  - 大模型
-  - 预训练数据
-  - 网络爬虫
-  - 版权合规
-  - Common Crawl
-  - 数据工程
   - CS336
+  - 大模型
+  - 数据工程
 categories:
   - [笔记, CS336]
 description: 系统精读 Stanford CS336 Lecture 13：全景拆解大模型预训练数据全生命周期，从网络爬虫（Common Crawl / WARC）、版权风险与合理使用（Fair Use）法律边界，到专业垂直语料库构建及 2018–2026 年数据集演进全景。

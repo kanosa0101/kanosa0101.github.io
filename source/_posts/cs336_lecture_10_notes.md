@@ -2,13 +2,9 @@
 title: Stanford CS336 (Spring 2026) Lecture 10 深度课程笔记：Inference
 date: 2026-10-26 08:51:00
 tags:
+  - CS336
   - 大模型
   - 大模型推理
-  - 算力密度
-  - KV Cache
-  - 模型量化
-  - 投机采样
-  - CS336
 categories:
   - [笔记, CS336]
 description: 全面解析 Stanford CS336 Lecture 10，攻克大模型推理核心痛点：算术强度与显存带宽瓶颈、Prefill 与 Decode 阶段显存拆解、KV Cache 压缩算法、模型量化（PTQ/QAT）、投机采样与动态批处理服务架构。

@@ -2,14 +2,10 @@
 title: Stanford CS336 (Spring 2026) Lectures 18 & 19 深度课程笔记：Frontier Guest Lectures
 date: 2026-10-26 14:35:00
 tags:
-  - 大模型
-  - 客座讲座
-  - 形式化验证
-  - Lean4
-  - 推理引擎
-  - Megakernels
-  - Parcae
   - CS336
+  - 大模型
+  - 前沿探索
+  - 大模型推理
 categories:
   - [笔记, CS336]
 description: 深入研读 Stanford CS336 Lectures 18 & 19 完结篇特邀讲座：前沿客座双讲全景，深度涵盖 OpenAI 研究员 Daniel Selsam 带来的形式化数学 Lean 4 与推理安全边界，以及 Together AI / UCSD 助理教授 Dan Fu 剖析的生产级推理引擎、极限低延迟 Megakernels 与稳定循环语言模型 Parcae。

@@ -5,12 +5,9 @@ categories:
   - 笔记
   - CS336
 tags:
-  - 大语言模型
   - CS336
-  - GPU
-  - TPU
-  - FlashAttention
-  - 性能工程
+  - 大模型
+  - 算力与硬件
 description: Stanford CS336 深度笔记第 5 讲：深入 GPU/TPU 微架构与硬件加速工程。剖析 SM 调度、四级存储层级与内存墙，详解消除控制流分化、MXFP8/MXFP4、算子融合、重计算、访存合并与分块 Tiling（波量化现象解密），并从零完整推导 FlashAttention 的 Online Softmax 与反向重计算。
 mathjax: true
 ---

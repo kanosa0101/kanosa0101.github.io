@@ -5,14 +5,9 @@ categories:
   - 笔记
   - CS336
 tags:
-  - 大语言模型
   - CS336
-  - Transformer
-  - 架构设计
-  - 超参数
-  - RoPE
-  - GQA
-  - 训练稳定性
+  - 大模型
+  - 模型架构
 description: Stanford CS336 语言模型从零构建第三讲深度笔记：系统剖析现代 Transformer 五大结构演进、前馈网络门控机制（SwiGLU）、旋转位置编码（RoPE）数学推导、架构超参数黄金法则与数值稳定性护栏（QK-Norm、z-loss）。
 mathjax: true
 ---
