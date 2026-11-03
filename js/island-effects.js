@@ -2,7 +2,7 @@
  * kanosa's blog - Island Architecture Interactive Effects
  * - Mechanism B: Independent Scroll Reveal (IntersectionObserver)
  * - Mechanism C: Radial Spotlight Hover Border & Surface Tracking
- * - About Subnav: Sticky Pill Dock Scroll-Spy & Smooth Jump
+ * - About Side TOC: Side Outline Rail Scroll-Spy & Smooth Navigation
  */
 (function () {
   'use strict';
@@ -59,12 +59,12 @@
     });
   }
 
-  function initSubnavScrollSpy() {
-    var subnav = document.getElementById('about-subnav');
-    if (!subnav || subnav.__hasSpy) return;
-    subnav.__hasSpy = true;
+  function initSideTocScrollSpy() {
+    var sideToc = document.getElementById('about-side-toc');
+    if (!sideToc || sideToc.__hasSpy) return;
+    sideToc.__hasSpy = true;
 
-    var items = Array.prototype.slice.call(subnav.querySelectorAll('.subnav-item'));
+    var items = Array.prototype.slice.call(sideToc.querySelectorAll('.side-toc-item'));
     if (!items.length) return;
 
     function getTargets() {
@@ -80,12 +80,21 @@
 
     var isTicking = false;
     function updateActive() {
-      var scrollPos = window.scrollY + 170;
+      var scrollPos = window.pageYOffset || document.documentElement.scrollTop || 0;
+      var viewportHeight = window.innerHeight || 800;
+      var docHeight = document.documentElement.scrollHeight || 1000;
+
       var activeTarget = targets[0];
 
-      for (var i = 0; i < targets.length; i++) {
-        if (scrollPos >= targets[i].el.offsetTop) {
-          activeTarget = targets[i];
+      // 关键：当滚动到达或极度接近文档底部时，直接高亮最后一个板块（发展轨迹），解决因页面末尾高度不足无法激活的问题
+      if (docHeight - (scrollPos + viewportHeight) <= 60) {
+        activeTarget = targets[targets.length - 1];
+      } else {
+        var probeY = scrollPos + 180;
+        for (var i = 0; i < targets.length; i++) {
+          if (probeY >= targets[i].el.offsetTop) {
+            activeTarget = targets[i];
+          }
         }
       }
 
@@ -111,9 +120,11 @@
         var el = document.getElementById(id);
         if (el) {
           e.preventDefault();
-          var offsetTop = el.getBoundingClientRect().top + window.pageYOffset - 125;
+          var targetTop = el.getBoundingClientRect().top + (window.pageYOffset || document.documentElement.scrollTop);
+          var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+          var desiredScroll = Math.min(Math.max(0, targetTop - 90), maxScroll);
           window.scrollTo({
-            top: offsetTop,
+            top: desiredScroll,
             behavior: 'smooth'
           });
         }
@@ -124,7 +135,7 @@
   function initAll() {
     initIslandScrollReveal();
     initSpotlightCards();
-    initSubnavScrollSpy();
+    initSideTocScrollSpy();
   }
 
   if (document.readyState === 'loading') {
