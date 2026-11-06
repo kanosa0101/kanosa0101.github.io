@@ -91,6 +91,42 @@
     });
   }
 
+  function initTraitsAccordion() {
+    var subgrid = document.querySelector('.traits-subgrid');
+    if (!subgrid || subgrid.__hasAccordion) return;
+    subgrid.__hasAccordion = true;
+
+    var cards = subgrid.querySelectorAll('.trait-mini-card');
+    if (!cards || cards.length !== 4) return;
+
+    cards.forEach(function (card, index) {
+      card.addEventListener('mouseenter', function () {
+        // 移除非当前状态
+        subgrid.classList.remove('expand-0', 'expand-1', 'expand-2', 'expand-3');
+        cards.forEach(function (c) {
+          c.classList.remove('is-expanded', 'is-compact');
+        });
+
+        // 激活当前卡片（占 2/3 区域），其余 3 张卡片紧凑变小（占 1/3 并隐藏部分信息）
+        subgrid.classList.add('expand-' + index);
+        card.classList.add('is-expanded');
+        cards.forEach(function (c, i) {
+          if (i !== index) {
+            c.classList.add('is-compact');
+          }
+        });
+      });
+    });
+
+    // 鼠标离开右侧 4 组件区域时，恢复默认 2x2 均等看板布局
+    subgrid.addEventListener('mouseleave', function () {
+      subgrid.classList.remove('expand-0', 'expand-1', 'expand-2', 'expand-3');
+      cards.forEach(function (c) {
+        c.classList.remove('is-expanded', 'is-compact');
+      });
+    });
+  }
+
   function initSideTocScrollSpy() {
     var sideToc = document.getElementById('about-side-toc');
     if (!sideToc || sideToc.__hasSpy) return;
@@ -168,6 +204,7 @@
     initIslandScrollReveal();
     initSpotlightCards();
     initProjectCardFlip();
+    initTraitsAccordion();
     initSideTocScrollSpy();
   }
 
