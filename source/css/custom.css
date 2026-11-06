@@ -1181,7 +1181,7 @@ html[data-theme="dark"] .secondary-btn {
 /* 5.3 岛屿 2：实时基座与工程特质看板 */
 .status-traits-grid {
   display: grid;
-  grid-template-columns: 7fr 5fr;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
   align-items: stretch;
 }
@@ -1264,7 +1264,7 @@ html[data-theme="dark"] .status-info-col {
 /* 状态 0：悬浮左上 Card 0 (全栈架构交付) -> 左侧占 2/3，其余 3 个右侧纵向排列占 1/3 (同时支持纯 CSS :has 与 JS 类名) */
 .traits-subgrid.expand-0,
 .traits-subgrid:has(.trait-card-0:hover) {
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1.6fr 1fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 .traits-subgrid.expand-0 .trait-card-0,
@@ -1291,7 +1291,7 @@ html[data-theme="dark"] .status-info-col {
 /* 状态 2：悬浮左下 Card 2 (自主智能体) -> 左侧占 2/3，其余 3 个右侧纵向排列占 1/3 */
 .traits-subgrid.expand-2,
 .traits-subgrid:has(.trait-card-2:hover) {
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1.6fr 1fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 .traits-subgrid.expand-2 .trait-card-2,
@@ -1318,7 +1318,7 @@ html[data-theme="dark"] .status-info-col {
 /* 状态 1：悬浮右上 Card 1 (系统底层性能) -> 右侧占 2/3，其余 3 个左侧纵向排列占 1/3 */
 .traits-subgrid.expand-1,
 .traits-subgrid:has(.trait-card-1:hover) {
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 1fr 1.6fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 .traits-subgrid.expand-1 .trait-card-1,
@@ -1345,7 +1345,7 @@ html[data-theme="dark"] .status-info-col {
 /* 状态 3：悬浮右下 Card 3 (工程规范美学) -> 右侧占 2/3，其余 3 个左侧纵向排列占 1/3 */
 .traits-subgrid.expand-3,
 .traits-subgrid:has(.trait-card-3:hover) {
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 1fr 1.6fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 .traits-subgrid.expand-3 .trait-card-3,
@@ -1516,7 +1516,7 @@ html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-
 /* 2. 变小状态 (is-compact: 3 张卡片占 1/3 位置，适当隐藏信息保 UI 合理) */
 .trait-mini-card.is-compact,
 .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) {
-  padding: 0.55rem 0.85rem;
+  padding: 0.55rem 0.75rem;
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
@@ -1524,6 +1524,8 @@ html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-
   background: rgba(0, 0, 0, 0.015);
   border-color: rgba(0, 0, 0, 0.04);
   opacity: 0.78;
+  min-width: 0;
+  overflow: hidden;
 }
 
 html[data-theme="dark"] .trait-mini-card.is-compact,
@@ -1535,21 +1537,29 @@ html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-
 
 .trait-mini-card.is-compact .trait-card-top,
 .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) .trait-card-top {
-  gap: 6px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  width: 100%;
 }
 
 .trait-mini-card.is-compact .trait-mini-icon,
 .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) .trait-mini-icon {
-  font-size: 1rem;
+  font-size: 1.05rem;
+  flex-shrink: 0;
 }
 
 .trait-mini-card.is-compact h4,
 .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) h4 {
   font-size: 0.82rem;
-  font-weight: 650;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 700;
+  line-height: 1.25;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-all;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .trait-mini-card.is-compact p,
