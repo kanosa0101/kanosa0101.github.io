@@ -96,34 +96,73 @@
     if (!subgrid || subgrid.__hasAccordion) return;
     subgrid.__hasAccordion = true;
 
-    var cards = subgrid.querySelectorAll('.trait-mini-card');
+    var cards = Array.prototype.slice.call(subgrid.querySelectorAll('.trait-mini-card'));
     if (!cards || cards.length !== 4) return;
 
-    cards.forEach(function (card, index) {
-      card.addEventListener('mouseenter', function () {
-        // 移除非当前状态
-        subgrid.classList.remove('expand-0', 'expand-1', 'expand-2', 'expand-3');
-        cards.forEach(function (c) {
-          c.classList.remove('is-expanded', 'is-compact');
-        });
+    var activeIndex = -1;
 
-        // 激活当前卡片（占 2/3 区域），其余 3 张卡片紧凑变小（占 1/3 并隐藏部分信息）
-        subgrid.classList.add('expand-' + index);
-        card.classList.add('is-expanded');
-        cards.forEach(function (c, i) {
-          if (i !== index) {
-            c.classList.add('is-compact');
-          }
-        });
+    // FLIP (First, Last, Invert, Play) 物理插值驱动的丝滑平移与变形动画
+    function animateLayoutChange(targetIndex) {
+      if (targetIndex === activeIndex) return;
+
+      // 1. First: 获取变换前 4 个卡片的实际物理绝对屏幕坐标
+      var firstPositions = cards.map(function (c) {
+        return c.getBoundingClientRect();
       });
-    });
 
-    // 鼠标离开右侧 4 组件区域时，恢复默认 2x2 均等看板布局
-    subgrid.addEventListener('mouseleave', function () {
+      // 2. 应用新的网格布局与状态类
       subgrid.classList.remove('expand-0', 'expand-1', 'expand-2', 'expand-3');
       cards.forEach(function (c) {
         c.classList.remove('is-expanded', 'is-compact');
       });
+
+      if (targetIndex >= 0 && targetIndex < 4) {
+        subgrid.classList.add('expand-' + targetIndex);
+        cards[targetIndex].classList.add('is-expanded');
+        cards.forEach(function (c, i) {
+          if (i !== targetIndex) {
+            c.classList.add('is-compact');
+          }
+        });
+      }
+      activeIndex = targetIndex;
+
+      // 3. Last: 获取变更后 4 个卡片的新物理坐标
+      var lastPositions = cards.map(function (c) {
+        return c.getBoundingClientRect();
+      });
+
+      // 4. Invert: 利用 GPU transform translate 逆向位移回原位置，视觉上毫秒级无缝衔接
+      cards.forEach(function (card, i) {
+        var dx = firstPositions[i].left - lastPositions[i].left;
+        var dy = firstPositions[i].top - lastPositions[i].top;
+
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+          card.style.transition = 'none';
+          card.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+        }
+      });
+
+      // 5. 强制触发重绘管线，并平滑插值到终点（0.48s 物理缓动）
+      void subgrid.offsetWidth;
+
+      requestAnimationFrame(function () {
+        cards.forEach(function (card) {
+          card.style.transition = 'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1), padding 0.48s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.48s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease, background 0.35s ease';
+          card.style.transform = '';
+        });
+      });
+    }
+
+    cards.forEach(function (card, index) {
+      card.addEventListener('mouseenter', function () {
+        animateLayoutChange(index);
+      });
+    });
+
+    // 鼠标离开右侧 4 组件区域时，平滑逆向滑回 2x2 均等看板布局
+    subgrid.addEventListener('mouseleave', function () {
+      animateLayoutChange(-1);
     });
   }
 
