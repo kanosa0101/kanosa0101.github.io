@@ -40,7 +40,7 @@ aside: false
 <div class="status-info-col">
 <div class="status-row">
 <span class="status-label">学术基座：</span>
-<span class="status-val">福州大学 · 计算机科学与工程系 (2024 - 2028)</span>
+<span class="status-val">福州大学 · 软件工程 (2024 - 2028)</span>
 </div>
 <div class="status-row">
 <span class="status-label">物理坐标：</span>
@@ -56,25 +56,53 @@ aside: false
 </div>
 </div>
 <div class="traits-subgrid">
-<div class="trait-mini-card">
+<div class="trait-mini-card trait-card-0" data-index="0">
+<div class="trait-card-top">
 <i class="fas fa-layer-group trait-mini-icon"></i>
 <h4>全栈架构交付</h4>
-<p>跨端 UI 至后端服务闭环交付能力</p>
 </div>
-<div class="trait-mini-card">
+<p>跨端 UI 至后端服务闭环交付能力</p>
+<div class="trait-extra-tags">
+<span>全栈闭环</span>
+<span>微服务治理</span>
+<span>现代工程化</span>
+</div>
+</div>
+<div class="trait-mini-card trait-card-1" data-index="1">
+<div class="trait-card-top">
 <i class="fas fa-microchip trait-mini-icon"></i>
 <h4>系统底层性能</h4>
-<p>深入并发 I/O、内存模型与体系结构</p>
 </div>
-<div class="trait-mini-card">
+<p>深入并发 I/O、内存模型与体系结构</p>
+<div class="trait-extra-tags">
+<span>并发调度</span>
+<span>内存模型</span>
+<span>底层体系</span>
+</div>
+</div>
+<div class="trait-mini-card trait-card-2" data-index="2">
+<div class="trait-card-top">
 <i class="fas fa-robot trait-mini-icon"></i>
 <h4>自主智能体</h4>
-<p>Multi-Agent 状态协同与工具流调度</p>
 </div>
-<div class="trait-mini-card">
+<p>Multi-Agent 状态协同与工具流调度</p>
+<div class="trait-extra-tags">
+<span>Multi-Agent</span>
+<span>MCP 协议</span>
+<span>状态机协同</span>
+</div>
+</div>
+<div class="trait-mini-card trait-card-3" data-index="3">
+<div class="trait-card-top">
 <i class="fas fa-code-commit trait-mini-icon"></i>
 <h4>工程规范美学</h4>
+</div>
 <p>类型安全、持续集成与优雅代码规范</p>
+<div class="trait-extra-tags">
+<span>类型完备</span>
+<span>CI 自动化</span>
+<span>模块解耦</span>
+</div>
 </div>
 </div>
 </div>
