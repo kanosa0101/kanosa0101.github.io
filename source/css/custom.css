@@ -1257,114 +1257,95 @@ html[data-theme="dark"] .status-info-col {
   gap: 12px;
   height: 100%;
   min-height: 290px;
-  transition: grid-template-columns 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-              grid-template-rows 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  transition: grid-template-columns 0.48s cubic-bezier(0.16, 1, 0.3, 1),
+              grid-template-rows 0.48s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 状态 0：悬浮左上 Card 0 (全栈架构交付) -> 左侧占 2/3，其余 3 个右侧纵向排列占 1/3 (同时支持纯 CSS :has 与 JS 类名) */
-.traits-subgrid.expand-0,
-.traits-subgrid:has(.trait-card-0:hover) {
+/* 状态 0：悬浮左上 Card 0 (全栈架构交付) -> 左侧占 2/3，其余 3 个右侧纵向排列占 1/3 */
+.traits-subgrid.expand-0 {
   grid-template-columns: 1.6fr 1fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
-.traits-subgrid.expand-0 .trait-card-0,
-.traits-subgrid:has(.trait-card-0:hover) .trait-card-0 {
+.traits-subgrid.expand-0 .trait-card-0 {
   grid-column: 1 / 2;
   grid-row: 1 / 4;
 }
-.traits-subgrid.expand-0 .trait-card-1,
-.traits-subgrid:has(.trait-card-0:hover) .trait-card-1 {
+.traits-subgrid.expand-0 .trait-card-1 {
   grid-column: 2 / 3;
   grid-row: 1 / 2;
 }
-.traits-subgrid.expand-0 .trait-card-2,
-.traits-subgrid:has(.trait-card-0:hover) .trait-card-2 {
+.traits-subgrid.expand-0 .trait-card-2 {
   grid-column: 2 / 3;
   grid-row: 2 / 3;
 }
-.traits-subgrid.expand-0 .trait-card-3,
-.traits-subgrid:has(.trait-card-0:hover) .trait-card-3 {
+.traits-subgrid.expand-0 .trait-card-3 {
   grid-column: 2 / 3;
   grid-row: 3 / 4;
 }
 
 /* 状态 2：悬浮左下 Card 2 (自主智能体) -> 左侧占 2/3，其余 3 个右侧纵向排列占 1/3 */
-.traits-subgrid.expand-2,
-.traits-subgrid:has(.trait-card-2:hover) {
+.traits-subgrid.expand-2 {
   grid-template-columns: 1.6fr 1fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
-.traits-subgrid.expand-2 .trait-card-2,
-.traits-subgrid:has(.trait-card-2:hover) .trait-card-2 {
+.traits-subgrid.expand-2 .trait-card-2 {
   grid-column: 1 / 2;
   grid-row: 1 / 4;
 }
-.traits-subgrid.expand-2 .trait-card-0,
-.traits-subgrid:has(.trait-card-2:hover) .trait-card-0 {
+.traits-subgrid.expand-2 .trait-card-0 {
   grid-column: 2 / 3;
   grid-row: 1 / 2;
 }
-.traits-subgrid.expand-2 .trait-card-1,
-.traits-subgrid:has(.trait-card-2:hover) .trait-card-1 {
+.traits-subgrid.expand-2 .trait-card-1 {
   grid-column: 2 / 3;
   grid-row: 2 / 3;
 }
-.traits-subgrid.expand-2 .trait-card-3,
-.traits-subgrid:has(.trait-card-2:hover) .trait-card-3 {
+.traits-subgrid.expand-2 .trait-card-3 {
   grid-column: 2 / 3;
   grid-row: 3 / 4;
 }
 
 /* 状态 1：悬浮右上 Card 1 (系统底层性能) -> 右侧占 2/3，其余 3 个左侧纵向排列占 1/3 */
-.traits-subgrid.expand-1,
-.traits-subgrid:has(.trait-card-1:hover) {
+.traits-subgrid.expand-1 {
   grid-template-columns: 1fr 1.6fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
-.traits-subgrid.expand-1 .trait-card-1,
-.traits-subgrid:has(.trait-card-1:hover) .trait-card-1 {
+.traits-subgrid.expand-1 .trait-card-1 {
   grid-column: 2 / 3;
   grid-row: 1 / 4;
 }
-.traits-subgrid.expand-1 .trait-card-0,
-.traits-subgrid:has(.trait-card-1:hover) .trait-card-0 {
+.traits-subgrid.expand-1 .trait-card-0 {
   grid-column: 1 / 2;
   grid-row: 1 / 2;
 }
-.traits-subgrid.expand-1 .trait-card-2,
-.traits-subgrid:has(.trait-card-1:hover) .trait-card-2 {
+.traits-subgrid.expand-1 .trait-card-2 {
   grid-column: 1 / 2;
   grid-row: 2 / 3;
 }
-.traits-subgrid.expand-1 .trait-card-3,
-.traits-subgrid:has(.trait-card-1:hover) .trait-card-3 {
+.traits-subgrid.expand-1 .trait-card-3 {
   grid-column: 1 / 2;
   grid-row: 3 / 4;
 }
 
 /* 状态 3：悬浮右下 Card 3 (工程规范美学) -> 右侧占 2/3，其余 3 个左侧纵向排列占 1/3 */
-.traits-subgrid.expand-3,
-.traits-subgrid:has(.trait-card-3:hover) {
+.traits-subgrid.expand-3 {
   grid-template-columns: 1fr 1.6fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
-.traits-subgrid.expand-3 .trait-card-3,
-.traits-subgrid:has(.trait-card-3:hover) .trait-card-3 {
+.traits-subgrid.expand-3 .trait-card-3 {
   grid-column: 2 / 3;
   grid-row: 1 / 4;
 }
-.traits-subgrid.expand-3 .trait-card-0,
-.traits-subgrid:has(.trait-card-3:hover) .trait-card-0 {
+.traits-subgrid.expand-3 .trait-card-0 {
   grid-column: 1 / 2;
   grid-row: 1 / 2;
 }
-.traits-subgrid.expand-3 .trait-card-1,
-.traits-subgrid:has(.trait-card-3:hover) .trait-card-1 {
+.traits-subgrid.expand-3 .trait-card-1 {
   grid-column: 1 / 2;
   grid-row: 2 / 3;
 }
-.traits-subgrid.expand-3 .trait-card-2,
-.traits-subgrid:has(.trait-card-3:hover) .trait-card-2 {
+.traits-subgrid.expand-3 .trait-card-2 {
   grid-column: 1 / 2;
   grid-row: 3 / 4;
 }
@@ -1401,14 +1382,16 @@ html[data-theme="dark"] .status-info-col {
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--blog-card-border);
-  transition: all 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+  transition: padding 0.48s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.35s ease,
+              border-color 0.35s ease,
+              box-shadow 0.48s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 6px;
-  box-sizing: border-box;
+  position: relative;
   overflow: hidden;
-  cursor: pointer;
 }
 
 html[data-theme="dark"] .trait-mini-card {
@@ -1424,7 +1407,7 @@ html[data-theme="dark"] .trait-mini-card {
 .trait-mini-icon {
   font-size: 1.25rem;
   color: #1890ff;
-  transition: transform 0.25s ease, font-size 0.25s ease, color 0.25s ease;
+  transition: transform 0.45s ease, font-size 0.45s ease, color 0.35s ease;
   flex-shrink: 0;
 }
 
@@ -1432,24 +1415,35 @@ html[data-theme="dark"] .trait-mini-card {
   margin: 0;
   font-size: 0.98rem;
   font-weight: 700;
-  transition: font-size 0.25s ease, color 0.25s ease;
+  transition: font-size 0.45s ease, color 0.35s ease;
   white-space: nowrap;
 }
 
 .trait-mini-card p {
-  margin: 0;
+  margin: 6px 0 0;
   font-size: 0.82rem;
   line-height: 1.5;
-  opacity: 0.8;
-  transition: opacity 0.25s ease;
+  opacity: 0.82;
+  max-height: 60px;
+  overflow: hidden;
+  transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.35s ease,
+              margin 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 扩展标签栏 (仅大卡片展现) */
+/* 扩展标签栏 (仅大卡片平滑展露) */
 .trait-extra-tags {
-  display: none;
+  display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 6px;
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.35s ease,
+              margin-top 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .trait-extra-tags span {
@@ -1468,54 +1462,53 @@ html[data-theme="dark"] .trait-extra-tags span {
 }
 
 /* 1. 变大状态 (is-expanded: 占 2/3 位置) */
-.trait-mini-card.is-expanded,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover {
+.trait-mini-card.is-expanded {
   padding: 1.4rem 1.5rem;
   justify-content: space-between;
   border-color: rgba(19, 194, 194, 0.55);
   box-shadow: 0 12px 28px rgba(19, 194, 194, 0.16);
   background: var(--blog-card-bg);
   transform: translateY(-2px);
+  z-index: 2;
 }
 
-.trait-mini-card.is-expanded .trait-card-top,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover .trait-card-top {
+.trait-mini-card.is-expanded .trait-card-top {
   margin-bottom: 4px;
 }
 
-.trait-mini-card.is-expanded .trait-mini-icon,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover .trait-mini-icon {
+.trait-mini-card.is-expanded .trait-mini-icon {
   font-size: 1.65rem;
   color: #13c2c2;
 }
 
-.trait-mini-card.is-expanded h4,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover h4 {
+.trait-mini-card.is-expanded h4 {
   font-size: 1.15rem;
   font-weight: 800;
   color: #13c2c2;
 }
 
-html[data-theme="dark"] .trait-mini-card.is-expanded h4,
-html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover h4 {
+html[data-theme="dark"] .trait-mini-card.is-expanded h4 {
   color: #9fe8ef;
 }
 
-.trait-mini-card.is-expanded p,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover p {
+.trait-mini-card.is-expanded p {
+  max-height: 80px;
   font-size: 0.88rem;
   line-height: 1.65;
   opacity: 0.95;
+  margin: 8px 0 0;
+  pointer-events: auto;
 }
 
-.trait-mini-card.is-expanded .trait-extra-tags,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover .trait-extra-tags {
-  display: flex;
+.trait-mini-card.is-expanded .trait-extra-tags {
+  max-height: 60px;
+  opacity: 1;
+  margin-top: 8px;
+  pointer-events: auto;
 }
 
 /* 2. 变小状态 (is-compact: 3 张卡片占 1/3 位置，适当隐藏信息保 UI 合理) */
-.trait-mini-card.is-compact,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) {
+.trait-mini-card.is-compact {
   padding: 0.55rem 0.75rem;
   flex-direction: row;
   align-items: center;
@@ -1526,17 +1519,16 @@ html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-
   opacity: 0.78;
   min-width: 0;
   overflow: hidden;
+  z-index: 1;
 }
 
-html[data-theme="dark"] .trait-mini-card.is-compact,
-html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) {
+html[data-theme="dark"] .trait-mini-card.is-compact {
   background: rgba(255, 255, 255, 0.02);
   border-color: rgba(255, 255, 255, 0.05);
   opacity: 0.7;
 }
 
-.trait-mini-card.is-compact .trait-card-top,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) .trait-card-top {
+.trait-mini-card.is-compact .trait-card-top {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1544,14 +1536,12 @@ html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-
   width: 100%;
 }
 
-.trait-mini-card.is-compact .trait-mini-icon,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) .trait-mini-icon {
+.trait-mini-card.is-compact .trait-mini-icon {
   font-size: 1.05rem;
   flex-shrink: 0;
 }
 
-.trait-mini-card.is-compact h4,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) h4 {
+.trait-mini-card.is-compact h4 {
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.25;
@@ -1562,14 +1552,18 @@ html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-
   text-overflow: clip;
 }
 
-.trait-mini-card.is-compact p,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) p {
-  display: none !important;
+.trait-mini-card.is-compact p {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  margin: 0 !important;
+  pointer-events: none;
 }
 
-.trait-mini-card.is-compact .trait-extra-tags,
-.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) .trait-extra-tags {
-  display: none !important;
+.trait-mini-card.is-compact .trait-extra-tags {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  margin-top: 0 !important;
+  pointer-events: none;
 }
 
 /* 5.4 岛屿 3：双轨无缝无限流技术跑马灯 */
