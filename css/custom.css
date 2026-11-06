@@ -15,10 +15,12 @@
   --hex-node-h: 106px;
 }
 
-html[data-theme="dark"] {
-  --blog-card-bg: rgba(25, 31, 35, 0.94);
-  --blog-reading-bg: rgba(25, 31, 35, 0.96);
+html[data-theme="dark"],
+[data-theme="dark"] {
+  --blog-card-bg: rgba(22, 28, 33, 0.88);
+  --blog-reading-bg: rgba(22, 28, 33, 0.90);
   --blog-card-border: rgba(205, 225, 227, 0.14);
+  --mark-bg: rgba(0, 0, 0, 0.28) !important;
 }
 
 @supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
@@ -27,10 +29,29 @@ html[data-theme="dark"] {
     --blog-reading-bg: rgba(249, 247, 241, 0.86);
   }
 
-  html[data-theme="dark"] {
-    --blog-card-bg: rgba(25, 31, 35, 0.76);
-    --blog-reading-bg: rgba(25, 31, 35, 0.86);
+  html[data-theme="dark"],
+  [data-theme="dark"] {
+    --blog-card-bg: rgba(22, 28, 33, 0.65);
+    --blog-reading-bg: rgba(22, 28, 33, 0.72);
   }
+}
+
+/* 夜间模式全站与顶栏遮罩层调优：去除过浓过黑的压抑感，呈现淡淡的半透明磨砂黑色 */
+[data-theme="dark"] #web_bg:before,
+html[data-theme="dark"] #web_bg:before {
+  background-color: rgba(0, 0, 0, 0.28) !important;
+}
+
+[data-theme="dark"] #page-header:not(.not-top-img):before,
+html[data-theme="dark"] #page-header:not(.not-top-img):before {
+  background-color: rgba(0, 0, 0, 0.28) !important;
+}
+
+[data-theme="dark"] #page-header.nav-fixed > #nav,
+[data-theme="dark"] #page-header.not-top-img > #nav {
+  background: rgba(18, 18, 18, 0.68) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 body:not(.read-mode) .layout > div:first-child:not(.nc),
@@ -1240,90 +1261,110 @@ html[data-theme="dark"] .status-info-col {
               grid-template-rows 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* 状态 0：悬浮左上 Card 0 (全栈架构交付) -> 左侧占 2/3，其余 3 个右侧纵向排列占 1/3 */
-.traits-subgrid.expand-0 {
+/* 状态 0：悬浮左上 Card 0 (全栈架构交付) -> 左侧占 2/3，其余 3 个右侧纵向排列占 1/3 (同时支持纯 CSS :has 与 JS 类名) */
+.traits-subgrid.expand-0,
+.traits-subgrid:has(.trait-card-0:hover) {
   grid-template-columns: 2fr 1fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
-.traits-subgrid.expand-0 .trait-card-0 {
+.traits-subgrid.expand-0 .trait-card-0,
+.traits-subgrid:has(.trait-card-0:hover) .trait-card-0 {
   grid-column: 1 / 2;
   grid-row: 1 / 4;
 }
-.traits-subgrid.expand-0 .trait-card-1 {
+.traits-subgrid.expand-0 .trait-card-1,
+.traits-subgrid:has(.trait-card-0:hover) .trait-card-1 {
   grid-column: 2 / 3;
   grid-row: 1 / 2;
 }
-.traits-subgrid.expand-0 .trait-card-2 {
+.traits-subgrid.expand-0 .trait-card-2,
+.traits-subgrid:has(.trait-card-0:hover) .trait-card-2 {
   grid-column: 2 / 3;
   grid-row: 2 / 3;
 }
-.traits-subgrid.expand-0 .trait-card-3 {
+.traits-subgrid.expand-0 .trait-card-3,
+.traits-subgrid:has(.trait-card-0:hover) .trait-card-3 {
   grid-column: 2 / 3;
   grid-row: 3 / 4;
 }
 
 /* 状态 2：悬浮左下 Card 2 (自主智能体) -> 左侧占 2/3，其余 3 个右侧纵向排列占 1/3 */
-.traits-subgrid.expand-2 {
+.traits-subgrid.expand-2,
+.traits-subgrid:has(.trait-card-2:hover) {
   grid-template-columns: 2fr 1fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
-.traits-subgrid.expand-2 .trait-card-2 {
+.traits-subgrid.expand-2 .trait-card-2,
+.traits-subgrid:has(.trait-card-2:hover) .trait-card-2 {
   grid-column: 1 / 2;
   grid-row: 1 / 4;
 }
-.traits-subgrid.expand-2 .trait-card-0 {
+.traits-subgrid.expand-2 .trait-card-0,
+.traits-subgrid:has(.trait-card-2:hover) .trait-card-0 {
   grid-column: 2 / 3;
   grid-row: 1 / 2;
 }
-.traits-subgrid.expand-2 .trait-card-1 {
+.traits-subgrid.expand-2 .trait-card-1,
+.traits-subgrid:has(.trait-card-2:hover) .trait-card-1 {
   grid-column: 2 / 3;
   grid-row: 2 / 3;
 }
-.traits-subgrid.expand-2 .trait-card-3 {
+.traits-subgrid.expand-2 .trait-card-3,
+.traits-subgrid:has(.trait-card-2:hover) .trait-card-3 {
   grid-column: 2 / 3;
   grid-row: 3 / 4;
 }
 
 /* 状态 1：悬浮右上 Card 1 (系统底层性能) -> 右侧占 2/3，其余 3 个左侧纵向排列占 1/3 */
-.traits-subgrid.expand-1 {
+.traits-subgrid.expand-1,
+.traits-subgrid:has(.trait-card-1:hover) {
   grid-template-columns: 1fr 2fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
-.traits-subgrid.expand-1 .trait-card-1 {
+.traits-subgrid.expand-1 .trait-card-1,
+.traits-subgrid:has(.trait-card-1:hover) .trait-card-1 {
   grid-column: 2 / 3;
   grid-row: 1 / 4;
 }
-.traits-subgrid.expand-1 .trait-card-0 {
+.traits-subgrid.expand-1 .trait-card-0,
+.traits-subgrid:has(.trait-card-1:hover) .trait-card-0 {
   grid-column: 1 / 2;
   grid-row: 1 / 2;
 }
-.traits-subgrid.expand-1 .trait-card-2 {
+.traits-subgrid.expand-1 .trait-card-2,
+.traits-subgrid:has(.trait-card-1:hover) .trait-card-2 {
   grid-column: 1 / 2;
   grid-row: 2 / 3;
 }
-.traits-subgrid.expand-1 .trait-card-3 {
+.traits-subgrid.expand-1 .trait-card-3,
+.traits-subgrid:has(.trait-card-1:hover) .trait-card-3 {
   grid-column: 1 / 2;
   grid-row: 3 / 4;
 }
 
 /* 状态 3：悬浮右下 Card 3 (工程规范美学) -> 右侧占 2/3，其余 3 个左侧纵向排列占 1/3 */
-.traits-subgrid.expand-3 {
+.traits-subgrid.expand-3,
+.traits-subgrid:has(.trait-card-3:hover) {
   grid-template-columns: 1fr 2fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
 }
-.traits-subgrid.expand-3 .trait-card-3 {
+.traits-subgrid.expand-3 .trait-card-3,
+.traits-subgrid:has(.trait-card-3:hover) .trait-card-3 {
   grid-column: 2 / 3;
   grid-row: 1 / 4;
 }
-.traits-subgrid.expand-3 .trait-card-0 {
+.traits-subgrid.expand-3 .trait-card-0,
+.traits-subgrid:has(.trait-card-3:hover) .trait-card-0 {
   grid-column: 1 / 2;
   grid-row: 1 / 2;
 }
-.traits-subgrid.expand-3 .trait-card-1 {
+.traits-subgrid.expand-3 .trait-card-1,
+.traits-subgrid:has(.trait-card-3:hover) .trait-card-1 {
   grid-column: 1 / 2;
   grid-row: 2 / 3;
 }
-.traits-subgrid.expand-3 .trait-card-2 {
+.traits-subgrid.expand-3 .trait-card-2,
+.traits-subgrid:has(.trait-card-3:hover) .trait-card-2 {
   grid-column: 1 / 2;
   grid-row: 3 / 4;
 }
@@ -1427,7 +1468,8 @@ html[data-theme="dark"] .trait-extra-tags span {
 }
 
 /* 1. 变大状态 (is-expanded: 占 2/3 位置) */
-.trait-mini-card.is-expanded {
+.trait-mini-card.is-expanded,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover {
   padding: 1.4rem 1.5rem;
   justify-content: space-between;
   border-color: rgba(19, 194, 194, 0.55);
@@ -1436,37 +1478,44 @@ html[data-theme="dark"] .trait-extra-tags span {
   transform: translateY(-2px);
 }
 
-.trait-mini-card.is-expanded .trait-card-top {
+.trait-mini-card.is-expanded .trait-card-top,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover .trait-card-top {
   margin-bottom: 4px;
 }
 
-.trait-mini-card.is-expanded .trait-mini-icon {
+.trait-mini-card.is-expanded .trait-mini-icon,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover .trait-mini-icon {
   font-size: 1.65rem;
   color: #13c2c2;
 }
 
-.trait-mini-card.is-expanded h4 {
+.trait-mini-card.is-expanded h4,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover h4 {
   font-size: 1.15rem;
   font-weight: 800;
   color: #13c2c2;
 }
 
-html[data-theme="dark"] .trait-mini-card.is-expanded h4 {
+html[data-theme="dark"] .trait-mini-card.is-expanded h4,
+html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover h4 {
   color: #9fe8ef;
 }
 
-.trait-mini-card.is-expanded p {
+.trait-mini-card.is-expanded p,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover p {
   font-size: 0.88rem;
   line-height: 1.65;
   opacity: 0.95;
 }
 
-.trait-mini-card.is-expanded .trait-extra-tags {
+.trait-mini-card.is-expanded .trait-extra-tags,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:hover .trait-extra-tags {
   display: flex;
 }
 
 /* 2. 变小状态 (is-compact: 3 张卡片占 1/3 位置，适当隐藏信息保 UI 合理) */
-.trait-mini-card.is-compact {
+.trait-mini-card.is-compact,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) {
   padding: 0.55rem 0.85rem;
   flex-direction: row;
   align-items: center;
@@ -1477,21 +1526,25 @@ html[data-theme="dark"] .trait-mini-card.is-expanded h4 {
   opacity: 0.78;
 }
 
-html[data-theme="dark"] .trait-mini-card.is-compact {
+html[data-theme="dark"] .trait-mini-card.is-compact,
+html[data-theme="dark"] .traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) {
   background: rgba(255, 255, 255, 0.02);
   border-color: rgba(255, 255, 255, 0.05);
   opacity: 0.7;
 }
 
-.trait-mini-card.is-compact .trait-card-top {
+.trait-mini-card.is-compact .trait-card-top,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) .trait-card-top {
   gap: 6px;
 }
 
-.trait-mini-card.is-compact .trait-mini-icon {
+.trait-mini-card.is-compact .trait-mini-icon,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) .trait-mini-icon {
   font-size: 1rem;
 }
 
-.trait-mini-card.is-compact h4 {
+.trait-mini-card.is-compact h4,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) h4 {
   font-size: 0.82rem;
   font-weight: 650;
   overflow: hidden;
@@ -1499,11 +1552,13 @@ html[data-theme="dark"] .trait-mini-card.is-compact {
   white-space: nowrap;
 }
 
-.trait-mini-card.is-compact p {
+.trait-mini-card.is-compact p,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) p {
   display: none !important;
 }
 
-.trait-mini-card.is-compact .trait-extra-tags {
+.trait-mini-card.is-compact .trait-extra-tags,
+.traits-subgrid:has(.trait-mini-card:hover) .trait-mini-card:not(:hover) .trait-extra-tags {
   display: none !important;
 }
 
