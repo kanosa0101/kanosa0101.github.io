@@ -1359,7 +1359,7 @@ html[data-theme="dark"] .tech-chip {
   100% { transform: translateX(0); }
 }
 
-/* 5.5 岛屿 4：代表性作品集与机制 C 聚光灯边缘 */
+/* 5.5 岛屿 4：代表性作品集 3D 翻转卡片与聚光灯边缘 */
 .projects-cards-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1373,49 +1373,108 @@ html[data-theme="dark"] .tech-chip {
   }
 }
 
-.island-project-card {
+.island-project-card.flip-card {
   position: relative;
-  padding: 1.8rem;
+  perspective: 1200px;
+  -webkit-perspective: 1200px;
+  height: 335px;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: pointer;
+  outline: none;
+  border-radius: 18px;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.island-project-card.flip-card:hover {
+  transform: translateY(-4px);
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.island-project-card.flip-card.is-flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   border-radius: 18px;
   background: var(--blog-card-bg);
   border: 1px solid var(--blog-card-border);
+  padding: 1.4rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  box-sizing: border-box;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   overflow: hidden;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 机制 C：径向聚光灯跟随光圈 */
-.island-project-card::before {
+/* 机制 C：径向聚光灯跟随光圈 (应用于翻转卡片两个面) */
+.flip-card-face::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(400px circle at var(--mouse-x, -200px) var(--mouse-y, -200px), rgba(19, 194, 194, 0.16), transparent 50%);
+  background: radial-gradient(380px circle at var(--mouse-x, -200px) var(--mouse-y, -200px), rgba(19, 194, 194, 0.16), transparent 50%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
   z-index: 1;
 }
 
-.island-project-card:hover::before {
+.island-project-card.flip-card:hover .flip-card-face::before {
   opacity: 1;
 }
 
-.island-project-card:hover {
-  transform: translateY(-5px);
-  border-color: rgba(19, 194, 194, 0.5);
-  box-shadow: 0 16px 36px rgba(19, 194, 194, 0.16);
+.island-project-card.flip-card:hover .flip-card-face {
+  border-color: rgba(19, 194, 194, 0.45);
+  box-shadow: 0 16px 36px rgba(19, 194, 194, 0.14);
 }
 
-.project-top-row {
+.project-card-front {
+  transform: rotateY(0deg);
+  z-index: 2;
+}
+
+.project-card-back {
+  transform: rotateY(180deg);
+  z-index: 1;
+  border-color: rgba(19, 194, 194, 0.32);
+}
+
+html[data-theme="dark"] .project-card-back {
+  border-color: rgba(19, 194, 194, 0.4);
+}
+
+.project-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   position: relative;
   z-index: 2;
+}
+
+.project-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .project-badge {
@@ -1436,16 +1495,22 @@ html[data-theme="dark"] .project-badge {
   color: #9fe8ef;
 }
 
+.back-badge {
+  background: rgba(19, 194, 194, 0.14);
+  color: #13c2c2;
+  border-color: rgba(19, 194, 194, 0.32);
+}
+
 .project-link-btn {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.05);
   color: inherit;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
   text-decoration: none !important;
 }
@@ -1456,36 +1521,124 @@ html[data-theme="dark"] .project-link-btn {
 
 .project-link-btn:hover {
   background: #1890ff;
-  color: #ffffff;
+  color: #ffffff !important;
   transform: scale(1.1);
 }
 
+.flip-hint-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(19, 194, 194, 0.1);
+  color: #13c2c2;
+  font-size: 0.88rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.3s ease, color 0.2s ease;
+}
+
+html[data-theme="dark"] .flip-hint-btn {
+  background: rgba(19, 194, 194, 0.18);
+  color: #9fe8ef;
+}
+
+.island-project-card.flip-card:hover .flip-hint-btn {
+  transform: rotate(180deg);
+}
+
+.flip-hint-btn:hover {
+  background: #13c2c2;
+  color: #ffffff !important;
+}
+
+.project-card-body {
+  position: relative;
+  z-index: 2;
+  flex-grow: 1;
+}
+
 .project-heading {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   line-height: 1.35;
   position: relative;
   z-index: 2;
 }
 
 .project-summary {
-  font-size: 0.92rem;
-  line-height: 1.7;
+  font-size: 0.88rem;
+  line-height: 1.6;
   opacity: 0.88;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 2;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.project-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   position: relative;
   z-index: 2;
 }
 
-/* 核心特性与架构突破拆解 */
+.card-flip-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #13c2c2;
+  background: rgba(19, 194, 194, 0.08);
+  border-radius: 8px;
+  padding: 5px 10px;
+  margin-top: 4px;
+  transition: background 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+}
+
+html[data-theme="dark"] .card-flip-prompt {
+  background: rgba(19, 194, 194, 0.14);
+  color: #9fe8ef;
+}
+
+.island-project-card.flip-card:hover .card-flip-prompt {
+  background: rgba(19, 194, 194, 0.18);
+}
+
+.card-flip-prompt span {
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+/* 核心特性与架构突破拆解 (背面) */
+.back-project-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: #13c2c2;
+  line-height: 1.35;
+}
+
+html[data-theme="dark"] .back-project-title {
+  color: #9fe8ef;
+}
+
 .project-breakdown {
-  margin: 12px 0 16px;
-  padding: 10px 14px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(19, 194, 194, 0.05);
+  background: rgba(19, 194, 194, 0.06);
   border-left: 3px solid #13c2c2;
-  font-size: 0.84rem;
+  font-size: 0.83rem;
   position: relative;
   z-index: 2;
 }
@@ -1509,28 +1662,83 @@ html[data-theme="dark"] .breakdown-title {
 
 .breakdown-list {
   margin: 0;
-  padding-left: 16px;
+  padding-left: 15px;
   line-height: 1.6;
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 .breakdown-list li {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.breakdown-list li:last-child {
+  margin-bottom: 0;
+}
+
+.back-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-direction: row;
+  margin-top: 4px;
+}
+
+.back-repo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #1890ff;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 3px 10px rgba(24, 144, 255, 0.25);
+}
+
+.back-repo-btn:hover {
+  background: #40a9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 14px rgba(24, 144, 255, 0.35);
+}
+
+.back-flip-tip {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #13c2c2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.9;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+html[data-theme="dark"] .back-flip-tip {
+  color: #9fe8ef;
+}
+
+.back-flip-tip:hover {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 .project-tech-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   position: relative;
   z-index: 2;
 }
 
 .project-pill {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
   background: rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(0, 0, 0, 0.06);
 }

@@ -59,6 +59,33 @@
     });
   }
 
+  function initProjectCardFlip() {
+    var cards = document.querySelectorAll('.island-project-card.flip-card');
+    if (!cards || cards.length === 0) return;
+
+    cards.forEach(function (card) {
+      if (card.__hasFlipListener) return;
+      card.__hasFlipListener = true;
+
+      card.addEventListener('click', function (e) {
+        // 若点击的是外部跳转链接（且非翻转触发器），保持原链接正常打开，不触发卡片翻转
+        if (e.target.closest('a') && !e.target.closest('.flip-trigger')) {
+          return;
+        }
+        card.classList.toggle('is-flipped');
+      });
+
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          if (e.target.tagName !== 'A') {
+            e.preventDefault();
+            card.classList.toggle('is-flipped');
+          }
+        }
+      });
+    });
+  }
+
   function initSideTocScrollSpy() {
     var sideToc = document.getElementById('about-side-toc');
     if (!sideToc || sideToc.__hasSpy) return;
@@ -135,6 +162,7 @@
   function initAll() {
     initIslandScrollReveal();
     initSpotlightCards();
+    initProjectCardFlip();
     initSideTocScrollSpy();
   }
 
