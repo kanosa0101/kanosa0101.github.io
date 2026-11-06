@@ -1644,9 +1644,9 @@ html[data-theme="dark"] .card-flip-prompt {
 
 /* 核心特性与架构突破拆解 (背面) */
 .back-project-title {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   color: #13c2c2;
   line-height: 1.35;
 }
@@ -1656,12 +1656,12 @@ html[data-theme="dark"] .back-project-title {
 }
 
 .project-breakdown {
-  margin: 0 0 8px;
-  padding: 9px 12px;
-  border-radius: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
   background: rgba(19, 194, 194, 0.06);
   border-left: 3px solid #13c2c2;
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   position: relative;
   z-index: 2;
 }
@@ -1686,68 +1686,17 @@ html[data-theme="dark"] .breakdown-title {
 .breakdown-list {
   margin: 0;
   padding-left: 14px;
-  line-height: 1.55;
+  line-height: 1.6;
   opacity: 0.92;
 }
 
 .breakdown-list li {
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   word-break: break-word;
 }
 
 .breakdown-list li:last-child {
   margin-bottom: 0;
-}
-
-.back-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-direction: row;
-  margin-top: 2px;
-}
-
-.back-repo-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 8px;
-  background: #1890ff;
-  color: #ffffff !important;
-  text-decoration: none !important;
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 3px 10px rgba(24, 144, 255, 0.25);
-}
-
-.back-repo-btn:hover {
-  background: #40a9ff;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 14px rgba(24, 144, 255, 0.35);
-}
-
-.back-flip-tip {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #13c2c2;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  opacity: 0.9;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-html[data-theme="dark"] .back-flip-tip {
-  color: #9fe8ef;
-}
-
-.back-flip-tip:hover {
-  opacity: 1;
-  transform: scale(1.05);
 }
 
 .project-tech-pills {
@@ -1772,39 +1721,182 @@ html[data-theme="dark"] .project-pill {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* 5.6 岛屿 5：生涯与学术时间线 */
+/* 5.6 岛屿 5：生涯与学术时间线 (含 1 级大学与 2 级实验室层级) */
 .timeline-island {
   position: relative;
+}
+
+.timeline-tree {
+  position: relative;
+  margin-top: 15px;
 }
 
 .timeline-milestone {
   display: flex;
   gap: 16px;
-  margin-top: 10px;
   align-items: flex-start;
+  position: relative;
 }
 
-.milestone-dot {
-  width: 14px;
-  height: 14px;
+.milestone-dot.dot-l1 {
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #13c2c2;
-  box-shadow: 0 0 12px #13c2c2;
-  margin-top: 5px;
+  box-shadow: 0 0 14px rgba(19, 194, 194, 0.7);
+  margin-top: 4px;
   flex-shrink: 0;
 }
 
-.milestone-content h4 {
-  margin: 0 0 8px;
+.milestone-content {
+  flex-grow: 1;
+}
+
+.milestone-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.milestone-title-row h4 {
+  margin: 0;
   font-size: 1.15rem;
   font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-badge {
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(24, 144, 255, 0.12);
+  color: #1890ff;
+  border: 1px solid rgba(24, 144, 255, 0.25);
+}
+
+html[data-theme="dark"] .timeline-badge {
+  background: rgba(24, 144, 255, 0.2);
+  color: #9fe8ef;
 }
 
 .milestone-content p {
   margin: 0;
-  font-size: 0.94rem;
-  line-height: 1.75;
+  font-size: 0.92rem;
+  line-height: 1.7;
   opacity: 0.88;
+}
+
+/* 2 级子板块：智能计算与信息安全处理实验室 */
+.timeline-sub-card {
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(19, 194, 194, 0.05);
+  border: 1px solid rgba(19, 194, 194, 0.2);
+  border-left: 4px solid #13c2c2;
+  transition: border-color 0.3s ease, background 0.3s ease, transform 0.2s ease;
+}
+
+html[data-theme="dark"] .timeline-sub-card {
+  background: rgba(19, 194, 194, 0.08);
+  border-color: rgba(19, 194, 194, 0.25);
+  border-left-color: #13c2c2;
+}
+
+.timeline-sub-card:hover {
+  border-color: rgba(19, 194, 194, 0.45);
+  transform: translateX(4px);
+}
+
+.sub-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.sub-card-title {
+  font-size: 1.02rem;
+  font-weight: 750;
+  color: #13c2c2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-theme="dark"] .sub-card-title {
+  color: #9fe8ef;
+}
+
+.timeline-sub-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(19, 194, 194, 0.12);
+  color: #13c2c2;
+  border: 1px solid rgba(19, 194, 194, 0.25);
+}
+
+html[data-theme="dark"] .timeline-sub-badge {
+  background: rgba(19, 194, 194, 0.2);
+  color: #9fe8ef;
+}
+
+.research-label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timeline-research-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.research-tag {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(19, 194, 194, 0.25);
+  color: var(--font-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+html[data-theme="dark"] .research-tag {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(19, 194, 194, 0.3);
+}
+
+.research-tag i {
+  color: #13c2c2;
+}
+
+html[data-theme="dark"] .research-tag i {
+  color: #9fe8ef;
+}
+
+.research-tag:hover {
+  transform: translateY(-2px);
+  border-color: #13c2c2;
+  box-shadow: 0 4px 10px rgba(19, 194, 194, 0.2);
 }
 
 /* --------------------------------------

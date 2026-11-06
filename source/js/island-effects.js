@@ -75,6 +75,11 @@
         card.classList.toggle('is-flipped');
       });
 
+      // 鼠标移出卡片时，自动翻回正面，无需用户手动操作
+      card.addEventListener('mouseleave', function () {
+        card.classList.remove('is-flipped');
+      });
+
       card.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') {
           if (e.target.tagName !== 'A') {

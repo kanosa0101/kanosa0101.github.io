@@ -178,7 +178,6 @@ aside: false
 <div class="flip-card-face project-card-back">
 <div class="project-card-header">
 <span class="project-badge back-badge"><i class="fas fa-microchip"></i> 架构深度解构</span>
-<button class="flip-hint-btn flip-trigger" type="button" title="翻回正面" aria-label="翻回正面概述"><i class="fas fa-undo-alt"></i></button>
 </div>
 <div class="project-card-body">
 <h4 class="back-project-title">PromptX 架构难点与突破</h4>
@@ -188,10 +187,6 @@ aside: false
 <li><strong>动态评估闭环：</strong>多维度打分模型与自动化 Prompt 迭代调优</li>
 </ul>
 </div>
-</div>
-<div class="project-card-footer back-footer">
-<a class="back-repo-btn" href="https://github.com/kanosa0101/PromptX" target="_blank" rel="noopener"><i class="fab fa-github"></i> 访问 GitHub 源码仓库</a>
-<span class="back-flip-tip flip-trigger"><i class="fas fa-undo-alt"></i> 翻回概述</span>
 </div>
 </div>
 </div>
@@ -225,7 +220,6 @@ aside: false
 <div class="flip-card-face project-card-back">
 <div class="project-card-header">
 <span class="project-badge back-badge"><i class="fas fa-microchip"></i> 架构深度解构</span>
-<button class="flip-hint-btn flip-trigger" type="button" title="翻回正面" aria-label="翻回正面概述"><i class="fas fa-undo-alt"></i></button>
 </div>
 <div class="project-card-body">
 <h4 class="back-project-title">DocuMind 架构难点与突破</h4>
@@ -235,10 +229,6 @@ aside: false
 <li><strong>企业级高可用：</strong>Spring Boot 微服务架构与细粒度权限协同管控</li>
 </ul>
 </div>
-</div>
-<div class="project-card-footer back-footer">
-<a class="back-repo-btn" href="https://github.com/kanosa0101/DocuMind" target="_blank" rel="noopener"><i class="fab fa-github"></i> 访问 GitHub 源码仓库</a>
-<span class="back-flip-tip flip-trigger"><i class="fas fa-undo-alt"></i> 翻回概述</span>
 </div>
 </div>
 </div>
@@ -272,7 +262,6 @@ aside: false
 <div class="flip-card-face project-card-back">
 <div class="project-card-header">
 <span class="project-badge back-badge"><i class="fas fa-microchip"></i> 架构深度解构</span>
-<button class="flip-hint-btn flip-trigger" type="button" title="翻回正面" aria-label="翻回正面概述"><i class="fas fa-undo-alt"></i></button>
 </div>
 <div class="project-card-body">
 <h4 class="back-project-title">Moodisle 架构难点与突破</h4>
@@ -282,10 +271,6 @@ aside: false
 <li><strong>本地离线持久化：</strong>端侧加密存储与轻量心理情绪状态机</li>
 </ul>
 </div>
-</div>
-<div class="project-card-footer back-footer">
-<a class="back-repo-btn" href="https://github.com/kanosa0101/Moodisle" target="_blank" rel="noopener"><i class="fab fa-github"></i> 访问 GitHub 源码仓库</a>
-<span class="back-flip-tip flip-trigger"><i class="fas fa-undo-alt"></i> 翻回概述</span>
 </div>
 </div>
 </div>
@@ -299,13 +284,33 @@ aside: false
 <div class="island-header">
 <h3 class="island-title"><i class="fas fa-graduation-cap"></i> 学术与成长时间线</h3>
 </div>
-<div class="timeline-milestone">
-<div class="milestone-dot"></div>
+<div class="timeline-tree">
+<div class="timeline-milestone level-1">
+<div class="milestone-dot dot-l1"></div>
 <div class="milestone-content">
-<h4>福州大学 (Fuzhou University) · 2024 - 2028</h4>
-<p>
-计算机科学与工程方向本科攻读。专注计算机体系结构、操作系统、分布式微服务与大语言模型底层实现（CS336）。以扎实的技术底蕴探索未来全栈与智能体交互前沿。
-</p>
+<div class="milestone-title-row">
+<h4><i class="fas fa-university"></i> 福州大学 (Fuzhou University) · 2024 - 2028</h4>
+<span class="timeline-badge">本科在读</span>
+</div>
+<p>软件工程专业本科攻读。专注系统软件架构、全栈工程化实践与自主智能体体系，以扎实的工程底蕴探索前沿计算。</p>
+<div class="timeline-sub-card">
+<div class="sub-card-header">
+<div class="sub-card-title">
+<i class="fas fa-flask"></i> 智能计算与信息安全处理实验室
+</div>
+<span class="timeline-sub-badge">实验室课题组</span>
+</div>
+<div class="sub-card-body">
+<div class="research-label"><i class="fas fa-microscope"></i> 核心研究方向：</div>
+<div class="timeline-research-tags">
+<span class="research-tag"><i class="fas fa-route"></i> 时空数据挖掘</span>
+<span class="research-tag"><i class="fas fa-city"></i> 城市计算</span>
+<span class="research-tag"><i class="fas fa-shield-alt"></i> 联邦学习</span>
+<span class="research-tag"><i class="fas fa-project-diagram"></i> 迁移学习</span>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
