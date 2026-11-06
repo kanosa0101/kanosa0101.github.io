@@ -1362,12 +1362,13 @@ html[data-theme="dark"] .tech-chip {
 /* 5.5 岛屿 4：代表性作品集 3D 翻转卡片与聚光灯边缘 */
 .projects-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
   margin-top: 10px;
+  width: 100%;
 }
 
-@media screen and (max-width: 960px) {
+@media screen and (max-width: 768px) {
   .projects-cards-grid {
     grid-template-columns: 1fr;
   }
@@ -1377,7 +1378,11 @@ html[data-theme="dark"] .tech-chip {
   position: relative;
   perspective: 1200px;
   -webkit-perspective: 1200px;
-  height: 335px;
+  height: 350px;
+  min-height: 350px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
@@ -1385,6 +1390,7 @@ html[data-theme="dark"] .tech-chip {
   outline: none;
   border-radius: 18px;
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
 }
 
 .island-project-card.flip-card:hover {
@@ -1403,6 +1409,7 @@ html[data-theme="dark"] .tech-chip {
 
 .island-project-card.flip-card.is-flipped .flip-card-inner {
   transform: rotateY(180deg);
+  -webkit-transform: rotateY(180deg);
 }
 
 .flip-card-face {
@@ -1413,7 +1420,7 @@ html[data-theme="dark"] .tech-chip {
   border-radius: 18px;
   background: var(--blog-card-bg);
   border: 1px solid var(--blog-card-border);
-  padding: 1.4rem;
+  padding: 1.35rem 1.3rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1431,7 +1438,7 @@ html[data-theme="dark"] .tech-chip {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(380px circle at var(--mouse-x, -200px) var(--mouse-y, -200px), rgba(19, 194, 194, 0.16), transparent 50%);
+  background: radial-gradient(360px circle at var(--mouse-x, -200px) var(--mouse-y, -200px), rgba(19, 194, 194, 0.16), transparent 55%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -1443,19 +1450,33 @@ html[data-theme="dark"] .tech-chip {
 }
 
 .island-project-card.flip-card:hover .flip-card-face {
-  border-color: rgba(19, 194, 194, 0.45);
-  box-shadow: 0 16px 36px rgba(19, 194, 194, 0.14);
+  border-color: rgba(19, 194, 194, 0.5);
+  box-shadow: 0 14px 32px rgba(19, 194, 194, 0.15);
 }
 
 .project-card-front {
   transform: rotateY(0deg);
+  -webkit-transform: rotateY(0deg);
   z-index: 2;
+  pointer-events: auto;
 }
 
 .project-card-back {
   transform: rotateY(180deg);
+  -webkit-transform: rotateY(180deg);
   z-index: 1;
+  pointer-events: none;
   border-color: rgba(19, 194, 194, 0.32);
+}
+
+.island-project-card.flip-card.is-flipped .project-card-front {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.island-project-card.flip-card.is-flipped .project-card-back {
+  z-index: 2;
+  pointer-events: auto;
 }
 
 html[data-theme="dark"] .project-card-back {
@@ -1466,7 +1487,7 @@ html[data-theme="dark"] .project-card-back {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   position: relative;
   z-index: 2;
 }
@@ -1502,15 +1523,15 @@ html[data-theme="dark"] .project-badge {
 }
 
 .project-link-btn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.05);
   color: inherit;
-  font-size: 1.05rem;
+  font-size: 1rem;
   transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
   text-decoration: none !important;
 }
@@ -1526,15 +1547,15 @@ html[data-theme="dark"] .project-link-btn {
 }
 
 .flip-hint-btn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(19, 194, 194, 0.1);
   color: #13c2c2;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   border: none;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.3s ease, color 0.2s ease;
@@ -1561,31 +1582,33 @@ html[data-theme="dark"] .flip-hint-btn {
 }
 
 .project-heading {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 800;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   line-height: 1.35;
   position: relative;
   z-index: 2;
+  word-break: break-word;
 }
 
 .project-summary {
-  font-size: 0.88rem;
-  line-height: 1.6;
+  font-size: 0.85rem;
+  line-height: 1.55;
   opacity: 0.88;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   position: relative;
   z-index: 2;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
 }
 
 .project-card-footer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   position: relative;
   z-index: 2;
 }
@@ -1600,7 +1623,7 @@ html[data-theme="dark"] .flip-hint-btn {
   background: rgba(19, 194, 194, 0.08);
   border-radius: 8px;
   padding: 5px 10px;
-  margin-top: 4px;
+  margin-top: 2px;
   transition: background 0.2s ease, color 0.2s ease;
   cursor: pointer;
 }
@@ -1621,9 +1644,9 @@ html[data-theme="dark"] .card-flip-prompt {
 
 /* 核心特性与架构突破拆解 (背面) */
 .back-project-title {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: #13c2c2;
   line-height: 1.35;
 }
@@ -1633,12 +1656,12 @@ html[data-theme="dark"] .back-project-title {
 }
 
 .project-breakdown {
-  margin: 0 0 10px;
-  padding: 10px 12px;
+  margin: 0 0 8px;
+  padding: 9px 12px;
   border-radius: 10px;
   background: rgba(19, 194, 194, 0.06);
   border-left: 3px solid #13c2c2;
-  font-size: 0.83rem;
+  font-size: 0.82rem;
   position: relative;
   z-index: 2;
 }
@@ -1662,13 +1685,14 @@ html[data-theme="dark"] .breakdown-title {
 
 .breakdown-list {
   margin: 0;
-  padding-left: 15px;
-  line-height: 1.6;
+  padding-left: 14px;
+  line-height: 1.55;
   opacity: 0.92;
 }
 
 .breakdown-list li {
-  margin-bottom: 6px;
+  margin-bottom: 5px;
+  word-break: break-word;
 }
 
 .breakdown-list li:last-child {
@@ -1681,16 +1705,16 @@ html[data-theme="dark"] .breakdown-title {
   justify-content: space-between;
   gap: 8px;
   flex-direction: row;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .back-repo-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 5px 12px;
   border-radius: 8px;
   background: #1890ff;
   color: #ffffff !important;
