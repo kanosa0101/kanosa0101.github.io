@@ -101,16 +101,10 @@
 
     var activeIndex = -1;
 
-    // FLIP (First, Last, Invert, Play) 物理插值驱动的丝滑平移与变形动画
-    function animateLayoutChange(targetIndex) {
+    function applyAccordionState(targetIndex) {
       if (targetIndex === activeIndex) return;
+      activeIndex = targetIndex;
 
-      // 1. First: 获取变换前 4 个卡片的实际物理绝对屏幕坐标
-      var firstPositions = cards.map(function (c) {
-        return c.getBoundingClientRect();
-      });
-
-      // 2. 应用新的网格布局与状态类
       subgrid.classList.remove('expand-0', 'expand-1', 'expand-2', 'expand-3');
       cards.forEach(function (c) {
         c.classList.remove('is-expanded', 'is-compact');
@@ -125,44 +119,25 @@
           }
         });
       }
-      activeIndex = targetIndex;
-
-      // 3. Last: 获取变更后 4 个卡片的新物理坐标
-      var lastPositions = cards.map(function (c) {
-        return c.getBoundingClientRect();
-      });
-
-      // 4. Invert: 利用 GPU transform translate 逆向位移回原位置，视觉上毫秒级无缝衔接
-      cards.forEach(function (card, i) {
-        var dx = firstPositions[i].left - lastPositions[i].left;
-        var dy = firstPositions[i].top - lastPositions[i].top;
-
-        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-          card.style.transition = 'none';
-          card.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
-        }
-      });
-
-      // 5. 强制触发重绘管线，并平滑插值到终点（0.48s 物理缓动）
-      void subgrid.offsetWidth;
-
-      requestAnimationFrame(function () {
-        cards.forEach(function (card) {
-          card.style.transition = 'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1), padding 0.48s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.48s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease, background 0.35s ease';
-          card.style.transform = '';
-        });
-      });
     }
 
     cards.forEach(function (card, index) {
       card.addEventListener('mouseenter', function () {
-        animateLayoutChange(index);
+        applyAccordionState(index);
+      });
+      card.addEventListener('focus', function () {
+        applyAccordionState(index);
       });
     });
 
-    // 鼠标离开右侧 4 组件区域时，平滑逆向滑回 2x2 均等看板布局
     subgrid.addEventListener('mouseleave', function () {
-      animateLayoutChange(-1);
+      applyAccordionState(-1);
+    });
+
+    subgrid.addEventListener('focusout', function (e) {
+      if (!subgrid.contains(e.relatedTarget)) {
+        applyAccordionState(-1);
+      }
     });
   }
 
