@@ -223,22 +223,22 @@ button:focus-visible,
   display: flex !important;
   opacity: 1 !important;
   visibility: visible !important;
-  pointer-events: auto !important;
+  pointer-events: none !important;
 }
 
 #hex-portal-overlay.hex-portal-wrap.is-leaving {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
-  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.28s ease;
+  transition: opacity 0.26s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.26s ease;
 }
 
 .hex-portal-backdrop {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(14, 23, 38, 0.94) 0%, rgba(6, 10, 18, 0.97) 100%);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  background: rgba(10, 16, 26, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .hex-portal-stage {
@@ -335,71 +335,6 @@ button:focus-visible,
   filter: drop-shadow(0 0 6px #13c2c2);
 }
 
-.hex-portal-hud {
-  position: absolute;
-  bottom: -60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  text-align: center;
-}
-
-.hex-hud-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 12px;
-  border-radius: 20px;
-  background: rgba(19, 194, 194, 0.15);
-  border: 1px solid rgba(19, 194, 194, 0.4);
-}
-
-.hud-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #52c41a;
-  box-shadow: 0 0 8px #52c41a;
-  animation: dotBlink 0.9s ease-in-out infinite alternate;
-}
-
-.hud-tag {
-  font-family: Consolas, Monaco, monospace;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #9fe8ef;
-}
-
-.hex-hud-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: #ffffff;
-  text-shadow: 0 0 10px rgba(24, 144, 255, 0.8);
-}
-
-.hex-hud-circuit {
-  position: relative;
-  width: 140px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 2px;
-}
-
-.circuit-beam {
-  position: absolute;
-  top: 0;
-  left: -50%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, #13c2c2, #1890ff, transparent);
-  animation: circuitWarp 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
 @keyframes hexSpinCW {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -413,16 +348,6 @@ button:focus-visible,
 @keyframes corePulse {
   0% { transform: scale(0.96); box-shadow: 0 0 12px rgba(19, 194, 194, 0.4); }
   100% { transform: scale(1.05); box-shadow: 0 0 24px rgba(19, 194, 194, 0.85); }
-}
-
-@keyframes dotBlink {
-  0% { opacity: 0.3; transform: scale(0.8); }
-  100% { opacity: 1; transform: scale(1.2); }
-}
-
-@keyframes circuitWarp {
-  0% { left: -50%; }
-  100% { left: 100%; }
 }
 
 /* --------------------------------------
@@ -2281,3 +2206,122 @@ html[data-theme="dark"] .card-tag-cloud a {
   background: rgba(19, 194, 194, 0.12) !important;
   border-color: rgba(19, 194, 194, 0.45) !important;
 }
+
+/* --------------------------------------
+   全局背景渲染优化：杜绝 4 秒渐隐延迟
+   -------------------------------------- */
+#web_bg {
+  -webkit-animation: none !important;
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+/* --------------------------------------
+   文章目录 (TOC) 样式重构与滚动优化
+   1. 杜绝横向滚动条，纯垂直自适应流动
+   2. 文本自动折行，严禁溢出卡片边界
+   3. 消除冗余多重编号，层级缩进紧凑合理
+   4. 优雅的高亮激活指示器
+   -------------------------------------- */
+#aside-content #card-toc {
+  overflow-x: hidden !important;
+}
+
+#aside-content #card-toc .toc-content {
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin;
+}
+
+#aside-content #card-toc .toc-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+#aside-content #card-toc .toc-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 196, 182, 0.35);
+  border-radius: 4px;
+}
+
+#aside-content #card-toc .toc-content ol {
+  margin: 0 !important;
+  padding-left: 10px !important;
+  list-style: none !important;
+  box-sizing: border-box !important;
+}
+
+#aside-content #card-toc .toc-content > ol {
+  padding-left: 0 !important;
+}
+
+#aside-content #card-toc .toc-content > * {
+  margin: 0 !important;
+}
+
+#aside-content #card-toc .toc-content > * > .toc-item > .toc-child {
+  margin-left: 4px !important;
+  padding-left: 8px !important;
+  border-left: 1.5px solid rgba(130, 130, 130, 0.22) !important;
+}
+
+#aside-content #card-toc .toc-content .toc-item {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#aside-content #card-toc .toc-content .toc-link {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.45 !important;
+  padding: 5px 8px 5px 10px !important;
+  margin: 2px 0 !important;
+  border-radius: 6px !important;
+  font-size: 0.88rem !important;
+  color: var(--font-color, #4c4948) !important;
+  transition: all 0.2s ease !important;
+  border-left: 3px solid transparent !important;
+}
+
+#aside-content #card-toc .toc-content .toc-link:hover {
+  background: rgba(0, 196, 182, 0.08) !important;
+  color: #00a699 !important;
+}
+
+#aside-content #card-toc .toc-content .toc-link.active {
+  background: rgba(0, 196, 182, 0.14) !important;
+  color: #008f84 !important;
+  font-weight: 600 !important;
+  border-left: 3px solid #00c4b6 !important;
+  padding-left: 9px !important;
+}
+
+[data-theme='dark'] #aside-content #card-toc .toc-content .toc-link {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+[data-theme='dark'] #aside-content #card-toc .toc-content .toc-link:hover {
+  background: rgba(0, 196, 182, 0.15) !important;
+  color: #4ee0d6 !important;
+}
+
+[data-theme='dark'] #aside-content #card-toc .toc-content .toc-link.active {
+  background: rgba(0, 196, 182, 0.22) !important;
+  color: #4ee0d6 !important;
+  border-left: 3px solid #00c4b6 !important;
+}
+
+#aside-content #card-toc .toc-number {
+  display: none !important;
+}
+

@@ -1,16 +1,22 @@
 /**
  * kanosa's blog - Hexagonal Portal Transition
- * 赛博六边形跃迁转场系统：自包含、轻量且高度兼容
+ * 赛博六边形跃迁转场系统：轻量、无文字阻滞、防卡顿无缝过渡
  */
 (function() {
   'use strict';
 
   let overlay = null;
   let isNavigating = false;
+  let watchdogTimer = null;
 
   function ensureOverlay() {
-    if (document.getElementById('hex-portal-overlay')) {
-      overlay = document.getElementById('hex-portal-overlay');
+    if (overlay && document.getElementById('hex-portal-overlay')) {
+      return overlay;
+    }
+
+    const existing = document.getElementById('hex-portal-overlay');
+    if (existing) {
+      overlay = existing;
       return overlay;
     }
 
@@ -37,17 +43,6 @@
             <i class="fas fa-cube hex-cube-icon"></i>
           </div>
         </div>
-        <div class="hex-portal-hud">
-          <div class="hex-hud-badge">
-            <span class="hud-pulse-dot"></span>
-            <span class="hud-tag">WARP DRIVE // 空间跃迁</span>
-          </div>
-          <div class="hex-hud-title" id="hex-portal-dest">INITIALIZING DOM...</div>
-          <div class="hex-hud-circuit">
-            <div class="circuit-rail"></div>
-            <div class="circuit-beam"></div>
-          </div>
-        </div>
       </div>
     `;
 
@@ -55,14 +50,21 @@
     return overlay;
   }
 
-  function formatPathName(path) {
-    if (!path || path === '/') return 'HOME · 首页枢纽';
-    if (path.includes('/about')) return 'ABOUT · 关于本人';
-    if (path.includes('/archives')) return 'ARCHIVES · 历史归档';
-    if (path.includes('/tags')) return 'TAGS · 标签聚合';
-    if (path.includes('/categories')) return 'CATEGORIES · 分类导览';
-    if (path.includes('/link')) return 'LINKS · 友链空间';
-    return 'TARGET // ' + path.replace(/^\/|\/$/g, '').toUpperCase();
+  function dismissOverlay() {
+    if (watchdogTimer) {
+      clearTimeout(watchdogTimer);
+      watchdogTimer = null;
+    }
+    isNavigating = false;
+    try {
+      sessionStorage.removeItem('hex_warp_active');
+    } catch (e) {}
+
+    const el = ensureOverlay();
+    el.classList.add('is-leaving');
+    setTimeout(function() {
+      el.classList.remove('is-active', 'is-leaving');
+    }, 280);
   }
 
   function triggerTransition(targetUrl) {
@@ -70,32 +72,28 @@
     isNavigating = true;
 
     const el = ensureOverlay();
-    const destTitle = document.getElementById('hex-portal-dest');
-    if (destTitle && targetUrl) {
-      try {
-        const u = new URL(targetUrl, window.location.origin);
-        destTitle.textContent = formatPathName(u.pathname);
-      } catch (e) {
-        destTitle.textContent = 'CONNECTING // TARGET';
-      }
-    }
+    el.classList.remove('is-leaving');
+    el.classList.add('is-active');
 
     try {
       sessionStorage.setItem('hex_warp_active', '1');
     } catch (e) {}
 
-    el.classList.remove('is-leaving');
-    el.classList.add('is-active');
+    // 防卡顿看门狗：800ms 内若页面未跳转成功或由于网络延迟留在原页，自动平滑隐去遮罩
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+    watchdogTimer = setTimeout(function() {
+      dismissOverlay();
+    }, 800);
 
     setTimeout(function() {
       window.location.href = targetUrl;
-    }, 220);
+    }, 160);
   }
 
   // 暴露给外部模块（如 hex-wheel 轮盘）
   window.triggerHexTransition = triggerTransition;
 
-  // 检查是否从上一页跃迁而来
+  // 检查是否从上一页跃迁而来，执行入场展开动画
   function checkEntryWarp() {
     try {
       if (sessionStorage.getItem('hex_warp_active') === '1') {
@@ -107,14 +105,30 @@
           el.classList.add('is-leaving');
           setTimeout(function() {
             el.classList.remove('is-active', 'is-leaving');
-          }, 320);
-        }, 120);
+            isNavigating = false;
+          }, 260);
+        }, 80);
+      } else {
+        dismissOverlay();
       }
-    } catch (e) {}
+    } catch (e) {
+      dismissOverlay();
+    }
   }
+
+  // 浏览器历史回退/前进（bfcache）或页面激活时确保清除残留遮罩
+  window.addEventListener('pageshow', function() {
+    dismissOverlay();
+  });
+  window.addEventListener('popstate', function() {
+    dismissOverlay();
+  });
 
   // 监听站内链接点击
   document.addEventListener('click', function(e) {
+    // 忽略右键、中键、组合键打开新标签等操作
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
     const link = e.target.closest('a');
     if (!link) return;
 
@@ -127,9 +141,8 @@
     try {
       const u = new URL(href, window.location.origin);
       if (u.origin === window.location.origin) {
-        // 如果是相同路径或锚点，不重复触发
-        if (u.pathname === window.location.pathname && u.hash) return;
-        if (u.pathname === window.location.pathname && !u.search && !u.hash) return;
+        // 同路径同锚点或空变化，不触发
+        if (u.pathname === window.location.pathname && (u.hash || (!u.search && !u.hash))) return;
 
         e.preventDefault();
         triggerTransition(u.href);
