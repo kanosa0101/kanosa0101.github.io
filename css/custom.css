@@ -2231,19 +2231,31 @@ html[data-theme="dark"] .card-tag-cloud a {
   margin: 0 !important;
   width: 100% !important;
   max-width: 100% !important;
+  padding-right: 4px !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
-  scrollbar-width: thin;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--scrollbar-color) transparent !important;
 }
 
+/* 目录滚动条：与站点外围全局滚动条完全一致（5px 宽、透明轨道、同款主题色 var(--scrollbar-color)） */
 #aside-content #card-toc .toc-content::-webkit-scrollbar {
-  width: 4px;
+  width: 5px !important;
+  height: 5px !important;
+}
+
+#aside-content #card-toc .toc-content::-webkit-scrollbar-track {
+  background-color: transparent !important;
 }
 
 #aside-content #card-toc .toc-content::-webkit-scrollbar-thumb {
-  background: rgba(0, 196, 182, 0.35);
-  border-radius: 4px;
+  background: var(--scrollbar-color) !important;
+  border-radius: 8px !important;
+}
+
+#aside-content #card-toc .toc-content::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.2) !important;
 }
 
 #aside-content #card-toc .toc-content ol {
