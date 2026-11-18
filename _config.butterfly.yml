@@ -1067,6 +1067,7 @@ inject:
     - <script src="/js/hex-wheel.js"></script>
     - <script src="/js/pointer.js"></script>
     - <script src="/js/island-effects.js?v=20261118_v1"></script>
+    - <script src="/js/stats-guard.js?v=20261118_v1"></script>
 
 # CDN Settings
 # Don't modify the following settings unless you know how they work
