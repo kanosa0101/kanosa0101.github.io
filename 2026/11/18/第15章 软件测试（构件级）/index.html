@@ -1,0 +1,747 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>第 15 章 软件测试（构件级） | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="页码沿用本份 PPT 页脚。先分清测试层次、驱动与桩，再练习画控制流图、计算环路复杂度、列独立路径和推导测试用例。 第15章.ppt · 自测题">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第 15 章 软件测试（构件级）">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC15%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%EF%BC%88%E6%9E%84%E4%BB%B6%E7%BA%A7%EF%BC%89/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="页码沿用本份 PPT 页脚。先分清测试层次、驱动与桩，再练习画控制流图、计算环路复杂度、列独立路径和推导测试用例。 第15章.ppt · 自测题">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-11-18T02:12:00.000Z">
+<meta property="article:modified_time" content="2026-11-18T01:13:32.629Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="课程笔记">
+<meta property="article:tag" content="软件工程">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "第 15 章 软件测试（构件级）",
+  "url": "https://kanosa0101.github.io/2026/11/18/%E7%AC%AC15%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%EF%BC%88%E6%9E%84%E4%BB%B6%E7%BA%A7%EF%BC%89/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-11-18T02:12:00.000Z",
+  "dateModified": "2026-11-18T01:13:32.629Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC15%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%EF%BC%88%E6%9E%84%E4%BB%B6%E7%BA%A7%EF%BC%89/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '第 15 章 软件测试（构件级）',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css?v=20261106_v8"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">38</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">16</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">第 15 章 软件测试（构件级）</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">第 15 章 软件测试（构件级）</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-18T02:12:00.000Z" title="发表于 2026-11-18 10:12:00">2026-11-18</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-18T01:13:32.629Z" title="更新于 2026-11-18 09:13:32">2026-11-18</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/">软件工程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="第-15-章-软件测试（构件级）"><a href="#第-15-章-软件测试（构件级）" class="headerlink" title="第 15 章 软件测试（构件级）"></a>第 15 章 软件测试（构件级）</h1><p>页码沿用本份 PPT 页脚。先分清测试层次、驱动与桩，再练习画控制流图、计算环路复杂度、列独立路径和推导测试用例。 <strong>第15章.ppt</strong> · <a href="#%E8%87%AA%E6%B5%8B%E9%A2%98">自测题</a></p>
+<h2 id="15-1-软件测试的策略性方法（第-2–21-页）"><a href="#15-1-软件测试的策略性方法（第-2–21-页）" class="headerlink" title="15.1 软件测试的策略性方法（第 2–21 页）"></a>15.1 软件测试的策略性方法（第 2–21 页）</h2><h3 id="测试目标、策略与层次（第-2–7、13、17–19-页）"><a href="#测试目标、策略与层次（第-2–7、13、17–19-页）" class="headerlink" title="测试目标、策略与层次（第 2–7、13、17–19 页）"></a>测试目标、策略与层次（第 2–7、13、17–19 页）</h3><p><strong>软件测试的直接目的是发现错误</strong>。测试策略安排<strong>测试计划、测试用例设计、测试执行、结果收集与评估</strong>。好的策略让测试进度可度量，使缺陷尽早暴露，并按开发阶段、工程方法和测试目标选用相应技术。测试开始前可以通过技术评审排除明显问题。</p>
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>测试对象</th>
+<th>主要依据或目的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>单元测试</strong></td>
+<td>单个最小可测试单元</td>
+<td>核对模块的接口、内部数据和处理逻辑是否符合详细设计。</td>
+</tr>
+<tr>
+<td><strong>集成测试</strong></td>
+<td>已组装的多个模块</td>
+<td>核对软件设计所规定的接口、协作与体系结构。</td>
+</tr>
+<tr>
+<td><strong>确认测试</strong></td>
+<td>已集成的软件</td>
+<td>根据软件需求，检查主要功能和行为能否满足用户需要。</td>
+</tr>
+<tr>
+<td><strong>系统测试</strong></td>
+<td>软件与硬件、网络等组成的整个系统</td>
+<td>在系统环境中检查整体行为和质量要求。</td>
+</tr>
+</tbody></table>
+<p>课件用螺旋图说明范围的变化。开发从系统工程、需求和设计逐步进入编码，测试则从代码和构件层向外扩展。第 13 页还列出了功能、性能、验收和安装等测试活动。</p>
+<p><img src="/images/posts/da6a0326d23e4d2aaec32e67529a7427.png" alt="开发从系统工程走向代码，测试从单元向集成、确认和系统逐步扩展"></p>
+<p><em>课件第 18 页　开发逐步细化，测试范围逐步扩大</em></p>
+<h3 id="检查、验证、确认与调试（第-6、11–12、17-页）"><a href="#检查、验证、确认与调试（第-6、11–12、17-页）" class="headerlink" title="检查、验证、确认与调试（第 6、11–12、17 页）"></a>检查、验证、确认与调试（第 6、11–12、17 页）</h3><ul>
+<li><strong>软件检查</strong>是静态活动，分析需求文档、设计文档和源代码等表示形式。课件用桌面检查说明非正式检查，以审查、走查举例说明技术评审。</li>
+<li><strong>软件测试</strong>是动态活动，用测试数据运行软件，观察并比较输出和运行行为。</li>
+<li>**验证（Verification）**检查软件是否按规格或设计正确实现了规定的功能，回答「产品构造得正确吗」。**确认（Validation）**检查产品是否满足实际用户需求，回答「构造的是用户需要的产品吗」。测试可以为验证和确认提供证据。</li>
+<li>**调试（Debugging）**在发现失效后定位原因并修改代码或设计。修改后重跑相关测试，检查修复结果和可能受影响的行为。</li>
+</ul>
+<h3 id="软件错误的来源和类型（第-8–10-页）"><a href="#软件错误的来源和类型（第-8–10-页）" class="headerlink" title="软件错误的来源和类型（第 8–10 页）"></a>软件错误的来源和类型（第 8–10 页）</h3><p>错误可以来自<strong>错误、缺失或无法实现的需求</strong>，也可以在设计和编码中引入。</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>常见表现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>算法错误</strong></td>
+<td>初始化、计算、判定或分支控制出错，产生意外结果。</td>
+</tr>
+<tr>
+<td><strong>精度错误</strong></td>
+<td>运算或输出达不到规定精度。</td>
+</tr>
+<tr>
+<td><strong>文档错误</strong></td>
+<td>文档描述和程序的实际行为不一致。</td>
+</tr>
+<tr>
+<td><strong>压力错误（能力错误）</strong></td>
+<td>活动量接近指定极限时，系统性能变得不可接受。</td>
+</tr>
+<tr>
+<td><strong>吞吐量错误（性能错误）</strong></td>
+<td>在规定的测试条件下，处理速度达不到要求。</td>
+</tr>
+<tr>
+<td><strong>恢复错误</strong></td>
+<td>发生失效后，系统不能按要求恢复。</td>
+</tr>
+<tr>
+<td><strong>计时错误（协调错误）</strong></td>
+<td>并行进程或需按特定顺序执行的操作协调失败。</td>
+</tr>
+<tr>
+<td><strong>硬件和系统软件错误</strong></td>
+<td>依赖的硬件或系统软件未提供预期行为。</td>
+</tr>
+</tbody></table>
+<h3 id="测试组织、原则和结束条件（第-14–21-页）"><a href="#测试组织、原则和结束条件（第-14–21-页）" class="headerlink" title="测试组织、原则和结束条件（第 14–21 页）"></a>测试组织、原则和结束条件（第 14–21 页）</h3><ul>
+<li><strong>开发人员负责单元测试</strong>，通常也参加集成。大项目可设置<strong>独立测试组（Independent Test Group，ITG）</strong>，独立设计和执行测试，主动寻找缺陷。ITG 可早期参与策划和规程制定，并在体系结构形成后开展相应的测试。开发人员与测试人员需要持续协作，及时复现和修复故障。</li>
+<li>**Pareto 原则（80&#x2F;20 原则）**提示缺陷和运行时间往往集中在少量代码，可优先测试缺陷密集、执行频繁或影响大的模块。<strong>木桶理论</strong>提示整体质量会受薄弱环节限制。发现缺陷集中时，应继续排查附近代码和依赖。</li>
+<li>既有用例反复运行主要验证已覆盖的行为。要发现新缺陷，需要持续补充不同输入、边界和运行条件。测试在某个阶段按质量目标、覆盖情况和遗留风险告一段落。运行环境和需求变动后还要继续验证。 <a href="#%E4%BC%B0%E8%AE%A1%E5%89%A9%E4%BD%99%E9%94%99%E8%AF%AF%E7%AC%AC-96100-%E9%A1%B5">估计剩余错误</a></li>
+</ul>
+<h2 id="15-2–15-3-单元测试与测试用例（第-23–47-页）"><a href="#15-2–15-3-单元测试与测试用例（第-23–47-页）" class="headerlink" title="15.2–15.3 单元测试与测试用例（第 23–47 页）"></a>15.2–15.3 单元测试与测试用例（第 23–47 页）</h2><h3 id="测试用例与测试记录（第-4、29、39-页）"><a href="#测试用例与测试记录（第-4、29、39-页）" class="headerlink" title="测试用例与测试记录（第 4、29、39 页）"></a>测试用例与测试记录（第 4、29、39 页）</h3><p><strong>测试用例</strong>是针对特定测试目标设计的一组<strong>测试输入、执行条件和预期结果</strong>。可用编号把用例与需求或路径对应起来。测试计划可在编码前准备，实际运行后记录观察结果，并与预期结果比较。考场写用例时，至少写清题目要求的输入、预期输出及覆盖目标。</p>
+<h3 id="单元测试的五项内容（第-23–26、33–40-页）"><a href="#单元测试的五项内容（第-23–26、33–40-页）" class="headerlink" title="单元测试的五项内容（第 23–26、33–40 页）"></a>单元测试的五项内容（第 23–26、33–40 页）</h3><p><strong>单元测试（Unit Testing）<strong>验证软件中人为规定的最小可测试单元，如 C 函数、Java 类或某个窗口。它依据</strong>源程序和详细设计</strong>，重点检查单元的内部处理逻辑和数据结构。单元测试可尽早准备，测试驱动开发还会先写测试，再编写实现。</p>
+<table>
+<thead>
+<tr>
+<th>检查对象</th>
+<th>怎样测、容易发现什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>模块接口</strong></td>
+<td>先确认信息能正确流入、流出。检查实参与形参的个数、类型、属性与次序，以及文件属性、打开方式、编码和全局变量约定。</td>
+</tr>
+<tr>
+<td><strong>局部数据结构</strong></td>
+<td>检查运行中数据的完整性，如类型、变量名、初值、默认值、溢出和地址。</td>
+</tr>
+<tr>
+<td><strong>独立路径</strong></td>
+<td>设计输入执行程序的基本路径，找错分支、算术或逻辑优先级错误、比较精度问题、循环终止错误。</td>
+</tr>
+<tr>
+<td><strong>边界条件</strong></td>
+<td>检查允许的最大与最小值、比较阈值两侧及恰等于阈值的情形，以及循环 0、1 和上限次数等情况。</td>
+</tr>
+<tr>
+<td><strong>错误处理路径</strong></td>
+<td>主动触发错误，核对异常是否被正确处理、错误信息是否准确充分，以及处理是否及时。</td>
+</tr>
+</tbody></table>
+<p>常见流程是先编译作基本检查，再对照编码规范静态检查，接着动态执行合法、非法和边界用例。第 41–42 页的 <code>iszero</code> 规定非零时输出原值，遇到零时输出 1。按题意逐项给出 1、2、3、4、0，预期逐项输出 1、2、3、4、1。还应按输入规定检查非法字符和输入数量边界。</p>
+<h3 id="驱动程序与桩程序（第-27、30–32、43–47-页）"><a href="#驱动程序与桩程序（第-27、30–32、43–47-页）" class="headerlink" title="驱动程序与桩程序（第 27、30–32、43–47 页）"></a>驱动程序与桩程序（第 27、30–32、43–47 页）</h3><p>被测单元依赖其他部分时，可以用辅助程序建立可运行的测试环境。</p>
+<ul>
+<li>**驱动程序（Driver）**模拟上层调用方，读入测试用例，调用被测单元并记录结果。</li>
+<li>**桩程序（Stub）**模拟被测单元依赖的下层构件，提供必要的接口与受控返回，帮助复现正常或异常情况。</li>
+</ul>
+<p>例如 <code>main()</code> 调用 <code>fun1()</code>。<code>main()</code> 尚未实现时，为 <code>fun1()</code> 写驱动。<code>fun1()</code> 尚未实现时，可用同接口的桩帮助测试 <code>main()</code>。两类辅助程序属于测试开销，需要随被测单元的接口或测试目标更新。</p>
+<p><img src="/images/posts/8abdcf27b649e26e1dc6a188deefa2b4.png" alt="驱动程序调用被测模块，被测模块调用桩程序，测试用例验证模块的五个方面"></p>
+<p><em>课件第 27 页　单元测试环境中的调用方向</em></p>
+<h2 id="15-4-白盒测试（第-49–78-页）"><a href="#15-4-白盒测试（第-49–78-页）" class="headerlink" title="15.4 白盒测试（第 49–78 页）"></a>15.4 白盒测试（第 49–78 页）</h2><h3 id="白盒测试与逻辑覆盖（第-49–51、64–67-页）"><a href="#白盒测试与逻辑覆盖（第-49–51、64–67-页）" class="headerlink" title="白盒测试与逻辑覆盖（第 49–51、64–67 页）"></a>白盒测试与逻辑覆盖（第 49–51、64–67 页）</h3><p><strong>白盒测试</strong>又称结构测试、玻璃盒测试或逻辑驱动测试。它根据程序的<strong>内部逻辑结构</strong>设计输入，检查执行路径、逻辑判定、循环上下限和内部数据结构。课件列出以下覆盖准则。</p>
+<table>
+<thead>
+<tr>
+<th>覆盖准则</th>
+<th>要达到的目标</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>语句覆盖</strong></td>
+<td>每条可执行语句至少运行一次。</td>
+</tr>
+<tr>
+<td><strong>判定覆盖（分支覆盖）</strong></td>
+<td>每个判定的每种结果至少出现一次，二值判定通常为真、假。</td>
+</tr>
+<tr>
+<td><strong>条件覆盖</strong></td>
+<td>每个判定中的每个基本条件都取到真和假。</td>
+</tr>
+<tr>
+<td><strong>判定／条件覆盖</strong></td>
+<td>同时满足判定覆盖和条件覆盖。</td>
+</tr>
+<tr>
+<td><strong>条件组合覆盖</strong></td>
+<td>对每个判定，覆盖各基本条件的可行真值组合。</td>
+</tr>
+<tr>
+<td><strong>路径覆盖</strong></td>
+<td>按要求覆盖程序的可行执行路径。循环会使路径数大幅增长。</td>
+</tr>
+</tbody></table>
+<p><strong>判定</strong>是整个表达式的结果，<strong>基本条件</strong>是其中一个比较或布尔项。例如 <code>A &amp;&amp; B</code> 的判定为真需要 A、B 同为真。写真值表时可从输入推得各项真值，分析实际执行时还要按短路规则确认右侧条件是否被求值。第 65–67 页用同一段程序比较条件、语句和分支覆盖。</p>
+<h3 id="基本路径测试（第-53–62-页）"><a href="#基本路径测试（第-53–62-页）" class="headerlink" title="基本路径测试（第 53–62 页）"></a>基本路径测试（第 53–62 页）</h3><p><strong>基本路径测试</strong>以程序的<strong>控制流图</strong>为基础，用环路复杂度确定基本路径集合的规模。它挑选一组线性独立的入口至出口路径，用较少用例覆盖可执行语句与对应控制结构。列路径时通常从最简单的可行路径起步，后续每条路径引入至少一条尚未走过的边。</p>
+<p><strong>控制流图</strong>用圆形结点表示一个或多个连续处理或判定，用有向边表示控制流。可以合并顺序执行的语句，并给汇合、入口或出口适当编号。回边属于图中的边。第 55 页把原流程图的 2、3 合为一个结点，也把 4、5 合为一个结点。</p>
+<p><img src="/images/posts/969bf88b42f29e2ec25ced96e4ca86d3.png" alt="流程图中的顺序步骤合并为控制流图结点，右侧显示 R1 至 R4 四个区域"></p>
+<p><em>课件第 55 页　从流程图得到控制流图，图外的 R4 也算一个区域</em></p>
+<p>环路复杂度记为 <strong>V(G)</strong>。对本章单入口、单出口的连通控制流图，可用三种方法互相核对。</p>
+<ol>
+<li><strong>数区域</strong>。包括图的外部区域。</li>
+<li><strong>V(G) &#x3D; E − N + 2</strong>。E 是边数，N 是结点数。</li>
+<li><strong>V(G) &#x3D; P + 1</strong>。P 是二分判定结点数。在第 55 页右图中，E &#x3D; 11、N &#x3D; 9、P &#x3D; 3，三种算法都得到 4。</li>
+</ol>
+<p>按第 59 页的四步作答。</p>
+<ol>
+<li><strong>画流图</strong>。合并顺序段，拆分复合条件。对 <code>A &amp;&amp; B</code>，A 为假时直接走假分支，A 为真才检查 B。对 <code>A || B</code>，A 为真时直接走真分支，A 为假才检查 B。</li>
+<li><strong>算复杂度</strong>。先数判定结点，再用边和结点数复核。</li>
+<li><strong>列独立路径</strong>。从入口写到出口，按图保留回边，选出能引入新边的路径。</li>
+<li><strong>推导用例</strong>。给路径上的每个条件标真或假，回推输入并正向算输出。遇到互相矛盾的条件，说明该路径不可行，再检查可行路径能覆盖哪些边。</li>
+</ol>
+<p>课件第 60–62 页把两个复合判定拆成四个判定结点，所以 V(G) &#x3D; 5。图示的路径 <code>1–4–6–7</code> 要求 <code>A &gt; 1</code> 为假，同时要求 <code>A == 2</code> 为真，两个条件无法同时成立。可以输入 <code>(A, B, X) = (2, 1, 1)</code>，沿 <code>1–2–4–6–7</code> 覆盖 <code>4 → 6</code>，得到输出 <code>(2, 1, 2)</code>。</p>
+<p><img src="/images/posts/d14ea652c692e6f80a37c43ad6b3f589.png" alt="包含两个复合判定的程序，拆为四个基本判定结点后得到的控制流图和候选路径"></p>
+<p><em>课件第 61 页　按短路规则拆分复合条件，保留每条控制边</em></p>
+<h3 id="数据流测试（第-64、68–75-页）"><a href="#数据流测试（第-64、68–75-页）" class="headerlink" title="数据流测试（第 64、68–75 页）"></a>数据流测试（第 64、68–75 页）</h3><p>控制结构测试还包括<strong>条件测试、数据流测试和循环测试</strong>。数据流测试按变量的<strong>定义点</strong>与<strong>使用点</strong>选择路径。</p>
+<ul>
+<li>**定义（Def）**是赋值或读取输入。**计算性使用（C-use）**出现在计算、函数参数或输出中，**判定性使用（P-use）**出现在条件中。例如 <code>y = x + 2</code> 是 y 的定义和 x 的计算性使用，<code>if (x &lt; 2)</code> 是 x 的判定性使用。</li>
+<li>**定义—使用对（DU 对）**要求该定义的值能沿一条可行路径到达使用点。若途中重新给同一变量赋值，使用点收到的是新定义的值。</li>
+</ul>
+<p>第 71 页中，<code>z &lt; 0</code> 时没有进入 <code>if</code>，<code>x = 0</code> 的初始定义直接到达 <code>g(x, y)</code>。若 <code>z ≥ 0</code>，<code>x = sqrt(z)</code> 覆盖初值，并可能到达内层判定、<code>f(x)</code> 和后面的 <code>g(x, y)</code>。</p>
+<p><img src="/images/posts/b10f12da67fc5bd0fcd07fba481d6045.png" alt="变量 x 的初值和在条件内部重新赋值后的两组定义使用关联"></p>
+<p><em>课件第 71 页　按变量值的实际来源寻找定义—使用对</em></p>
+<p>第 73–75 页的变量 <code>i</code> 有第 1、4、9 行三个定义点，第 15、18 行两个使用点。名义上有 6 对。让第 1 行的值到达第 15 行，需要跳过第 4、9 行的重定义，并走第 14 行的真分支，即同时满足 <code>a ≥ 30</code>、<code>a ≤ b</code>、<code>b &lt; 30</code>。这一对不可行，其余 5 对可设计输入验证。</p>
+<h3 id="循环测试（第-38、76–78-页）"><a href="#循环测试（第-38、76–78-页）" class="headerlink" title="循环测试（第 38、76–78 页）"></a>循环测试（第 38、76–78 页）</h3><ul>
+<li><strong>简单循环</strong>。测试能否跳过循环，以及执行一次、两次、典型次数和上限附近时的行为。后判循环至少执行一次，应按控制结构选择可行的下界。</li>
+<li><strong>嵌套循环</strong>。先控制其他层次数，测内层边界，再逐层变动外层次数。</li>
+<li><strong>串接循环</strong>。相邻循环独立时分别检查。有数据依赖时，需要组合测试它们的边界。</li>
+<li><strong>非结构化循环</strong>。先根据控制流明确入口、回边和退出条件，再选可达路径。</li>
+</ul>
+<p><img src="/images/posts/134082f28e5cf011bcc47c961fe4aa1d.png" alt="四种循环的控制流分别为简单、嵌套、串接与非结构化"></p>
+<p><em>课件第 76 页　四类循环结构</em></p>
+<p>第 77–78 页的 <code>findTotal(numItems)</code> 在允许范围内累加数组前 <code>numItems</code> 项中的正数。用例输入依次为 0、1、2、5、9、10、11，期望依次得到 0、5、5、17、26、36、0。11 用于检验上限之外的实际行为。</p>
+<h2 id="15-5-黑盒测试（第-80–100-页）"><a href="#15-5-黑盒测试（第-80–100-页）" class="headerlink" title="15.5 黑盒测试（第 80–100 页）"></a>15.5 黑盒测试（第 80–100 页）</h2><h3 id="黑盒测试的依据与目标（第-80–83-页）"><a href="#黑盒测试的依据与目标（第-80–83-页）" class="headerlink" title="黑盒测试的依据与目标（第 80–83 页）"></a>黑盒测试的依据与目标（第 80–83 页）</h3><p><strong>黑盒测试</strong>又称功能测试或行为测试。测试者根据<strong>需求规格说明、接口及可观察行为</strong>选择输入，在接口处核对输出和状态变化，不需要查看程序内部结构。它可发现错误或遗漏的功能、接口输入输出错误、数据或外部文件访问错误、性能问题，以及初始化或终止错误。</p>
+<p>多输入的组合数会迅速增长。课件用两个 32 位整数说明穷举规模可达 2 的 64 次方。等价类划分和边界值分析用有代表性的用例检查主要情况。</p>
+<h3 id="等价类划分（第-84–92-页）"><a href="#等价类划分（第-84–92-页）" class="headerlink" title="等价类划分（第 84–92 页）"></a>等价类划分（第 84–92 页）</h3><p><strong>等价类</strong>是输入域的一个子集，其中的输入对揭露某类错误具有相同作用。分别划分<strong>有效等价类</strong>和<strong>无效等价类</strong>，再从每类选代表值。</p>
+<table>
+<thead>
+<tr>
+<th>规格中的约束</th>
+<th>怎样划分</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>规定范围</strong></td>
+<td>课件示例 1 到 999，划为 1–999、低于 1、高于 999，分别为一类有效和两类无效。</td>
+</tr>
+<tr>
+<td><strong>规定取值集合</strong></td>
+<td>若集合中的值按同一种方式处理，集合内为一类有效，集合外为一类无效。</td>
+</tr>
+<tr>
+<td><strong>列举的值各有不同处理</strong></td>
+<td>每种处理可对应一个有效类，其他值为无效类。课件用软件开发、测试、质量保证三个岗位举例。</td>
+</tr>
+<tr>
+<td><strong>规定格式或规则</strong></td>
+<td>合规则的输入是一类有效，从不同角度违反规则的输入可形成多个无效类。</td>
+</tr>
+</tbody></table>
+<p>用例设计先给每个类编号。一个合法用例应尽量覆盖多个尚未覆盖的有效类。一个非法用例通常<strong>只覆盖一个尚未覆盖的无效类</strong>，其余条件取合法值，便于定位触发错误的条件。</p>
+<p>第 91–92 页的 Pascal 例从标识符个数、长度、组成、首字符和使用顺序五个方面划分。可分别检查 0 个标识符、长度超限、非字母数字字符、保留字、非字母开头、未声明即使用等情况。长度条件涉及有效字符数 8 和最大字符数 80 两条界限，设计用例时按题设区分两条界限对应的处理。</p>
+<p><img src="/images/posts/800320b703ea83ecb06687ac91e673e3.png" alt="从标识符个数、字符数、组成、首字符和使用顺序划出的有效及无效等价类表"></p>
+<p><em>课件第 91 页　按输入条件划分等价类并统一编号</em></p>
+<h3 id="边界值分析（第-93–95-页）"><a href="#边界值分析（第-93–95-页）" class="headerlink" title="边界值分析（第 93–95 页）"></a>边界值分析（第 93–95 页）</h3><p><strong>边界值分析</strong>针对输入、输出及有容量限制的数据结构的边界。对整数闭区间 <code>[a, b]</code>，可以取端点 <code>a</code>、<code>b</code>，各端点内外最近的值 <code>a−1</code>、<code>a+1</code>、<code>b−1</code>、<code>b+1</code>。第 95 页范围为 0 到 5000，所以取 −1、0、1、4999、5000、5001。多个输入都有边界时，可固定其余输入为有效典型值，再逐个改变待测变量。</p>
+<p>在三角形例子中，边长都应大于 0，任意两边之和应大于第三边。固定前两边为 2 和 3，取第三边 4、5、6，可以区分和刚好大于、等于、小于第三边三个情形。把相应条件的比较符号写错时，恰好等于的用例最容易揭示问题。</p>
+<h3 id="估计剩余错误（第-96–100-页）"><a href="#估计剩余错误（第-96–100-页）" class="headerlink" title="估计剩余错误（第 96–100 页）"></a>估计剩余错误（第 96–100 页）</h3><p>测试结束可参考估计出的剩余错误数。两种方法都依赖发现比例的假设。</p>
+<ul>
+<li><strong>错误播种法</strong>。设播入 S 个种子错误，找到其中 s 个，同时找到 n 个真实错误。若种子错误和真实错误的发现比例近似相同，则 <code>s/S ≈ n/N</code>，估计真实错误总数 <code>N ≈ S×n/s</code>，剩余真实错误约为 <code>N−n</code>。第 98 页播入 100 个、找到 70 个，估计已发现约 70% 的真实错误。种子错误应与真实错误在种类、难度上接近。</li>
+<li><strong>分别测试法</strong>。两组独立测试，分别发现 x、y 个错误，两组同时发现 q 个。若两组发现概率比较稳定，估计第一组发现率 <code>E1≈q/y</code>，第二组 <code>E2≈q/x</code>。总数 <code>N≈xy/q</code>，实际已发现的不同错误数为 <code>x+y−q</code>，用总数减去已发现数可估计剩余。第 100 页 <code>x=25, y=30, q=15</code>，估计总数 50，已发现 40，剩余约 10 个。</li>
+</ul>
+<h2 id="15-6-面向对象测试（第-102–113-页）"><a href="#15-6-面向对象测试（第-102–113-页）" class="headerlink" title="15.6 面向对象测试（第 102–113 页）"></a>15.6 面向对象测试（第 102–113 页）</h2><h3 id="测试类的内容与难点（第-102–104-页）"><a href="#测试类的内容与难点（第-102–104-页）" class="headerlink" title="测试类的内容与难点（第 102–104 页）"></a>测试类的内容与难点（第 102–104 页）</h3><p>一个类测试用例应有<strong>唯一标识、被测类、测试目的和步骤</strong>，并说明待测状态、消息或操作、可能异常、外部条件以及辅助信息。<strong>封装</strong>增加了直接观察内部状态的难度，测试可通过公开操作和可观察结果检查状态。<strong>继承</strong>会引入新的运行环境和多态调用。</p>
+<p>例如 <code>Derived</code> 重写 <code>redefined()</code>。若继承得到的 <code>inherited()</code> 直接或间接调用 <code>redefined()</code>，应在派生类环境中重新测试 <code>inherited()</code>。根据相关行为的依赖决定重测范围。基类和派生类可能使用相同输入，其预期结果要按各自的行为约定计算。</p>
+<h3 id="类级测试序列与划分（第-106–110-页）"><a href="#类级测试序列与划分（第-106–110-页）" class="headerlink" title="类级测试序列与划分（第 106–110 页）"></a>类级测试序列与划分（第 106–110 页）</h3><p>类的操作常依赖当前状态，需要测试一段<strong>合法操作序列</strong>。银行 <code>Account</code> 示例可从 <code>open → setupAccnt → deposit → withdraw → close</code> 开始。一般序列在开户、设置与首次存款后，可反复插入存款、取款或查询，再完成结清和销户。每一步记录<strong>输出和预期状态</strong>。例如课件第 108 页存入 150 和 2000、取出 1500 后余额为 650，立即销户应失败。</p>
+<table>
+<thead>
+<tr>
+<th>划分依据</th>
+<th>课件中的例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>基于状态</strong></td>
+<td>存款、取款改变余额状态。查询余额、账户摘要和信用额度属于观察操作。</td>
+</tr>
+<tr>
+<td><strong>基于属性</strong></td>
+<td>以 <code>creditLimit</code> 为例，分别检查读取、修改与无需使用此属性的操作。</td>
+</tr>
+<tr>
+<td><strong>基于类别</strong></td>
+<td>按初始化、计算、查询、终止划分操作，分别从各类选代表。</td>
+</tr>
+</tbody></table>
+<h3 id="从行为模型导出类间测试（第-112–113-页）"><a href="#从行为模型导出类间测试（第-112–113-页）" class="headerlink" title="从行为模型导出类间测试（第 112–113 页）"></a>从行为模型导出类间测试（第 112–113 页）</h3><p>集成面向对象系统时，要测试类之间能否正确协作。课件列出<strong>随机方法、划分方法、基于场景测试、行为测试</strong>。行为测试从状态模型提取测试序列，并检查每一步消息、状态和输出是否符合模型。</p>
+<p><img src="/images/posts/9384c5aa98be758263eb1d2d10ca8e05.png" alt="账户依次经历空账户、已设置、工作、非工作和已销户状态，部分操作在工作态自循环"></p>
+<p><em>课件第 113 页　Account 的状态迁移图</em></p>
+<ul>
+<li><strong>覆盖状态</strong>。选择能经过各个状态的操作序列。按图可用 <code>open → setupAccnt → deposit → withdraw → close</code>，其中取款金额要能使账户进入非工作态，例如取完余额。</li>
+<li><strong>覆盖操作</strong>。在工作态插入存取款和余额、信用额度、账户信息查询，再取完余额并销户。和覆盖状态相比，覆盖操作还要走到查询等保持状态的操作。</li>
+</ul>
+<h2 id="自测题"><a href="#自测题" class="headerlink" title="自测题"></a>自测题</h2><h3 id="近年真题"><a href="#近年真题" class="headerlink" title="近年真题"></a>近年真题</h3><h4 id="真题-1（2023-年-6-月卷名词解释第-5-题，2-分。2024-年-12-月卷名词解释第-4-题，3-分）"><a href="#真题-1（2023-年-6-月卷名词解释第-5-题，2-分。2024-年-12-月卷名词解释第-4-题，3-分）" class="headerlink" title="真题 1（2023 年 6 月卷名词解释第 5 题，2 分。2024 年 12 月卷名词解释第 4 题，3 分）"></a>真题 1（2023 年 6 月卷名词解释第 5 题，2 分。2024 年 12 月卷名词解释第 4 题，3 分）</h4><p>黑盒测试。</p>
+<h4 id="真题-2（2024-年-12-月卷，选择题第-8-题，2-分）"><a href="#真题-2（2024-年-12-月卷，选择题第-8-题，2-分）" class="headerlink" title="真题 2（2024 年 12 月卷，选择题第 8 题，2 分）"></a>真题 2（2024 年 12 月卷，选择题第 8 题，2 分）</h4><p>下面哪一项测试技术不属于白盒测试（　）。</p>
+<ul>
+<li>A. 语句覆盖</li>
+<li>B. 等价类划分</li>
+<li>C. 条件覆盖</li>
+<li>D. 分支覆盖</li>
+</ul>
+<h4 id="真题-3（2023-年-6-月卷，综合题第-1-题，15-分）"><a href="#真题-3（2023-年-6-月卷，综合题第-1-题，15-分）" class="headerlink" title="真题 3（2023 年 6 月卷，综合题第 1 题，15 分）"></a>真题 3（2023 年 6 月卷，综合题第 1 题，15 分）</h4><p>现有一段 C 语言程序如下。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">dowork</span><span class="params">(<span class="type">int</span> i, <span class="type">int</span> j)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> k = i + j;</span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> ((i &gt; <span class="number">4</span>) &amp;&amp; (j &lt; <span class="number">3</span>)) &#123;</span><br><span class="line">            i = i * j - <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> ((k &lt; <span class="number">9</span>) || (j &gt; <span class="number">5</span>)) &#123;</span><br><span class="line">            k++;</span><br><span class="line">        &#125;</span><br><span class="line">        i++;</span><br><span class="line">    &#125; <span class="keyword">while</span> (i &lt; j);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d,%d,%d&quot;</span>, i, j, k);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>给出以上程序对应程序控制流图。（5 分）</li>
+<li>本段程序的环路复杂度是多少？（2 分）</li>
+<li>具体给出各个独立路径。（4 分）</li>
+<li>使用基本路径测试法设计测试用例，满足上述独立路径覆盖要求。（4 分）</li>
+</ol>
+<h4 id="真题-4（2024-年-12-月卷，综合题第-2-题，13-分）"><a href="#真题-4（2024-年-12-月卷，综合题第-2-题，13-分）" class="headerlink" title="真题 4（2024 年 12 月卷，综合题第 2 题，13 分）"></a>真题 4（2024 年 12 月卷，综合题第 2 题，13 分）</h4><p>现有一段 C 语言程序如下。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">myflow</span><span class="params">(<span class="type">int</span> x, <span class="type">int</span> y)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> a;</span><br><span class="line">    <span class="keyword">if</span> (y == <span class="number">0</span>) &#123;</span><br><span class="line">        a = <span class="number">1</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        a = y;</span><br><span class="line">    &#125;</span><br><span class="line">    y = x - a;</span><br><span class="line">    <span class="keyword">if</span> ((a &gt; <span class="number">0</span>) || (a &lt; <span class="number">-10</span>)) &#123;</span><br><span class="line">        a = x;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        a = x + <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>, a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><p>绘制 <code>myflow(int x, int y)</code> 函数的流图。（5 分）</p>
+</li>
+<li><p>根据（1）中获得的流图，提供需要测试的所有基本路径。（4 分）</p>
+</li>
+<li><p>给出可以执行上述基本路径测试的测试用例。请按照以下格式编写每个测试用例。（4 分）</p>
+<p><code>[输入，输出]：[(x, y), (x, y, a)]</code></p>
+</li>
+</ol>
+<h3 id="课堂小测-2"><a href="#课堂小测-2" class="headerlink" title="课堂小测 2"></a>课堂小测 2</h3><p>对下列 C 语言程序进行基本路径测试。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">Sort</span><span class="params">(<span class="type">int</span> iRecordNum, <span class="type">int</span> iType)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> x = <span class="number">0</span>;</span><br><span class="line">    <span class="type">int</span> y = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">while</span> (iRecordNum-- &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="number">0</span> == iType) &#123;</span><br><span class="line">            x = y + <span class="number">2</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="number">1</span> == iType) &#123;</span><br><span class="line">            x = y + <span class="number">10</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            x = y + <span class="number">20</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>绘制流图，标明各结点对应的语句。</li>
+<li>计算环路复杂度。</li>
+<li>列出各个独立路径。</li>
+<li>针对独立路径给出测试用例。写出输入 <code>(iRecordNum, iType)</code>，以及程序结束时的值 <code>(iRecordNum, iType, x, y)</code>。</li>
+</ol>
+<h3 id="课件练习（自拟）"><a href="#课件练习（自拟）" class="headerlink" title="课件练习（自拟）"></a>课件练习（自拟）</h3><p>实验室预约功能接收预约时长 <code>h</code>（整数小时）与用户类型 <code>role</code>。时长须为 1 到 8 小时，用户类型须为学生或教师。有效请求分别显示「学生预约成功」或「教师预约成功」。无效请求拒绝预约，并提示有问题的字段。</p>
+<ol>
+<li>对两个输入划分有效和无效等价类，编号并选取覆盖各类的用例，写出预期结果。</li>
+<li>固定用户类型为学生，用边界值分析设计时长用例。</li>
+</ol>
+<hr>
+<h2 id="答案与解析"><a href="#答案与解析" class="headerlink" title="答案与解析"></a>答案与解析</h2><h3 id="近年真题-1"><a href="#近年真题-1" class="headerlink" title="近年真题"></a>近年真题</h3><h4 id="真题-1"><a href="#真题-1" class="headerlink" title="真题 1"></a>真题 1</h4><p><strong>答案与解析</strong>　黑盒测试是根据软件的<strong>需求规格说明</strong>和接口约定设计用例，通过接口提供输入，观察软件的输出和行为，并同预期结果比较，判断功能和行为是否符合要求。它又称功能测试或行为测试，设计依据是外部约定。</p>
+<p><strong>考法、答题要点与易错点</strong>　用「依据需求与接口、提供输入和观察输出、对照预期结果」三个短句组织答案。同一个单元可以按接口规格做黑盒测试，也可以按内部结构做白盒测试。</p>
+<p><strong>复习位置</strong>　课件第 11、49、80–83 页。 <a href="#%E9%BB%91%E7%9B%92%E6%B5%8B%E8%AF%95%E7%9A%84%E4%BE%9D%E6%8D%AE%E4%B8%8E%E7%9B%AE%E6%A0%87%E7%AC%AC-8083-%E9%A1%B5">黑盒测试的依据与目标</a> · <a href="#%E7%99%BD%E7%9B%92%E6%B5%8B%E8%AF%95%E4%B8%8E%E9%80%BB%E8%BE%91%E8%A6%86%E7%9B%96%E7%AC%AC-49516467-%E9%A1%B5">白盒测试与逻辑覆盖</a></p>
+<h4 id="真题-2"><a href="#真题-2" class="headerlink" title="真题 2"></a>真题 2</h4><p><strong>答案与解析</strong>　选 <strong>B. 等价类划分</strong>。等价类划分依据规格说明把输入归类，属于黑盒技术。语句覆盖、条件覆盖和分支覆盖依据代码内部结构确定覆盖目标，属于白盒技术。</p>
+<p><strong>考法、答题要点与易错点</strong>　分支覆盖检查整个判定的结果，条件覆盖检查组成判定的各个基本条件。给输入分组、选各组代表值是等价类划分的线索。</p>
+<p><strong>复习位置</strong>　课件第 49–51、65–67、84–90 页。 <a href="#%E7%99%BD%E7%9B%92%E6%B5%8B%E8%AF%95%E4%B8%8E%E9%80%BB%E8%BE%91%E8%A6%86%E7%9B%96%E7%AC%AC-49516467-%E9%A1%B5">白盒测试与逻辑覆盖</a> · <a href="#%E7%AD%89%E4%BB%B7%E7%B1%BB%E5%88%92%E5%88%86%E7%AC%AC-8492-%E9%A1%B5">等价类划分</a></p>
+<h4 id="真题-3"><a href="#真题-3" class="headerlink" title="真题 3"></a>真题 3</h4><p><strong>答案与解析</strong></p>
+<ol>
+<li><p><strong>画流图</strong>。按 C 的短路求值拆分 <code>&amp;&amp;</code> 和 <code>||</code>，入口与初始化合为一个结点，输出结点也是出口。</p>
+<ul>
+<li>处理结点 1 是 <code>k = i + j</code>，4 是 <code>i = i * j - 1</code>，7 是 <code>k++</code>，8 是 <code>i++</code>，10 是打印结果。</li>
+<li>判定结点 2、3 依次检查 <code>i &gt; 4</code>、<code>j &lt; 3</code>。结点 5、6 依次检查 <code>k &lt; 9</code>、<code>j &gt; 5</code>。结点 9 检查 <code>i &lt; j</code>，为真则回到 2。</li>
+</ul>
+<p><img src="/images/posts/c1e57df78558dc3a120b8e038af2bd42.png" alt="dowork 控制流图编号 1 至 10，5 个判定各有 T 和 F 分支，结点 9 的真分支回到 2"></p>
+<p><em>真题 3 示例控制流图，T 表示真，F 表示假</em></p>
+</li>
+<li><p><strong>算复杂度</strong>。判定结点为 2、3、5、6、9，故 <code>V(G) = 5 + 1 = 6</code>。图有 14 条边、10 个结点，按 <code>14 − 10 + 2</code> 复核也等于 6。</p>
+</li>
+<li><p><strong>列路径与用例</strong>。下表给出一组完整的基本路径与对应输入。每条新增路径都经过至少一条前面尚未覆盖的边。</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>结点序列</th>
+<th>输入 (i, j)</th>
+<th>预期打印</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P1</td>
+<td><code>1–2–5–7–8–9–10</code></td>
+<td><code>(3, 2)</code></td>
+<td><code>4,2,6</code></td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>1–2–3–5–7–8–9–10</code></td>
+<td><code>(5, 3)</code></td>
+<td><code>6,3,9</code></td>
+</tr>
+<tr>
+<td>P3</td>
+<td><code>1–2–3–4–5–7–8–9–10</code></td>
+<td><code>(5, 2)</code></td>
+<td><code>10,2,8</code></td>
+</tr>
+<tr>
+<td>P4</td>
+<td><code>1–2–3–5–6–7–8–9–10</code></td>
+<td><code>(5, 6)</code></td>
+<td><code>6,6,12</code></td>
+</tr>
+<tr>
+<td>P5</td>
+<td><code>1–2–3–5–6–8–9–10</code></td>
+<td><code>(6, 4)</code></td>
+<td><code>7,4,10</code></td>
+</tr>
+<tr>
+<td>P6</td>
+<td><code>1–2–5–7–8–9–2–5–7–8–9–10</code></td>
+<td><code>(0, 2)</code></td>
+<td><code>2,2,4</code></td>
+</tr>
+</tbody></table>
+</li>
+</ol>
+<p>P3 输入 <code>(5, 2)</code>，先算得 <code>k=7</code>，进入结点 4 后 <code>i=9</code>，再使 <code>k=8</code>、<code>i=10</code>，退出并打印 <code>10,2,8</code>。P6 输入 <code>(0, 2)</code>，两轮中 i 分别变成 1 和 2，k 分别变成 3 和 4，第二次检查循环条件时退出。</p>
+<p><strong>考法、答题要点与易错点</strong>　每个复合条件按短路规则画边。进入 <code>do</code> 后先执行循环体，循环条件在结点 8 的 <code>i++</code> 之后判断。回边返回第一个判定，k 的初始化只执行一次。写完每行用例后按结点顺序重算 i、j、k。</p>
+<p><strong>复习位置</strong>　课件第 53–62、76–78 页。 <a href="#%E5%9F%BA%E6%9C%AC%E8%B7%AF%E5%BE%84%E6%B5%8B%E8%AF%95%E7%AC%AC-5362-%E9%A1%B5">基本路径测试</a> · <a href="#%E5%BE%AA%E7%8E%AF%E6%B5%8B%E8%AF%95%E7%AC%AC-387678-%E9%A1%B5">循环测试</a> · <a href="#%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%E4%B8%8E%E6%B5%8B%E8%AF%95%E8%AE%B0%E5%BD%95%E7%AC%AC-42939-%E9%A1%B5">测试用例与测试记录</a></p>
+<h4 id="真题-4"><a href="#真题-4" class="headerlink" title="真题 4"></a>真题 4</h4><p><strong>答案与解析</strong></p>
+<ol>
+<li><p><strong>画流图</strong>。入口记为 1，结点 2 是 <code>y == 0</code>，结点 3、4 分别是 <code>a = 1</code>、<code>a = y</code>。两条分支都汇合到结点 5 的 <code>y = x - a</code>。</p>
+</li>
+<li><p>结点 6 是 <code>a &gt; 0</code>，为真就去结点 8 执行 <code>a = x</code>。为假才到结点 7 判断 <code>a &lt; -10</code>，其真分支也去 8，假分支去结点 9 执行 <code>a = x + 1</code>。两条线均在结点 10 打印并结束。</p>
+<p><img src="/images/posts/9921f69baae77b7003879bd25fed1aa2.png" alt="myflow 控制流图将复合条件的两项分别编号为 6 和 7，真假路径分别进入 a 等于 x 或 x 加 1"></p>
+<p><em>真题 4 示例控制流图，T 表示真，F 表示假</em></p>
+</li>
+<li><p><strong>核对路径数</strong>。按课件的短路拆分画法有 3 个二分判定、12 条边、10 个结点，<code>V(G) = 4</code>，可采用下表四条基本路径。输出是函数末尾的 <code>(x, y, a)</code>，其中 <code>a</code> 是 <code>printf</code> 显示的值。</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>结点序列</th>
+<th>［输入，输出］</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P1</td>
+<td><code>1–2–3–5–6–8–10</code></td>
+<td><code>[(5, 0), (5, 4, 5)]</code></td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>1–2–4–5–6–8–10</code></td>
+<td><code>[(5, 2), (5, 3, 5)]</code></td>
+</tr>
+<tr>
+<td>P3</td>
+<td><code>1–2–4–5–6–7–8–10</code></td>
+<td><code>[(5, -11), (5, 16, 5)]</code></td>
+</tr>
+<tr>
+<td>P4</td>
+<td><code>1–2–4–5–6–7–9–10</code></td>
+<td><code>[(5, -10), (5, 15, 6)]</code></td>
+</tr>
+</tbody></table>
+</li>
+</ol>
+<p>P4 输入 <code>(5, -10)</code>，先令 <code>a=-10</code>，再令 <code>y=15</code>。由于 <code>a &gt; 0</code> 和 <code>a &lt; -10</code> 都为假，执行 <code>a=x+1=6</code>，得到 <code>(5, 15, 6)</code>。</p>
+<p><strong>考法、答题要点与易错点</strong>　先求分支赋给 a 的值，再更新 y，最后由当时的 a 判定走哪条分支。初始 y 为 0 时，结点 3 已将 a 设成 1，随后直接走结点 6 的真分支。比较 <code>a &lt; -10</code> 时可以用 −11 和 −10 检查阈值两侧的处理。</p>
+<p><strong>复习位置</strong>　课件第 29、53–62、93–95 页。 <a href="#%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%E4%B8%8E%E6%B5%8B%E8%AF%95%E8%AE%B0%E5%BD%95%E7%AC%AC-42939-%E9%A1%B5">测试用例与测试记录</a> · <a href="#%E5%9F%BA%E6%9C%AC%E8%B7%AF%E5%BE%84%E6%B5%8B%E8%AF%95%E7%AC%AC-5362-%E9%A1%B5">基本路径测试</a> · <a href="#%E8%BE%B9%E7%95%8C%E5%80%BC%E5%88%86%E6%9E%90%E7%AC%AC-9395-%E9%A1%B5">边界值分析</a></p>
+<h3 id="课堂小测-2-1"><a href="#课堂小测-2-1" class="headerlink" title="课堂小测 2"></a>课堂小测 2</h3><p><strong>答案与解析</strong></p>
+<ul>
+<li><strong>结点编号</strong>。1 初始化 <code>x, y</code>，2 判断 <code>iRecordNum-- &gt; 0</code>，3 判断 <code>iType == 0</code>，4 执行 <code>x = y + 2</code> 并 <code>break</code>，5 判断 <code>iType == 1</code>，6、7 分别执行 <code>x = y + 10</code>、<code>x = y + 20</code>，8 结束。</li>
+<li><strong>环路复杂度</strong>。判定结点 2、3、5 共 3 个，<code>V(G) = 3 + 1 = 4</code>。也可用 <code>10 − 8 + 2 = 4</code> 复核。</li>
+</ul>
+<p><img src="/images/posts/33b1440f7fcd550fb2dc07a201d6ab34.png" alt="Sort 控制流图中 break 从结点 4 直接到 8，结点 6 和 7 回到循环判定 2"></p>
+<p><em>课堂小测 2 示例控制流图，T 表示真，F 表示假</em></p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>结点序列</th>
+<th>［输入，输出］</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P1</td>
+<td><code>1–2–8</code></td>
+<td><code>[(0, 0), (-1, 0, 0, 0)]</code></td>
+</tr>
+<tr>
+<td>P2</td>
+<td><code>1–2–3–4–8</code></td>
+<td><code>[(1, 0), (0, 0, 2, 0)]</code></td>
+</tr>
+<tr>
+<td>P3</td>
+<td><code>1–2–3–5–6–2–8</code></td>
+<td><code>[(1, 1), (-1, 1, 10, 0)]</code></td>
+</tr>
+<tr>
+<td>P4</td>
+<td><code>1–2–3–5–7–2–8</code></td>
+<td><code>[(1, 2), (-1, 2, 20, 0)]</code></td>
+</tr>
+</tbody></table>
+<p>例如 P3 的第一次条件判断用的是递减前的 1，成立后计数值变为 0。下一次判断用 0，判定失败并将计数值减到 −1。P2 则由 <code>break</code> 直接结束，保留第一次判断后的 0。</p>
+<p><strong>考法、答题要点与易错点</strong>　把 <code>break</code> 接到循环出口，把常规执行路径接回循环条件。后缀 <code>--</code> 先用旧值比较、再递减，循环最后一次失败的条件也会递减。题目要求的是结束时各变量的值。</p>
+<p><strong>复习位置</strong>　课件第 53–62、76–78 页。 <a href="#%E5%9F%BA%E6%9C%AC%E8%B7%AF%E5%BE%84%E6%B5%8B%E8%AF%95%E7%AC%AC-5362-%E9%A1%B5">基本路径测试</a> · <a href="#%E5%BE%AA%E7%8E%AF%E6%B5%8B%E8%AF%95%E7%AC%AC-387678-%E9%A1%B5">循环测试</a></p>
+<h3 id="课件练习"><a href="#课件练习" class="headerlink" title="课件练习"></a>课件练习</h3><p><strong>答案与解析</strong></p>
+<ol>
+<li><p>时长可分为 E1 有效的 1–8、E2 小于 1、E3 大于 8。用户类型可分为 E4 学生、E5 教师、E6 其他类型。学生与教师对应不同提示，所以分别划为两个有效类。</p>
+<table>
+<thead>
+<tr>
+<th>用例</th>
+<th>对应等价类</th>
+<th>预期结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>(4, 学生)</td>
+<td>E1、E4</td>
+<td>显示「学生预约成功」</td>
+</tr>
+<tr>
+<td>(4, 教师)</td>
+<td>E1、E5</td>
+<td>显示「教师预约成功」</td>
+</tr>
+<tr>
+<td>(0, 学生)</td>
+<td>E2</td>
+<td>拒绝并提示时长字段错误</td>
+</tr>
+<tr>
+<td>(9, 学生)</td>
+<td>E3</td>
+<td>拒绝并提示时长字段错误</td>
+</tr>
+<tr>
+<td>(4, 访客)</td>
+<td>E6</td>
+<td>拒绝并提示用户类型字段错误</td>
+</tr>
+</tbody></table>
+</li>
+<li><p>固定类型为学生，选 <code>h = 0, 1, 2, 7, 8, 9</code>。1、2、7、8 预期预约成功，0 与 9 预期因时长无效而拒绝。</p>
+</li>
+</ol>
+<p><strong>考法、答题要点与易错点</strong>　先按输入条件列类，再给具体输入和可判断的预期结果。无效用例每次只让一个条件失效。边界用例要包含端点和端点内外相邻值，明确包含端点的范围。</p>
+<p><strong>复习位置</strong>　课件第 84–95 页。 <a href="#%E7%AD%89%E4%BB%B7%E7%B1%BB%E5%88%92%E5%88%86%E7%AC%AC-8492-%E9%A1%B5">等价类划分</a> · <a href="#%E8%BE%B9%E7%95%8C%E5%80%BC%E5%88%86%E6%9E%90%E7%AC%AC-9395-%E9%A1%B5">边界值分析</a></p>
+<p>题目来源　<strong>2023-06-09 期末卷</strong> · <strong>2024-12-27 期末卷</strong> · <strong>软件工程课堂小测 2</strong></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC15%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%EF%BC%88%E6%9E%84%E4%BB%B6%E7%BA%A7%EF%BC%89/">https://kanosa0101.github.io/2026/11/18/%E7%AC%AC15%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%EF%BC%88%E6%9E%84%E4%BB%B6%E7%BA%A7%EF%BC%89/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/">软件工程</a><a class="post-meta__tags" href="/tags/%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0/">课程笔记</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/18/%E7%AC%AC16%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%EF%BC%88%E9%9B%86%E6%88%90%E7%BA%A7%EF%BC%89/" title="第 16 章 软件测试（集成级）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">第 16 章 软件测试（集成级）</div></div><div class="info-2"><div class="info-item-1">第 16 章 软件测试（集成级）页码沿用本份 PPT 页脚。从单元测试进入集成测试后，重点检查模块能否正确协作。本章先练习两种增量集成的顺序，再练习为系统性能问题设计测试。 第16章.ppt · 自测题 16.1 软件测试基础（第 3–9 页）软件可测试性（第 3–8 页）可测试性是软件能够被测试的容易程度。课件用抽球比喻测试。白球对应产生正确输出的输入，黑球对应产生错误输出的输入。测试有效性看固定次数内能发现多少黑球，可测试性用一次尝试发现黑球的难易来说明。 一次可观察的失效往往经过三个环节。输入触发有缺陷的代码，执行使内部数据进入错误状态，错误状态传到输出并表现为异常。隐藏得深的缺陷难以触发和观察，含糊或缺失的文档也会增加判断难度。    属性 怎样让测试更容易    可操作性 软件稳定运行到需要测试的步骤，减少阻塞测试的其他错误。   可观察性 输出清楚，状态和变量可查询，内部错误能报告，测试人员能比较预期和实际行为。   可控制性 能设置输入、软硬件状态及变量，使目标代码得到执行，方便自动化和复现。   可分解性 按相对独立的模块隔离测试范围，定位问题后可有针对性地重测。...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC10%E7%AB%A0%20%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1/" title="第 10 章 构件级设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">第 10 章 构件级设计</div></div><div class="info-2"><div class="info-item-1">第 10 章 构件级设计页码沿用本份 PPT 页脚。第 09 章确定软件由哪些构件组成，本章继续说明每个构件提供什么接口、内部怎样处理、如何复用或替换。 第10章.ppt · 自测题 10.1 什么是构件（第 2、4–12 页）构件与构件级设计（第 2、4–5 页）构件（Component）是系统中模块化、可部署、可替换的部件。它封装实现，暴露一组接口，通过接口与其他构件或边界外的系统、设备、人员协作。面向对象设计中，一个构件通常包含一组协作的类，也可以由一个类实现。 构件级设计在体系结构设计完成第一次迭代后开始。在程序结构和数据组织的基础上，明确构件的接口、局部数据结构和处理逻辑，使设计表示足以指导实现。 理解构件的三种观点（第 5–12 页）   观点 对构件的理解与设计重点    面向对象的观点 把构件看成一组协作的类。细化每个类的属性、操作和接口，明确数据结构及实现操作的算法。   传统观点 把构件看成程序的功能要素，也称模块。由处理逻辑、内部数据结构和可调用的接口组成。   过程相关的观点 在设计过程中识别并复用已有构件或设计模式，再补充系统所需的新构件。   传统构件...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/18/%E7%AC%AC01%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E4%B8%8E%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/" title="第 01 章 软件与软件工程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 01 章 软件与软件工程</div></div><div class="info-2"><div class="info-item-1">第 01 章 软件与软件工程页码沿用 PPT 页脚。复习时先掌握软件的组成和退化原因（第 8–14 页）、软件工程定义与层次（第 30–32 页）、过程框架与普适性活动（第 34–40 页）。 第01章.ppt 1.1 软件的本质软件的组成与双重角色（第 5–8 页）软件是程序、文档和数据的集合。    组成 含义 选课系统示例    程序 实现所需功能并达到相应性能要求的指令或代码 检查选课条件、提交选课结果的代码   文档 开发、使用和维护程序所需的图文资料 需求规格说明书、使用手册、维护说明   数据 支撑程序正确处理信息的数据结构及相关数据 课程数据库、系统配置文件    作为产品，软件产生、管理、查询、修改、显示或传递信息，例如选课系统处理学生的选课信息。 作为生产产品的载体，软件为计算机控制、信息通信和应用开发提供基础，例如操作系统、网络软件和开发工具。  现代软件开发由多个专业角色协作完成，仍要处理开发周期长、成本高、交付前难以发现全部缺陷、维护耗时以及过程难以度量等问题（第 6 页）。 软件的工程特性和失效曲线（第 9–14 页） 软件靠设计和开发形成（第 9 页...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC02%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E8%BF%87%E7%A8%8B%E7%BB%93%E6%9E%84/" title="第 02 章 软件过程结构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 02 章 软件过程结构</div></div><div class="info-2"><div class="info-item-1">第 02 章 软件过程结构页码沿用 PPT 页脚。复习时练会区分四种过程流，比较各过程模型的交付物和适用条件，再做选型题。 第02章.ppt 2.1 通用过程模型（第 3–6 页）过程模型又称软件生存周期模型，描述软件过程中的活动如何组织和推进。各模型都支持通用框架活动，对活动的安排和侧重各有不同（第 20 页）。 通用过程框架给出五种基本活动，依次记为沟通、策划、建模、构建、部署（第 3 页）。图中的关系是过程框架 → 框架活动 → 软件工程动作 → 任务集。普适性活动覆盖各个框架活动。 过程流描述框架活动在时间上怎样排列、重复或重叠。    过程流 图形与运行特点 课件页码    线性过程流 沟通 → 策划 → 建模 → 构建 → 部署，沿一条主线依次推进。 第 4 页   迭代过程流 进入下一个活动前，重复当前或先前的一个或多个活动。画图时用回返箭头表示。 第 4 页   演化过程流 多个框架活动组成循环。每轮都加深对系统的理解，产生更完善的版本，图中在部署处标出增量交付。 第 5 页   并行过程流 一个或多个活动与其他活动同时进行，各活动在时间上可以重叠，仍要满足依赖。...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC03%E7%AB%A0%20%E6%95%8F%E6%8D%B7%E4%B8%8E%E6%95%8F%E6%8D%B7%E8%BF%87%E7%A8%8B/" title="第 03 章 敏捷与敏捷过程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 03 章 敏捷与敏捷过程</div></div><div class="info-2"><div class="info-item-1">第 03 章 敏捷与敏捷过程页码沿用 PPT 页脚。复习时先掌握敏捷宣言、敏捷过程的三个假设、Scrum 的过程流和 XP 的四类活动。 第03章.ppt 3.1 什么是敏捷（第 2–10 页）敏捷开发是一种以人为核心、通过迭代和增量交付响应需求变化的软件开发方法。第 2 页指出，成员的技能和沟通方式有差异，僵化的流程容易遇到执行困难。面对需求、团队和技术的变化，敏捷团队通过合作缩短交付周期，让客户持续参与，并根据反馈调整计划（第 3、9–10 页）。 敏捷宣言（第 3 页） 个体与交互胜过过程与工具。 可用的软件胜过完备的文档。 客户协作胜过合同谈判。 响应变化胜过遵循计划。  两边的事项都有价值。遇到取舍时，左侧优先。例如，团队保留用于交付和维护的文档，把主要精力放在能运行、能让客户验证的软件上。 五项价值观（第 3–7 页）   价值观 在开发中怎样体现    沟通 让开发、业务人员和其他利益相关者及时交流，使大家对目标、需求和障碍有共同理解。   简单 选用能解决当前问题且容易交流和修改的设计与表达方式。   反馈 通过模型、测试和交付获得反馈，尽快纠正误解与错误。   ...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC05%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E7%9A%84%E4%BA%BA%E5%91%98%E6%96%B9%E9%9D%A2/" title="第 05 章 软件工程的人员方面"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 05 章 软件工程的人员方面</div></div><div class="info-2"><div class="info-item-1">第 05 章 软件工程的人员方面页码沿用 PPT 页脚。复习时重点掌握软件工程师的七种特质、五种团队毒性的成因与对策，以及四种团队组织模式的适用条件。 第05章.ppt 5.1 软件工程师的特质（第 3–4 页）课件用七种特质说明软件工程师怎样在设计、开发和协作中展现专业性。    特质 在工作中的表现    责任感（第 3 页） 对同事、利益相关者和管理者履行承诺，主动承担完成工作所需的责任。   对他人需求有敏锐的意识（第 3 页） 留意团队成员、利益相关者和管理者的需求，根据对方及所处的工作环境调整交流和做法。   坦诚（第 3 页） 发现有缺陷的设计时，诚实、有建设性地指出问题。   展现抗压能力（第 4 页） 面对需求变化、优先级调整和来自各方的压力，能处理问题并维持交付质量。   有高度的公平感（第 4 页） 公平看待他人的成果，与同事分享荣誉，避免利益冲突。   注重细节（第 4 页） 以性能、成本、质量等项目标准为依据，仔细考虑具体的技术决策。   务实（第 4 页） 根据实际场景调整软件工程方法和过程。   软件工程职业道德规范（作业补充）作业一第 6 题可以依...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC07-1%E7%AB%A0%20%E9%9C%80%E6%B1%82%E5%BB%BA%E6%A8%A1%EF%BC%88%E5%9F%BA%E4%BA%8E%E5%9C%BA%E6%99%AF%E7%9A%84%E6%96%B9%E6%B3%95%EF%BC%89/" title="第 07-1 章 需求建模（基于场景的方法）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 07-1 章 需求建模（基于场景的方法）</div></div><div class="info-2"><div class="info-item-1">第 07-1 章 需求建模（基于场景的方法）页码沿用本份 PPT 页脚。复习时重点掌握主场景与次场景的写法、用例图与活动图的用途，以及怎样用泳道标出责任。 第07-1章.ppt 7.1 需求分析（第 2–12 页）分析目标与经验原则（第 5–9 页）需求分析要确定系统需要提供哪些交互、处理哪些对象、完成哪些功能、表现出什么行为，以及要满足的接口和约束。需求模型有三个目标。  描述客户需要什么，并检查对需求的理解是否正确。 为软件设计奠定基础。 定义软件完成后可以确认的一组需求。  建模时保持在问题或业务域的抽象层，每个元素都要帮助读者理解信息、功能或行为。可以记录非功能约束，把具体基础结构及实现留到设计阶段。控制类和功能之间的互联程度，保留对业务人员确认需求、设计人员开展设计、测试人员编制验收测试都有用的内容。能用清楚的列表说明时，采用简洁的表达即可。 域分析（第 10 页）域分析从同一应用领域中发现或建立可复用的分析类和分析模式。域分析师以技术资料、已有应用、客户调查、专家建议与当前或未来需求为输入，整理出类的分类、复用标准、功能模型和领域术语。  课件第 10 页　域分析的输...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC06%E7%AB%A0%20%E7%90%86%E8%A7%A3%E9%9C%80%E6%B1%82/" title="第 06 章 理解需求"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 06 章 理解需求</div></div><div class="info-2"><div class="info-item-1">第 06 章 理解需求页码沿用 PPT 页脚。复习时重点掌握需求工程的七项活动、SRS 的内容、用例的写法及需求确认的方法。 第06章.ppt 6.1 需求工程（第 5–24 页）客户说出的要求可能和实际需要有差距，已明确的需求还会随项目变化。理解偏差发现得越晚，越可能牵涉设计、实现、测试与交付安排。课件用 1994 年的项目调查说明需求不完整、用户参与不足和需求变更带来的风险（第 2–7 页）。 软件需求及分类（第 8–9 页）软件需求是对期望的软件行为的表达。    类型 写什么 例子    功能需求 系统应提供的功能与服务、对输入的响应、在特定条件下的行为、禁止发生的行为，以及处理的数据。 用户可将商品放入购物车。库存不足时，系统提示用户修改数量。   非功能需求中的产品需求 产品行为应达到的质量水平，如性能、可靠性和可用性。 在约定负载下，95% 的商品搜索请求在 2 秒内返回。   非功能需求中的机构需求 客户或开发机构的政策和规定，包括过程标准、实现要求、交付要求。 交付时应提供机构规定的部署与运维文档。   非功能需求中的外部需求 系统外部因素带来的约束，如互操作要...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">38</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">16</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC-15-%E7%AB%A0-%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%EF%BC%88%E6%9E%84%E4%BB%B6%E7%BA%A7%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">第 15 章 软件测试（构件级）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#15-1-%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%E7%9A%84%E7%AD%96%E7%95%A5%E6%80%A7%E6%96%B9%E6%B3%95%EF%BC%88%E7%AC%AC-2%E2%80%9321-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">15.1 软件测试的策略性方法（第 2–21 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E7%9B%AE%E6%A0%87%E3%80%81%E7%AD%96%E7%95%A5%E4%B8%8E%E5%B1%82%E6%AC%A1%EF%BC%88%E7%AC%AC-2%E2%80%937%E3%80%8113%E3%80%8117%E2%80%9319-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.1.</span> <span class="toc-text">测试目标、策略与层次（第 2–7、13、17–19 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A3%80%E6%9F%A5%E3%80%81%E9%AA%8C%E8%AF%81%E3%80%81%E7%A1%AE%E8%AE%A4%E4%B8%8E%E8%B0%83%E8%AF%95%EF%BC%88%E7%AC%AC-6%E3%80%8111%E2%80%9312%E3%80%8117-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.2.</span> <span class="toc-text">检查、验证、确认与调试（第 6、11–12、17 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E9%94%99%E8%AF%AF%E7%9A%84%E6%9D%A5%E6%BA%90%E5%92%8C%E7%B1%BB%E5%9E%8B%EF%BC%88%E7%AC%AC-8%E2%80%9310-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.3.</span> <span class="toc-text">软件错误的来源和类型（第 8–10 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E7%BB%84%E7%BB%87%E3%80%81%E5%8E%9F%E5%88%99%E5%92%8C%E7%BB%93%E6%9D%9F%E6%9D%A1%E4%BB%B6%EF%BC%88%E7%AC%AC-14%E2%80%9321-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.4.</span> <span class="toc-text">测试组织、原则和结束条件（第 14–21 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#15-2%E2%80%9315-3-%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E4%B8%8E%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%EF%BC%88%E7%AC%AC-23%E2%80%9347-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">15.2–15.3 单元测试与测试用例（第 23–47 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%E4%B8%8E%E6%B5%8B%E8%AF%95%E8%AE%B0%E5%BD%95%EF%BC%88%E7%AC%AC-4%E3%80%8129%E3%80%8139-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">测试用例与测试记录（第 4、29、39 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95%E7%9A%84%E4%BA%94%E9%A1%B9%E5%86%85%E5%AE%B9%EF%BC%88%E7%AC%AC-23%E2%80%9326%E3%80%8133%E2%80%9340-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.2.</span> <span class="toc-text">单元测试的五项内容（第 23–26、33–40 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A9%B1%E5%8A%A8%E7%A8%8B%E5%BA%8F%E4%B8%8E%E6%A1%A9%E7%A8%8B%E5%BA%8F%EF%BC%88%E7%AC%AC-27%E3%80%8130%E2%80%9332%E3%80%8143%E2%80%9347-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.3.</span> <span class="toc-text">驱动程序与桩程序（第 27、30–32、43–47 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#15-4-%E7%99%BD%E7%9B%92%E6%B5%8B%E8%AF%95%EF%BC%88%E7%AC%AC-49%E2%80%9378-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">15.4 白盒测试（第 49–78 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%99%BD%E7%9B%92%E6%B5%8B%E8%AF%95%E4%B8%8E%E9%80%BB%E8%BE%91%E8%A6%86%E7%9B%96%EF%BC%88%E7%AC%AC-49%E2%80%9351%E3%80%8164%E2%80%9367-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">白盒测试与逻辑覆盖（第 49–51、64–67 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E8%B7%AF%E5%BE%84%E6%B5%8B%E8%AF%95%EF%BC%88%E7%AC%AC-53%E2%80%9362-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">基本路径测试（第 53–62 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%B5%81%E6%B5%8B%E8%AF%95%EF%BC%88%E7%AC%AC-64%E3%80%8168%E2%80%9375-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.3.</span> <span class="toc-text">数据流测试（第 64、68–75 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BE%AA%E7%8E%AF%E6%B5%8B%E8%AF%95%EF%BC%88%E7%AC%AC-38%E3%80%8176%E2%80%9378-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.4.</span> <span class="toc-text">循环测试（第 38、76–78 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#15-5-%E9%BB%91%E7%9B%92%E6%B5%8B%E8%AF%95%EF%BC%88%E7%AC%AC-80%E2%80%93100-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">15.5 黑盒测试（第 80–100 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%BB%91%E7%9B%92%E6%B5%8B%E8%AF%95%E7%9A%84%E4%BE%9D%E6%8D%AE%E4%B8%8E%E7%9B%AE%E6%A0%87%EF%BC%88%E7%AC%AC-80%E2%80%9383-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">黑盒测试的依据与目标（第 80–83 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AD%89%E4%BB%B7%E7%B1%BB%E5%88%92%E5%88%86%EF%BC%88%E7%AC%AC-84%E2%80%9392-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">等价类划分（第 84–92 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BE%B9%E7%95%8C%E5%80%BC%E5%88%86%E6%9E%90%EF%BC%88%E7%AC%AC-93%E2%80%9395-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">边界值分析（第 93–95 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BC%B0%E8%AE%A1%E5%89%A9%E4%BD%99%E9%94%99%E8%AF%AF%EF%BC%88%E7%AC%AC-96%E2%80%93100-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.4.</span> <span class="toc-text">估计剩余错误（第 96–100 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#15-6-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E6%B5%8B%E8%AF%95%EF%BC%88%E7%AC%AC-102%E2%80%93113-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">15.6 面向对象测试（第 102–113 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E7%B1%BB%E7%9A%84%E5%86%85%E5%AE%B9%E4%B8%8E%E9%9A%BE%E7%82%B9%EF%BC%88%E7%AC%AC-102%E2%80%93104-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">测试类的内容与难点（第 102–104 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E7%BA%A7%E6%B5%8B%E8%AF%95%E5%BA%8F%E5%88%97%E4%B8%8E%E5%88%92%E5%88%86%EF%BC%88%E7%AC%AC-106%E2%80%93110-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.5.2.</span> <span class="toc-text">类级测试序列与划分（第 106–110 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E8%A1%8C%E4%B8%BA%E6%A8%A1%E5%9E%8B%E5%AF%BC%E5%87%BA%E7%B1%BB%E9%97%B4%E6%B5%8B%E8%AF%95%EF%BC%88%E7%AC%AC-112%E2%80%93113-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">从行为模型导出类间测试（第 112–113 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%87%AA%E6%B5%8B%E9%A2%98"><span class="toc-number">1.6.</span> <span class="toc-text">自测题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%91%E5%B9%B4%E7%9C%9F%E9%A2%98"><span class="toc-number">1.6.1.</span> <span class="toc-text">近年真题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-1%EF%BC%882023-%E5%B9%B4-6-%E6%9C%88%E5%8D%B7%E5%90%8D%E8%AF%8D%E8%A7%A3%E9%87%8A%E7%AC%AC-5-%E9%A2%98%EF%BC%8C2-%E5%88%86%E3%80%822024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%E5%90%8D%E8%AF%8D%E8%A7%A3%E9%87%8A%E7%AC%AC-4-%E9%A2%98%EF%BC%8C3-%E5%88%86%EF%BC%89"><span class="toc-number">1.6.1.1.</span> <span class="toc-text">真题 1（2023 年 6 月卷名词解释第 5 题，2 分。2024 年 12 月卷名词解释第 4 题，3 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-2%EF%BC%882024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%EF%BC%8C%E9%80%89%E6%8B%A9%E9%A2%98%E7%AC%AC-8-%E9%A2%98%EF%BC%8C2-%E5%88%86%EF%BC%89"><span class="toc-number">1.6.1.2.</span> <span class="toc-text">真题 2（2024 年 12 月卷，选择题第 8 题，2 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-3%EF%BC%882023-%E5%B9%B4-6-%E6%9C%88%E5%8D%B7%EF%BC%8C%E7%BB%BC%E5%90%88%E9%A2%98%E7%AC%AC-1-%E9%A2%98%EF%BC%8C15-%E5%88%86%EF%BC%89"><span class="toc-number">1.6.1.3.</span> <span class="toc-text">真题 3（2023 年 6 月卷，综合题第 1 题，15 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-4%EF%BC%882024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%EF%BC%8C%E7%BB%BC%E5%90%88%E9%A2%98%E7%AC%AC-2-%E9%A2%98%EF%BC%8C13-%E5%88%86%EF%BC%89"><span class="toc-number">1.6.1.4.</span> <span class="toc-text">真题 4（2024 年 12 月卷，综合题第 2 题，13 分）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BE%E5%A0%82%E5%B0%8F%E6%B5%8B-2"><span class="toc-number">1.6.2.</span> <span class="toc-text">课堂小测 2</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BE%E4%BB%B6%E7%BB%83%E4%B9%A0%EF%BC%88%E8%87%AA%E6%8B%9F%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">课件练习（自拟）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AD%94%E6%A1%88%E4%B8%8E%E8%A7%A3%E6%9E%90"><span class="toc-number">1.7.</span> <span class="toc-text">答案与解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%91%E5%B9%B4%E7%9C%9F%E9%A2%98-1"><span class="toc-number">1.7.1.</span> <span class="toc-text">近年真题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-1"><span class="toc-number">1.7.1.1.</span> <span class="toc-text">真题 1</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-2"><span class="toc-number">1.7.1.2.</span> <span class="toc-text">真题 2</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-3"><span class="toc-number">1.7.1.3.</span> <span class="toc-text">真题 3</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-4"><span class="toc-number">1.7.1.4.</span> <span class="toc-text">真题 4</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BE%E5%A0%82%E5%B0%8F%E6%B5%8B-2-1"><span class="toc-number">1.7.2.</span> <span class="toc-text">课堂小测 2</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BE%E4%BB%B6%E7%BB%83%E4%B9%A0"><span class="toc-number">1.7.3.</span> <span class="toc-text">课件练习</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC26%E7%AB%A0%20%E9%A3%8E%E9%99%A9%E7%AE%A1%E7%90%86/" title="第 26 章 风险管理">第 26 章 风险管理</a><time datetime="2026-11-18T02:19:00.000Z" title="发表于 2026-11-18 10:19:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC25%E7%AB%A0%20%E9%A1%B9%E7%9B%AE%E8%BF%9B%E5%BA%A6%E5%AE%89%E6%8E%92/" title="第 25 章 项目进度安排">第 25 章 项目进度安排</a><time datetime="2026-11-18T02:18:00.000Z" title="发表于 2026-11-18 10:18:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC24%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E9%A1%B9%E7%9B%AE%E4%BC%B0%E7%AE%97/" title="第 24 章 软件项目估算">第 24 章 软件项目估算</a><time datetime="2026-11-18T02:17:00.000Z" title="发表于 2026-11-18 10:17:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC20%E7%AB%A0%20%E8%BF%87%E7%A8%8B%E5%BA%A6%E9%87%8F%E5%92%8C%E9%A1%B9%E7%9B%AE%E5%BA%A6%E9%87%8F/" title="第 20 章 过程度量和项目度量">第 20 章 过程度量和项目度量</a><time datetime="2026-11-18T02:16:00.000Z" title="发表于 2026-11-18 10:16:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC19%E7%AB%A0%20%E9%A1%B9%E7%9B%AE%E7%AE%A1%E7%90%86%E6%A6%82%E5%BF%B5/" title="第 19 章 项目管理概念">第 19 章 项目管理概念</a><time datetime="2026-11-18T02:15:00.000Z" title="发表于 2026-11-18 10:15:00">2026-11-18</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script src="/js/hex-transition.js"></script><script src="/js/hex-wheel.js"></script><script src="/js/pointer.js"></script><script src="/js/island-effects.js?v=20261106_v8"></script><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>

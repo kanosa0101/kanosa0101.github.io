@@ -1,0 +1,671 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>第 01 章 软件与软件工程 | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="页码沿用 PPT 页脚。复习时先掌握软件的组成和退化原因（第 8–14 页）、软件工程定义与层次（第 30–32 页）、过程框架与普适性活动（第 34–40 页）。 第01章.ppt">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第 01 章 软件与软件工程">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC01%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E4%B8%8E%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="页码沿用 PPT 页脚。复习时先掌握软件的组成和退化原因（第 8–14 页）、软件工程定义与层次（第 30–32 页）、过程框架与普适性活动（第 34–40 页）。 第01章.ppt">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-11-18T02:01:00.000Z">
+<meta property="article:modified_time" content="2026-11-18T01:13:32.401Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="课程笔记">
+<meta property="article:tag" content="软件工程">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "第 01 章 软件与软件工程",
+  "url": "https://kanosa0101.github.io/2026/11/18/%E7%AC%AC01%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E4%B8%8E%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-11-18T02:01:00.000Z",
+  "dateModified": "2026-11-18T01:13:32.401Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC01%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E4%B8%8E%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '第 01 章 软件与软件工程',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css?v=20261106_v8"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">38</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">16</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">第 01 章 软件与软件工程</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">第 01 章 软件与软件工程</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-18T02:01:00.000Z" title="发表于 2026-11-18 10:01:00">2026-11-18</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-18T01:13:32.401Z" title="更新于 2026-11-18 09:13:32">2026-11-18</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/">软件工程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="第-01-章-软件与软件工程"><a href="#第-01-章-软件与软件工程" class="headerlink" title="第 01 章 软件与软件工程"></a>第 01 章 软件与软件工程</h1><p>页码沿用 PPT 页脚。复习时先掌握软件的组成和退化原因（第 8–14 页）、软件工程定义与层次（第 30–32 页）、过程框架与普适性活动（第 34–40 页）。 <strong>第01章.ppt</strong></p>
+<h2 id="1-1-软件的本质"><a href="#1-1-软件的本质" class="headerlink" title="1.1 软件的本质"></a>1.1 软件的本质</h2><h3 id="软件的组成与双重角色（第-5–8-页）"><a href="#软件的组成与双重角色（第-5–8-页）" class="headerlink" title="软件的组成与双重角色（第 5–8 页）"></a>软件的组成与双重角色（第 5–8 页）</h3><p><strong>软件是程序、文档和数据的集合。</strong></p>
+<table>
+<thead>
+<tr>
+<th>组成</th>
+<th>含义</th>
+<th>选课系统示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>程序</td>
+<td>实现所需功能并达到相应性能要求的指令或代码</td>
+<td>检查选课条件、提交选课结果的代码</td>
+</tr>
+<tr>
+<td>文档</td>
+<td>开发、使用和维护程序所需的图文资料</td>
+<td>需求规格说明书、使用手册、维护说明</td>
+</tr>
+<tr>
+<td>数据</td>
+<td>支撑程序正确处理信息的数据结构及相关数据</td>
+<td>课程数据库、系统配置文件</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>作为产品</strong>，软件产生、管理、查询、修改、显示或传递信息，例如选课系统处理学生的选课信息。</li>
+<li><strong>作为生产产品的载体</strong>，软件为计算机控制、信息通信和应用开发提供基础，例如操作系统、网络软件和开发工具。</li>
+</ul>
+<p>现代软件开发由多个专业角色协作完成，仍要处理开发周期长、成本高、交付前难以发现全部缺陷、维护耗时以及过程难以度量等问题（第 6 页）。</p>
+<h3 id="软件的工程特性和失效曲线（第-9–14-页）"><a href="#软件的工程特性和失效曲线（第-9–14-页）" class="headerlink" title="软件的工程特性和失效曲线（第 9–14 页）"></a>软件的工程特性和失效曲线（第 9–14 页）</h3><ol>
+<li><strong>软件靠设计和开发形成</strong>（第 9 页）。成本主要集中在设计开发。硬件批量生产仍有较高成本，制造阶段也可能引入缺陷。</li>
+<li><strong>软件不会发生物理磨损</strong>（第 10–13 页）。软件故障通常要追溯到设计或实现中的缺陷。<strong>不断变更是软件退化的根本原因</strong>。变更新增功能或修复旧问题时，可能引入新的错误并使后续维护变难。</li>
+<li><strong>基于构件的构造</strong>（第 14 页）。构件是具有明确功能和接口、可组合与复用的软件单元。课件用图形窗口、下拉菜单等说明可复用构件可以封装数据及其处理。采用现有构件可减少重复开发。</li>
+</ol>
+<p>横轴为<strong>时间</strong>，纵轴为<strong>失效率</strong>。比较第 10–12 页的曲线时，既要会描述形状，也要能说明每一段变化的原因。</p>
+<table>
+<thead>
+<tr>
+<th>曲线</th>
+<th>走势与原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>硬件浴缸曲线</strong>（第 10–11 页）</td>
+<td>早期因设计或生产缺陷而处于较高失效率，缺陷纠正后下降。中期保持低位。后期受材料损耗及灰尘、震动、温度等环境因素影响，失效率因磨损再度升高。</td>
+</tr>
+<tr>
+<td><strong>软件理想曲线</strong>（第 12 页）</td>
+<td>初期发现并修正缺陷后，失效率下降，在较低水平趋于稳定。</td>
+</tr>
+<tr>
+<td><strong>软件实际曲线</strong>（第 12 页）</td>
+<td>变更引入的副作用会使失效率突升，修复后再回落。多次变更的影响累积时，回落后的失效率可能逐步抬高。</td>
+</tr>
+</tbody></table>
+<p><img src="/images/posts/ccb11fc3c1844a3de38cb52d3184d9cf.png" alt="硬件失效率早期下降，中期维持低位，磨损期上升"></p>
+<p><em>课件第 10 页　硬件失效的浴缸曲线</em></p>
+<p><img src="/images/posts/05d2d1b045767da7302972c9a5b99db3.png" alt="软件理想失效率趋稳，实际失效率在变更处突升并回落"></p>
+<p><em>课件第 12 页　软件的理想与实际失效曲线</em></p>
+<p>画软件实际曲线时，在每个突升处标出<strong>变更</strong>，并画出其后的回落。软件工程方法力求控制变更的副作用，使实际曲线接近理想曲线。</p>
+<h3 id="软件应用领域（第-15–22-页）"><a href="#软件应用领域（第-15–22-页）" class="headerlink" title="软件应用领域（第 15–22 页）"></a>软件应用领域（第 15–22 页）</h3><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>按主要用途判断</th>
+<th>课件页码</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统软件</td>
+<td>为其他程序提供服务，如编译器、操作系统和驱动程序。常涉及硬件交互、多用户、资源共享、调度、进程同步以及复杂的接口和数据结构。</td>
+<td>第 15 页</td>
+</tr>
+<tr>
+<td>应用软件</td>
+<td>服务于特定业务，如销售点交易处理、制造过程实时控制。</td>
+<td>第 16 页</td>
+</tr>
+<tr>
+<td>工程／科学软件</td>
+<td>以数值计算为典型特征，如应力分析、航天器轨道计算。</td>
+<td>第 17 页</td>
+</tr>
+<tr>
+<td>嵌入式软件</td>
+<td>嵌在设备或系统中，执行该产品的控制功能，如微波炉按键控制、汽车燃油与制动控制。</td>
+<td>第 18 页</td>
+</tr>
+<tr>
+<td>产品线软件</td>
+<td>面向多个用户提供一组特定功能，覆盖库存控制等专业市场或文字处理等大众市场。</td>
+<td>第 19 页</td>
+</tr>
+<tr>
+<td>Web 应用软件</td>
+<td>以网络为中心，规模从超链接网页到网游、网络社区等复杂应用。</td>
+<td>第 20 页</td>
+</tr>
+<tr>
+<td>人工智能软件</td>
+<td>处理直接计算与分析难以解决的问题。课件以非数值算法为典型特征，列举专家系统、模式识别、人工神经网络、定理证明和博弈等。</td>
+<td>第 21 页</td>
+</tr>
+</tbody></table>
+<p>第 22 页还提到<strong>开放计算</strong>和<strong>开源软件</strong>。前者关注不同设备与企业应用通过网络通信，涉及普适计算、分布式计算和云计算。后者以开放源代码为特征。</p>
+<h3 id="遗留软件及其演化（第-23–24-页）"><a href="#遗留软件及其演化（第-23–24-页）" class="headerlink" title="遗留软件及其演化（第 23–24 页）"></a>遗留软件及其演化（第 23–24 页）</h3><p><strong>遗留软件</strong>是开发较早、至今仍在使用的软件，可能经过多次修改，也可能仍在支撑核心业务。典型维护困难包括设计难以扩展、代码难懂、文档缺失或混乱、变更管理混乱以及测试记录未归档。满足需求并可靠运行时，以稳定运行为优先。确需变更时，先评估对核心业务的影响。</p>
+<p>需要演化的情形包括<strong>适应新的计算环境或技术、满足新的业务需求、与现代系统或数据库协作、适应多样化的网络环境</strong>。</p>
+<h3 id="课件补充的四种软件形态（第-25–27-页）"><a href="#课件补充的四种软件形态（第-25–27-页）" class="headerlink" title="课件补充的四种软件形态（第 25–27 页）"></a>课件补充的四种软件形态（第 25–27 页）</h3><ul>
+<li><p><strong>WebApp</strong>（第 25 页）通过浏览器访问 Web 内容，移动设备也可通过面向移动端的浏览器访问。</p>
+</li>
+<li><p><strong>移动 App</strong>（第 25 页）可直接利用设备的硬件能力，如 GPS 定位，并提供本地处理和存储能力。</p>
+</li>
+<li><p><strong>云计算</strong>（第 26 页）通过网络向多种设备提供资源和服务。图中从底向上分为基础设施（计算、块存储、网络）、平台（运行时、队列、数据库等）、应用软件（协作、通信、财务等）。</p>
+<p><img src="/images/posts/44193a755941416a8bb9f0b2769c2e76.png" alt="云计算的基础设施、平台、应用软件及接入的设备"></p>
+<p><em>课件第 26 页　云计算的三层结构</em></p>
+</li>
+<li><p><strong>产品线软件</strong>（第 27 页）采用共同的底层应用软件和数据体系结构，并在整个产品线中复用一组软件构件。</p>
+</li>
+</ul>
+<h2 id="1-2-软件工程的定义与层次（第-29–32-页）"><a href="#1-2-软件工程的定义与层次（第-29–32-页）" class="headerlink" title="1.2 软件工程的定义与层次（第 29–32 页）"></a>1.2 软件工程的定义与层次（第 29–32 页）</h2><p><strong>软件工程（Software Engineering，SE）<strong>是将</strong>系统化、规范化、可量化</strong>的方法应用于软件的<strong>开发、运行和维护</strong>，并研究这些方法。IEEE 的定义同时包含<strong>工程方法的应用</strong>和<strong>对这些方法的研究</strong>（第 30 页）。</p>
+<p><strong>Bauer 的定义</strong>强调建立并使用合理的工程原则，以经济的方式获得可靠且能在实际机器上高效运行的软件（第 30 页）。题干出现「经济地获得可靠、高效的软件」时，识别为这一表述。</p>
+<p>软件工程是一种<strong>层次化技术</strong>。第 31–32 页的图从底到顶依次为<strong>质量关注点 → 过程 → 方法 → 工具</strong>。</p>
+<p><img src="/images/posts/32f6c728947e9d949f8491ba417ed86b.png" alt="从质量关注点到过程、方法和工具的软件工程层次图"></p>
+<p><em>课件第 31 页　软件工程的四个层次</em></p>
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>作用</th>
+<th>第 32 页的示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>质量关注点</td>
+<td>是整个层次的基础，引导过程、方法和工具的选择。</td>
+<td>开发时间、可靠性</td>
+</tr>
+<tr>
+<td>过程</td>
+<td>提供组织开发工作的框架，规定有哪些活动及其组织方式。</td>
+<td>瀑布</td>
+</tr>
+<tr>
+<td>方法</td>
+<td>提供具体的技术做法，包括需求分析、设计建模、编程、测试等。</td>
+<td>关键路径法</td>
+</tr>
+<tr>
+<td>工具</td>
+<td>为过程和方法提供自动化或半自动化支持。</td>
+<td>Project 项目管理软件</td>
+</tr>
+</tbody></table>
+<h2 id="1-3-软件过程（第-34–40-页）"><a href="#1-3-软件过程（第-34–40-页）" class="headerlink" title="1.3 软件过程（第 34–40 页）"></a>1.3 软件过程（第 34–40 页）</h2><p><strong>软件过程</strong>是开发软件时遵循的一系列可以预期的活动和步骤，有助于按时交付高质量的软件（第 34 页）。<strong>过程模型</strong>是对软件过程的抽象描述，用来说明活动怎样组织、衔接和推进。第 32 页以瀑布模型为例。</p>
+<h3 id="过程框架的粒度（第-35-页）"><a href="#过程框架的粒度（第-35-页）" class="headerlink" title="过程框架的粒度（第 35 页）"></a>过程框架的粒度（第 35 页）</h3><p><strong>过程框架 → 框架活动 → 动作 → 任务</strong>。框架规定基本活动，每项活动包含若干动作，每个动作由若干相互关联、可考核的任务组成。例如，建模是一项活动，设计数据模型是其中的动作，确定课程实体的主键可以作为一项具体任务。</p>
+<h3 id="五个通用框架活动（第-36–37-页）"><a href="#五个通用框架活动（第-36–37-页）" class="headerlink" title="五个通用框架活动（第 36–37 页）"></a>五个通用框架活动（第 36–37 页）</h3><table>
+<thead>
+<tr>
+<th>活动</th>
+<th>主要任务</th>
+<th>选课系统示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>沟通</strong></td>
+<td>与客户和其他利益相关者协作，理解项目目标，收集需求以明确特性与功能。</td>
+<td>和教务老师确认选课、退课及容量限制。</td>
+</tr>
+<tr>
+<td><strong>策划</strong></td>
+<td>确定技术任务、风险、资源需求、工作产品与进度计划。</td>
+<td>安排人员、迭代工期和里程碑。</td>
+</tr>
+<tr>
+<td><strong>建模</strong></td>
+<td>建立模型来理解软件需求，并完成满足需求的软件设计。</td>
+<td>画选课流程，设计课程与选课记录的数据结构。</td>
+</tr>
+<tr>
+<td><strong>构建</strong></td>
+<td>生成代码，开展测试以发现编码错误。</td>
+<td>实现选课逻辑并测试重复选课、容量已满的情况。</td>
+</tr>
+<tr>
+<td><strong>部署</strong></td>
+<td>交付完整软件或某个增量，由用户评估并给出反馈。</td>
+<td>先交付试用版本，收集学生和教务老师的反馈。</td>
+</tr>
+</tbody></table>
+<h3 id="八项典型普适性活动（第-38–39-页）"><a href="#八项典型普适性活动（第-38–39-页）" class="headerlink" title="八项典型普适性活动（第 38–39 页）"></a>八项典型普适性活动（第 38–39 页）</h3><p><strong>普适性活动</strong>贯穿项目，补充框架活动，帮助团队管理进度、质量、变更和风险。</p>
+<table>
+<thead>
+<tr>
+<th>活动</th>
+<th>主要作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>软件项目跟踪和控制</strong></td>
+<td>对照计划检查进度，出现偏差时采取纠正措施。</td>
+</tr>
+<tr>
+<td><strong>风险管理</strong></td>
+<td>评估可能影响项目成果或产品质量的风险。</td>
+</tr>
+<tr>
+<td><strong>软件质量保证</strong></td>
+<td>规定并开展质量保证活动，例如检查开发过程和工作产品是否符合质量标准。</td>
+</tr>
+<tr>
+<td><strong>技术评审</strong></td>
+<td>评估需求、设计、代码等工作产品，尽早发现错误，减少向后续活动传播。</td>
+</tr>
+<tr>
+<td><strong>测量</strong></td>
+<td>定义并收集过程、项目和产品的度量，帮助判断是否满足利益相关者要求。</td>
+</tr>
+<tr>
+<td><strong>软件配置管理</strong></td>
+<td>在整个软件过程中控制和追踪变更，例如记录配置项的修改内容和版本。</td>
+</tr>
+<tr>
+<td><strong>可复用管理</strong></td>
+<td>制定工作产品和构件的复用标准，建立复用机制。</td>
+</tr>
+<tr>
+<td><strong>工作产品的准备和生产</strong></td>
+<td>准备和生成模型、文档、日志、表格和列表等。</td>
+</tr>
+</tbody></table>
+<p>辨析时看活动的<strong>目的</strong>。制定进度计划属于策划，对照原定进度检查偏差属于项目跟踪和控制。编码后运行测试以发现实现错误属于构建，审查设计稿并尽早找出错误属于技术评审。</p>
+<h3 id="过程的适应性调整（第-40-页）"><a href="#过程的适应性调整（第-40-页）" class="headerlink" title="过程的适应性调整（第 40 页）"></a>过程的适应性调整（第 40 页）</h3><p>根据问题、项目特点、开发团队和组织文化调整过程。可以调整活动与任务的先后和依赖、任务细化程度、工作产品要求、过程描述的严谨程度，以及质量保证和跟踪控制的做法。客户与利益相关者的参与程度、团队自主权、组织方式和角色分工也可以随项目调整。</p>
+<h2 id="1-4-软件工程实践（第-42–53-页）"><a href="#1-4-软件工程实践（第-42–53-页）" class="headerlink" title="1.4 软件工程实践（第 42–53 页）"></a>1.4 软件工程实践（第 42–53 页）</h2><h3 id="解决问题的四步（第-42–46-页）"><a href="#解决问题的四步（第-42–46-页）" class="headerlink" title="解决问题的四步（第 42–46 页）"></a>解决问题的四步（第 42–46 页）</h3><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>要做什么</th>
+<th>课件页码</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>理解问题</strong>（沟通和分析）</td>
+<td>找出利益相关者和未知项，搞清楚需要的数据、功能、特征和行为。必要时分解问题、建立分析模型。</td>
+<td>第 43 页</td>
+</tr>
+<tr>
+<td><strong>计划解决方案</strong>（建模和软件设计）</td>
+<td>寻找相似问题、可用模式和可复用的方案。分解子问题，用设计模型描述可实施的方案。</td>
+<td>第 44 页</td>
+</tr>
+<tr>
+<td><strong>实施计划</strong>（代码生成）</td>
+<td>依据设计实现，使源代码可追溯到设计模型。评审设计与代码，必要时论证算法或组成部分的正确性。</td>
+<td>第 45 页</td>
+</tr>
+<tr>
+<td><strong>检查结果的正确性</strong>（测试和质量保证）</td>
+<td>用合理的测试策略检查各组成部分及整体结果，依据所需数据、功能、特征和行为检查结果，并按利益相关者的需求进行确认。</td>
+<td>第 46 页</td>
+</tr>
+</tbody></table>
+<p>题干问「通用过程框架」，答第 1.3 节的五个活动。问「软件工程实践的精髓」，答本节的四个步骤。</p>
+<h3 id="David-Hooker-的七个一般原则（第-47–53-页）"><a href="#David-Hooker-的七个一般原则（第-47–53-页）" class="headerlink" title="David Hooker 的七个一般原则（第 47–53 页）"></a>David Hooker 的七个一般原则（第 47–53 页）</h3><table>
+<thead>
+<tr>
+<th>原则</th>
+<th>理解与作答关键词</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>存在价值</strong>（第 47 页）</td>
+<td>以系统能给用户带来的价值作为需求、功能、平台和过程决策的依据。</td>
+</tr>
+<tr>
+<td><strong>保持简洁</strong>（第 48 页）</td>
+<td>在满足必要功能的前提下采用易理解、易维护的设计。简洁通常需要反复推敲。</td>
+</tr>
+<tr>
+<td><strong>保持愿景</strong>（第 49 页）</td>
+<td>明确共同目标，保持体系结构和实现的一致性。</td>
+</tr>
+<tr>
+<td><strong>关注使用者</strong>（第 50 页）</td>
+<td>写需求时考虑用户，设计时考虑实现人员，写代码时考虑后续维护与扩展人员。</td>
+</tr>
+<tr>
+<td><strong>面向未来</strong>（第 51 页）</td>
+<td>考虑需求、技术和平台的变化，让系统能演化并延长使用寿命。</td>
+</tr>
+<tr>
+<td><strong>提前计划复用</strong>（第 52 页）</td>
+<td>在设计时规划可复用的代码与设计，并为复用投入必要的工作。</td>
+</tr>
+<tr>
+<td><strong>认真思考</strong>（第 53 页）</td>
+<td>行动前厘清问题和约束，充分考虑方案，从实践结果中总结经验。</td>
+</tr>
+</tbody></table>
+<h2 id="1-5-软件项目如何开始（第-55-页）"><a href="#1-5-软件项目如何开始（第-55-页）" class="headerlink" title="1.5 软件项目如何开始（第 55 页）"></a>1.5 软件项目如何开始（第 55 页）</h2><p>软件工程项目起于<strong>业务需求</strong>。常见动因是纠正现有应用的缺陷、调整遗留系统以适应新业务、扩展现有应用的功能和特性、开发新的产品、服务或系统。初期业务需求往往在谈话中非正式提出，后续通过沟通逐步明确。</p>
+<h2 id="补充-软件开发神话（第-57–62-页）"><a href="#补充-软件开发神话（第-57–62-页）" class="headerlink" title="补充 软件开发神话（第 57–62 页）"></a>补充 软件开发神话（第 57–62 页）</h2><p><strong>软件神话</strong>是关于软件或开发过程、容易被盲目相信的错误说法。简答时写清楚遵从该说法会带来什么问题，以及应该如何处理。</p>
+<table>
+<thead>
+<tr>
+<th>典型说法</th>
+<th>判断依据与正确做法</th>
+<th>课件页码</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>有一套标准和规程就能解决所有问题</td>
+<td>标准有适用范围，需结合项目特点选用，成效还取决于执行。</td>
+<td>第 58 页</td>
+</tr>
+<tr>
+<td>项目延期就加程序员</td>
+<td>新成员培训和协调会消耗已有团队的时间，沟通开销可能加剧延期。先检查延期原因和任务依赖。</td>
+<td>第 58 页</td>
+</tr>
+<tr>
+<td>外包后可以放手</td>
+<td>委托方仍需对开发过程、工作产品和交付质量进行监督。</td>
+<td>第 59 页</td>
+</tr>
+<tr>
+<td>大致了解目标就能动手编码</td>
+<td>需求是设计、编码和测试的基础。先与利益相关者确认关键需求。</td>
+<td>第 60 页</td>
+</tr>
+<tr>
+<td>软件很灵活，改需求很容易</td>
+<td>变更可能影响设计、代码、测试及工期成本。先评估影响，再管理变更。</td>
+<td>第 60 页</td>
+</tr>
+<tr>
+<td>程序交付就完成了</td>
+<td>交付后还有运行支持、维护与演化。课件以首次交付后发生 60%–80% 的工作量为例说明其重要性。</td>
+<td>第 61 页</td>
+</tr>
+<tr>
+<td>程序运行起来才能评价质量</td>
+<td>项目早期就可评审需求、设计等工作产品，也可以通过运行测试检查已实现的程序行为。</td>
+<td>第 61 页</td>
+</tr>
+<tr>
+<td>可执行程序是唯一成果</td>
+<td>可执行程序只是软件配置的一部分，交付时还需要必要文档。</td>
+<td>第 62 页</td>
+</tr>
+<tr>
+<td>软件工程只会增加无用文档</td>
+<td>文档有助于沟通、交付和维护。质量活动及有用的工作产品可以减少返工。</td>
+<td>第 62 页</td>
+</tr>
+</tbody></table>
+<h2 id="自测题"><a href="#自测题" class="headerlink" title="自测题"></a>自测题</h2><h3 id="作业一第-1–3-题"><a href="#作业一第-1–3-题" class="headerlink" title="作业一第 1–3 题"></a>作业一第 1–3 题</h3><ol>
+<li>什么是软件？</li>
+<li>什么是软件工程？</li>
+<li>什么是过程模型？有哪些框架活动？常见的软件过程普适性活动有哪些？</li>
+</ol>
+<h3 id="近年真题"><a href="#近年真题" class="headerlink" title="近年真题"></a>近年真题</h3><h4 id="真题-1（2023-年-6-月卷，选择题第-1-题，2-分）"><a href="#真题-1（2023-年-6-月卷，选择题第-1-题，2-分）" class="headerlink" title="真题 1（2023 年 6 月卷，选择题第 1 题，2 分）"></a>真题 1（2023 年 6 月卷，选择题第 1 题，2 分）</h4><p>引起软件退化的根本原因是（　）。</p>
+<ul>
+<li>A. 软件不断变更</li>
+<li>B. 软件的维护成本过高</li>
+<li>C. 随着时间推移，软件磨损</li>
+<li>D. 软件频繁使用，软件运行效率下降</li>
+</ul>
+<h4 id="真题-2（2024-年-12-月卷，选择题第-1-题，2-分）"><a href="#真题-2（2024-年-12-月卷，选择题第-1-题，2-分）" class="headerlink" title="真题 2（2024 年 12 月卷，选择题第 1 题，2 分）"></a>真题 2（2024 年 12 月卷，选择题第 1 题，2 分）</h4><p>软件是（　）。</p>
+<ul>
+<li>A. 处理对象和处理规则的描述</li>
+<li>B. 程序</li>
+<li>C. 程序及其文档</li>
+<li>D. 计算机系统</li>
+</ul>
+<h4 id="真题-3（2023-年-6-月卷和-2024-年-12-月卷均为选择题第-9-题，各-2-分）"><a href="#真题-3（2023-年-6-月卷和-2024-年-12-月卷均为选择题第-9-题，各-2-分）" class="headerlink" title="真题 3（2023 年 6 月卷和 2024 年 12 月卷均为选择题第 9 题，各 2 分）"></a>真题 3（2023 年 6 月卷和 2024 年 12 月卷均为选择题第 9 题，各 2 分）</h4><p>某企业的软件系统希望从 Windows 平台移植到 Linux 平台上，软件开发厂商为了满足企业的要求进行的维护属于（　）。</p>
+<ul>
+<li>A. 改正性维护</li>
+<li>B. 适应性维护</li>
+<li>C. 完善性维护</li>
+<li>D. 预防性维护</li>
+</ul>
+<h4 id="真题-4（2024-年-12-月卷，名词解释第-1-题，3-分）"><a href="#真题-4（2024-年-12-月卷，名词解释第-1-题，3-分）" class="headerlink" title="真题 4（2024 年 12 月卷，名词解释第 1 题，3 分）"></a>真题 4（2024 年 12 月卷，名词解释第 1 题，3 分）</h4><p>解释名词 <strong>SE</strong>。</p>
+<h4 id="真题-5（2024-年-12-月卷，名词解释第-5-题，3-分）"><a href="#真题-5（2024-年-12-月卷，名词解释第-5-题，3-分）" class="headerlink" title="真题 5（2024 年 12 月卷，名词解释第 5 题，3 分）"></a>真题 5（2024 年 12 月卷，名词解释第 5 题，3 分）</h4><p>解释名词 <strong>构件</strong>。</p>
+<hr>
+<h2 id="答案与解析"><a href="#答案与解析" class="headerlink" title="答案与解析"></a>答案与解析</h2><h3 id="作业一"><a href="#作业一" class="headerlink" title="作业一"></a>作业一</h3><h4 id="作业第-1-题"><a href="#作业第-1-题" class="headerlink" title="作业第 1 题"></a>作业第 1 题</h4><p><strong>答案与解析</strong>　软件是<strong>程序、文档和数据的集合</strong>。程序实现预期功能。文档说明软件如何开发、使用和维护。数据支撑程序正确处理信息，例如数据库和配置文件（课件第 8 页）。</p>
+<p><strong>考法、答题要点与易错点</strong>　定义题先列全三项，再各说明一种作用。使用手册属于文档，供程序读取的配置文件属于数据。</p>
+<p><strong>笔记位置</strong>　<a href="#%E8%BD%AF%E4%BB%B6%E7%9A%84%E7%BB%84%E6%88%90%E4%B8%8E%E5%8F%8C%E9%87%8D%E8%A7%92%E8%89%B2%E7%AC%AC-58-%E9%A1%B5">1.1 软件的组成与双重角色</a></p>
+<h4 id="作业第-2-题"><a href="#作业第-2-题" class="headerlink" title="作业第 2 题"></a>作业第 2 题</h4><p><strong>答案与解析</strong>　软件工程是将<strong>系统化、规范化、可量化</strong>的方法应用于软件的<strong>开发、运行和维护</strong>，以及对这些方法的研究（课件第 30 页）。例如，团队按规定流程评审需求，并统计缺陷数和修复用时来跟踪质量。</p>
+<p><strong>考法、答题要点与易错点</strong>　按三个方法特征、三个应用环节和一项研究内容作答。「可量化」「运行」和「对这些方法的研究」容易漏写。</p>
+<p><strong>笔记位置</strong>　<a href="#12-%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E7%9A%84%E5%AE%9A%E4%B9%89%E4%B8%8E%E5%B1%82%E6%AC%A1%E7%AC%AC-2932-%E9%A1%B5">1.2 软件工程的定义与层次</a></p>
+<h4 id="作业第-3-题"><a href="#作业第-3-题" class="headerlink" title="作业第 3 题"></a>作业第 3 题</h4><p><strong>答案与解析</strong>　过程模型是对软件过程的抽象描述，用来说明各活动如何组织、衔接和推进，例如瀑布模型（课件第 32、34–39 页）。</p>
+<p><strong>五个框架活动</strong></p>
+<ol>
+<li><strong>沟通</strong>　了解利益相关者的目标，收集需求。</li>
+<li><strong>策划</strong>　确定任务、风险、资源、工作产品和进度。</li>
+<li><strong>建模</strong>　分析需求并建立相应的软件设计模型。</li>
+<li><strong>构建</strong>　编写代码并测试，发现实现错误。</li>
+<li><strong>部署</strong>　交付软件或增量，请用户评估并收集反馈。</li>
+</ol>
+<p><strong>八项典型普适性活动</strong></p>
+<ol>
+<li><strong>软件项目跟踪和控制</strong>　对照计划检查进度并纠正偏差。</li>
+<li><strong>风险管理</strong>　评估可能影响项目成果或产品质量的风险。</li>
+<li><strong>软件质量保证</strong>　规定并执行质量保证活动。</li>
+<li><strong>技术评审</strong>　检查工作产品，尽早发现错误。</li>
+<li><strong>测量</strong>　定义并收集过程、项目与产品的度量。</li>
+<li><strong>软件配置管理</strong>　控制和追踪变更。</li>
+<li><strong>可复用管理</strong>　制定复用标准并建立复用机制。</li>
+<li><strong>工作产品的准备和生产</strong>　准备模型、文档、日志等工作产品。</li>
+</ol>
+<p><strong>考法、答题要点与易错点</strong>　按「过程模型定义、五个框架活动、八项普适性活动」分三段答，每项写出作用。构建包括编码和测试，部署包括交付、用户评估和反馈。技术评审和软件配置管理贯穿项目，属于普适性活动。</p>
+<p><strong>笔记位置</strong>　<a href="#13-%E8%BD%AF%E4%BB%B6%E8%BF%87%E7%A8%8B%E7%AC%AC-3440-%E9%A1%B5">1.3 软件过程</a> · <a href="#%E4%BA%94%E4%B8%AA%E9%80%9A%E7%94%A8%E6%A1%86%E6%9E%B6%E6%B4%BB%E5%8A%A8%E7%AC%AC-3637-%E9%A1%B5">五个通用框架活动</a> · <a href="#%E5%85%AB%E9%A1%B9%E5%85%B8%E5%9E%8B%E6%99%AE%E9%80%82%E6%80%A7%E6%B4%BB%E5%8A%A8%E7%AC%AC-3839-%E9%A1%B5">八项典型普适性活动</a></p>
+<h3 id="近年真题-1"><a href="#近年真题-1" class="headerlink" title="近年真题"></a>近年真题</h3><h4 id="真题-1"><a href="#真题-1" class="headerlink" title="真题 1"></a>真题 1</h4><p><strong>答案与解析</strong>　选 <strong>A. 软件不断变更</strong>。修复问题或增加功能时，变更可能引入新的缺陷。变更的影响累积后，可维护性可能下降，失效率曲线的低点可能逐步抬高（课件第 12–13 页）。</p>
+<p><strong>考法、答题要点与易错点</strong>　题目问的是退化的根本原因。维护成本高可能是退化造成的后果，物理磨损解释的是硬件失效曲线的后期上升。</p>
+<p><strong>笔记位置</strong>　<a href="#%E8%BD%AF%E4%BB%B6%E7%9A%84%E5%B7%A5%E7%A8%8B%E7%89%B9%E6%80%A7%E5%92%8C%E5%A4%B1%E6%95%88%E6%9B%B2%E7%BA%BF%E7%AC%AC-914-%E9%A1%B5">1.1 软件的工程特性和失效曲线</a></p>
+<h4 id="真题-2"><a href="#真题-2" class="headerlink" title="真题 2"></a>真题 2</h4><p><strong>答案与解析</strong>　选 <strong>C. 程序及其文档</strong>。程序实现功能，配套文档支持开发、使用和维护。在给出的选项中，C 同时涵盖两者。</p>
+<p><strong>考法、答题要点与易错点</strong>　选择题看给出的表述，名词解释或简答按课件第 8 页写全<strong>程序、文档、数据</strong>。</p>
+<p><strong>笔记位置</strong>　<a href="#%E8%BD%AF%E4%BB%B6%E7%9A%84%E7%BB%84%E6%88%90%E4%B8%8E%E5%8F%8C%E9%87%8D%E8%A7%92%E8%89%B2%E7%AC%AC-58-%E9%A1%B5">1.1 软件的组成与双重角色</a></p>
+<h4 id="真题-3"><a href="#真题-3" class="headerlink" title="真题 3"></a>真题 3</h4><p><strong>答案与解析</strong>　选 <strong>B. 适应性维护</strong>。从 Windows 移植到 Linux 是为了让软件在新的运行平台上继续工作，动因是计算环境变化（课件第 24 页）。</p>
+<p><strong>考法、答题要点与易错点</strong>　案例题先找维护目的。修正已有缺陷属于改正性维护，改善功能或性能属于完善性维护，降低将来出故障的风险属于预防性维护。题干中的平台迁移对应适应性维护。</p>
+<p><strong>笔记位置</strong>　<a href="#%E9%81%97%E7%95%99%E8%BD%AF%E4%BB%B6%E5%8F%8A%E5%85%B6%E6%BC%94%E5%8C%96%E7%AC%AC-2324-%E9%A1%B5">1.1 遗留软件及其演化</a></p>
+<h4 id="真题-4"><a href="#真题-4" class="headerlink" title="真题 4"></a>真题 4</h4><p><strong>答案与解析</strong>　SE 是 <strong>Software Engineering（软件工程）</strong>。它是将系统化、规范化、可量化的方法应用于软件的开发、运行和维护，并研究这些方法（课件第 30 页）。</p>
+<p><strong>考法、答题要点与易错点</strong>　缩写解释先写全称，再给出定义。应用范围包括运行和维护，定义最后还要写明对这些方法的研究。</p>
+<p><strong>笔记位置</strong>　<a href="#12-%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E7%9A%84%E5%AE%9A%E4%B9%89%E4%B8%8E%E5%B1%82%E6%AC%A1%E7%AC%AC-2932-%E9%A1%B5">1.2 软件工程的定义与层次</a></p>
+<h4 id="真题-5"><a href="#真题-5" class="headerlink" title="真题 5"></a>真题 5</h4><p><strong>答案与解析</strong>　构件是具有<strong>明确功能和接口</strong>、可以<strong>组合与复用</strong>的软件单元。例如，下拉菜单构件封装菜单数据及相应操作，并通过接口供其他软件调用（课件第 14、27 页）。</p>
+<p><strong>考法、答题要点与易错点</strong>　定义题写清它是什么、怎样与其他单元协作、能否复用。举例时也写出该构件提供的功能或接口。</p>
+<p><strong>笔记位置</strong>　<a href="#%E8%BD%AF%E4%BB%B6%E7%9A%84%E5%B7%A5%E7%A8%8B%E7%89%B9%E6%80%A7%E5%92%8C%E5%A4%B1%E6%95%88%E6%9B%B2%E7%BA%BF%E7%AC%AC-914-%E9%A1%B5">1.1 软件的工程特性和失效曲线</a> · <a href="#%E8%AF%BE%E4%BB%B6%E8%A1%A5%E5%85%85%E7%9A%84%E5%9B%9B%E7%A7%8D%E8%BD%AF%E4%BB%B6%E5%BD%A2%E6%80%81%E7%AC%AC-2527-%E9%A1%B5">课件补充的四种软件形态</a></p>
+<p>题目来源　<strong>作业一</strong> · <strong>2023-06-09 期末卷</strong> · <strong>2024-12-27 期末卷</strong></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC01%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E4%B8%8E%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/">https://kanosa0101.github.io/2026/11/18/%E7%AC%AC01%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E4%B8%8E%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/">软件工程</a><a class="post-meta__tags" href="/tags/%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0/">课程笔记</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/18/%E7%AC%AC02%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E8%BF%87%E7%A8%8B%E7%BB%93%E6%9E%84/" title="第 02 章 软件过程结构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">第 02 章 软件过程结构</div></div><div class="info-2"><div class="info-item-1">第 02 章 软件过程结构页码沿用 PPT 页脚。复习时练会区分四种过程流，比较各过程模型的交付物和适用条件，再做选型题。 第02章.ppt 2.1 通用过程模型（第 3–6 页）过程模型又称软件生存周期模型，描述软件过程中的活动如何组织和推进。各模型都支持通用框架活动，对活动的安排和侧重各有不同（第 20 页）。 通用过程框架给出五种基本活动，依次记为沟通、策划、建模、构建、部署（第 3 页）。图中的关系是过程框架 → 框架活动 → 软件工程动作 → 任务集。普适性活动覆盖各个框架活动。 过程流描述框架活动在时间上怎样排列、重复或重叠。    过程流 图形与运行特点 课件页码    线性过程流 沟通 → 策划 → 建模 → 构建 → 部署，沿一条主线依次推进。 第 4 页   迭代过程流 进入下一个活动前，重复当前或先前的一个或多个活动。画图时用回返箭头表示。 第 4 页   演化过程流 多个框架活动组成循环。每轮都加深对系统的理解，产生更完善的版本，图中在部署处标出增量交付。 第 5 页   并行过程流 一个或多个活动与其他活动同时进行，各活动在时间上可以重叠，仍要满足依赖。...</div></div></div></a><a class="pagination-related" href="/2026/10/26/cs336_lecture_18_19_notes/" title="Stanford CS336 (Spring 2026) Lectures 18 &amp; 19 深度课程笔记：Frontier Guest Lectures"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Stanford CS336 (Spring 2026) Lectures 18 & 19 深度课程笔记：Frontier Guest Lectures</div></div><div class="info-2"><div class="info-item-1">Stanford CS336 (Spring 2026) Lectures 18 &amp; 19 深度课程笔记：Frontier Guest Lectures 课程信息：Stanford CS336: Language Modeling from Scratch (Spring 2026)客座讲师：  Lecture 18 (2026-06-01)：Daniel Selsam（OpenAI 核心推理与能力研究员、Lean 4 定理证明器早期核心贡献者、斯坦福博士校友） Lecture 19 (2026-06-03)：Dan Fu &#x2F; Daniel Y. Fu（UCSD 计算机系助理教授、Sandy Research 负责人、Together AI 核函数与推理研究副总裁、斯坦福 Hazy Research 博士校友）本讲资源：Lecture 19 YouTube 视频 (Dan Fu) | Hazy Research Megakernels 博客 | ThunderKittens 论文 (arXiv:2410.20399) | Parcae 论文 (arXiv:260...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/18/%E7%AC%AC02%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E8%BF%87%E7%A8%8B%E7%BB%93%E6%9E%84/" title="第 02 章 软件过程结构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 02 章 软件过程结构</div></div><div class="info-2"><div class="info-item-1">第 02 章 软件过程结构页码沿用 PPT 页脚。复习时练会区分四种过程流，比较各过程模型的交付物和适用条件，再做选型题。 第02章.ppt 2.1 通用过程模型（第 3–6 页）过程模型又称软件生存周期模型，描述软件过程中的活动如何组织和推进。各模型都支持通用框架活动，对活动的安排和侧重各有不同（第 20 页）。 通用过程框架给出五种基本活动，依次记为沟通、策划、建模、构建、部署（第 3 页）。图中的关系是过程框架 → 框架活动 → 软件工程动作 → 任务集。普适性活动覆盖各个框架活动。 过程流描述框架活动在时间上怎样排列、重复或重叠。    过程流 图形与运行特点 课件页码    线性过程流 沟通 → 策划 → 建模 → 构建 → 部署，沿一条主线依次推进。 第 4 页   迭代过程流 进入下一个活动前，重复当前或先前的一个或多个活动。画图时用回返箭头表示。 第 4 页   演化过程流 多个框架活动组成循环。每轮都加深对系统的理解，产生更完善的版本，图中在部署处标出增量交付。 第 5 页   并行过程流 一个或多个活动与其他活动同时进行，各活动在时间上可以重叠，仍要满足依赖。...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC03%E7%AB%A0%20%E6%95%8F%E6%8D%B7%E4%B8%8E%E6%95%8F%E6%8D%B7%E8%BF%87%E7%A8%8B/" title="第 03 章 敏捷与敏捷过程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 03 章 敏捷与敏捷过程</div></div><div class="info-2"><div class="info-item-1">第 03 章 敏捷与敏捷过程页码沿用 PPT 页脚。复习时先掌握敏捷宣言、敏捷过程的三个假设、Scrum 的过程流和 XP 的四类活动。 第03章.ppt 3.1 什么是敏捷（第 2–10 页）敏捷开发是一种以人为核心、通过迭代和增量交付响应需求变化的软件开发方法。第 2 页指出，成员的技能和沟通方式有差异，僵化的流程容易遇到执行困难。面对需求、团队和技术的变化，敏捷团队通过合作缩短交付周期，让客户持续参与，并根据反馈调整计划（第 3、9–10 页）。 敏捷宣言（第 3 页） 个体与交互胜过过程与工具。 可用的软件胜过完备的文档。 客户协作胜过合同谈判。 响应变化胜过遵循计划。  两边的事项都有价值。遇到取舍时，左侧优先。例如，团队保留用于交付和维护的文档，把主要精力放在能运行、能让客户验证的软件上。 五项价值观（第 3–7 页）   价值观 在开发中怎样体现    沟通 让开发、业务人员和其他利益相关者及时交流，使大家对目标、需求和障碍有共同理解。   简单 选用能解决当前问题且容易交流和修改的设计与表达方式。   反馈 通过模型、测试和交付获得反馈，尽快纠正误解与错误。   ...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC05%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E7%9A%84%E4%BA%BA%E5%91%98%E6%96%B9%E9%9D%A2/" title="第 05 章 软件工程的人员方面"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 05 章 软件工程的人员方面</div></div><div class="info-2"><div class="info-item-1">第 05 章 软件工程的人员方面页码沿用 PPT 页脚。复习时重点掌握软件工程师的七种特质、五种团队毒性的成因与对策，以及四种团队组织模式的适用条件。 第05章.ppt 5.1 软件工程师的特质（第 3–4 页）课件用七种特质说明软件工程师怎样在设计、开发和协作中展现专业性。    特质 在工作中的表现    责任感（第 3 页） 对同事、利益相关者和管理者履行承诺，主动承担完成工作所需的责任。   对他人需求有敏锐的意识（第 3 页） 留意团队成员、利益相关者和管理者的需求，根据对方及所处的工作环境调整交流和做法。   坦诚（第 3 页） 发现有缺陷的设计时，诚实、有建设性地指出问题。   展现抗压能力（第 4 页） 面对需求变化、优先级调整和来自各方的压力，能处理问题并维持交付质量。   有高度的公平感（第 4 页） 公平看待他人的成果，与同事分享荣誉，避免利益冲突。   注重细节（第 4 页） 以性能、成本、质量等项目标准为依据，仔细考虑具体的技术决策。   务实（第 4 页） 根据实际场景调整软件工程方法和过程。   软件工程职业道德规范（作业补充）作业一第 6 题可以依...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC07-1%E7%AB%A0%20%E9%9C%80%E6%B1%82%E5%BB%BA%E6%A8%A1%EF%BC%88%E5%9F%BA%E4%BA%8E%E5%9C%BA%E6%99%AF%E7%9A%84%E6%96%B9%E6%B3%95%EF%BC%89/" title="第 07-1 章 需求建模（基于场景的方法）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 07-1 章 需求建模（基于场景的方法）</div></div><div class="info-2"><div class="info-item-1">第 07-1 章 需求建模（基于场景的方法）页码沿用本份 PPT 页脚。复习时重点掌握主场景与次场景的写法、用例图与活动图的用途，以及怎样用泳道标出责任。 第07-1章.ppt 7.1 需求分析（第 2–12 页）分析目标与经验原则（第 5–9 页）需求分析要确定系统需要提供哪些交互、处理哪些对象、完成哪些功能、表现出什么行为，以及要满足的接口和约束。需求模型有三个目标。  描述客户需要什么，并检查对需求的理解是否正确。 为软件设计奠定基础。 定义软件完成后可以确认的一组需求。  建模时保持在问题或业务域的抽象层，每个元素都要帮助读者理解信息、功能或行为。可以记录非功能约束，把具体基础结构及实现留到设计阶段。控制类和功能之间的互联程度，保留对业务人员确认需求、设计人员开展设计、测试人员编制验收测试都有用的内容。能用清楚的列表说明时，采用简洁的表达即可。 域分析（第 10 页）域分析从同一应用领域中发现或建立可复用的分析类和分析模式。域分析师以技术资料、已有应用、客户调查、专家建议与当前或未来需求为输入，整理出类的分类、复用标准、功能模型和领域术语。  课件第 10 页　域分析的输...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC06%E7%AB%A0%20%E7%90%86%E8%A7%A3%E9%9C%80%E6%B1%82/" title="第 06 章 理解需求"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 06 章 理解需求</div></div><div class="info-2"><div class="info-item-1">第 06 章 理解需求页码沿用 PPT 页脚。复习时重点掌握需求工程的七项活动、SRS 的内容、用例的写法及需求确认的方法。 第06章.ppt 6.1 需求工程（第 5–24 页）客户说出的要求可能和实际需要有差距，已明确的需求还会随项目变化。理解偏差发现得越晚，越可能牵涉设计、实现、测试与交付安排。课件用 1994 年的项目调查说明需求不完整、用户参与不足和需求变更带来的风险（第 2–7 页）。 软件需求及分类（第 8–9 页）软件需求是对期望的软件行为的表达。    类型 写什么 例子    功能需求 系统应提供的功能与服务、对输入的响应、在特定条件下的行为、禁止发生的行为，以及处理的数据。 用户可将商品放入购物车。库存不足时，系统提示用户修改数量。   非功能需求中的产品需求 产品行为应达到的质量水平，如性能、可靠性和可用性。 在约定负载下，95% 的商品搜索请求在 2 秒内返回。   非功能需求中的机构需求 客户或开发机构的政策和规定，包括过程标准、实现要求、交付要求。 交付时应提供机构规定的部署与运维文档。   非功能需求中的外部需求 系统外部因素带来的约束，如互操作要...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC07-3%E7%AB%A0%20%E9%9C%80%E6%B1%82%E5%BB%BA%E6%A8%A1%EF%BC%88%E8%A1%8C%E4%B8%BA%E5%92%8C%E6%A8%A1%E5%BC%8F%EF%BC%89/" title="第 07-3 章 需求建模（行为和模式）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 07-3 章 需求建模（行为和模式）</div></div><div class="info-2"><div class="info-item-1">第 07-3 章 需求建模（行为和模式）页码沿用本份 PPT 页脚。复习时先会画并核对分层 DFD，再练习从同一个用例提取事件、状态和对象消息。 第07-3章.ppt 补充 面向流程建模（第 4–19 页）需求建模可按问题选用多种视角。业务场景说明怎样使用系统，数据流说明信息如何变换，行为模型说明系统怎样响应事件，模式用来复用已有的领域知识。 数据流图（第 5–8 页）面向流程建模描述数据对象在系统中的变换过程。数据流图（Data Flow Diagram，DFD）按照输入 → 加工 → 输出表达系统的逻辑功能，说明数据从哪里来、经过哪些处理、存到哪里或流向谁。    记号 意义 命名与读法    矩形 外部实体，数据的源点或终点。 例如储户、外部设备或其他系统。   圆形或泡泡 加工（处理），把输入数据转换为输出。 用动宾短语，例如「校验请求」「抽取试题」。   带箭头的线 数据流。 用名词短语标明传递的内容，箭头朝数据的去向。   双线或一端开口的框 数据存储。 例如账卡、试题库、试卷等可读写的数据。    课件第 6 页　DFD 的四种记号 课件用取款案例说明读图方法。储户...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">38</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">16</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC-01-%E7%AB%A0-%E8%BD%AF%E4%BB%B6%E4%B8%8E%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B"><span class="toc-number">1.</span> <span class="toc-text">第 01 章 软件与软件工程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-%E8%BD%AF%E4%BB%B6%E7%9A%84%E6%9C%AC%E8%B4%A8"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 软件的本质</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E7%9A%84%E7%BB%84%E6%88%90%E4%B8%8E%E5%8F%8C%E9%87%8D%E8%A7%92%E8%89%B2%EF%BC%88%E7%AC%AC-5%E2%80%938-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.1.</span> <span class="toc-text">软件的组成与双重角色（第 5–8 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E7%9A%84%E5%B7%A5%E7%A8%8B%E7%89%B9%E6%80%A7%E5%92%8C%E5%A4%B1%E6%95%88%E6%9B%B2%E7%BA%BF%EF%BC%88%E7%AC%AC-9%E2%80%9314-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.2.</span> <span class="toc-text">软件的工程特性和失效曲线（第 9–14 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E5%BA%94%E7%94%A8%E9%A2%86%E5%9F%9F%EF%BC%88%E7%AC%AC-15%E2%80%9322-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.3.</span> <span class="toc-text">软件应用领域（第 15–22 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%81%97%E7%95%99%E8%BD%AF%E4%BB%B6%E5%8F%8A%E5%85%B6%E6%BC%94%E5%8C%96%EF%BC%88%E7%AC%AC-23%E2%80%9324-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.4.</span> <span class="toc-text">遗留软件及其演化（第 23–24 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BE%E4%BB%B6%E8%A1%A5%E5%85%85%E7%9A%84%E5%9B%9B%E7%A7%8D%E8%BD%AF%E4%BB%B6%E5%BD%A2%E6%80%81%EF%BC%88%E7%AC%AC-25%E2%80%9327-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.5.</span> <span class="toc-text">课件补充的四种软件形态（第 25–27 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E7%9A%84%E5%AE%9A%E4%B9%89%E4%B8%8E%E5%B1%82%E6%AC%A1%EF%BC%88%E7%AC%AC-29%E2%80%9332-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 软件工程的定义与层次（第 29–32 页）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-%E8%BD%AF%E4%BB%B6%E8%BF%87%E7%A8%8B%EF%BC%88%E7%AC%AC-34%E2%80%9340-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">1.3 软件过程（第 34–40 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%87%E7%A8%8B%E6%A1%86%E6%9E%B6%E7%9A%84%E7%B2%92%E5%BA%A6%EF%BC%88%E7%AC%AC-35-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">过程框架的粒度（第 35 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%94%E4%B8%AA%E9%80%9A%E7%94%A8%E6%A1%86%E6%9E%B6%E6%B4%BB%E5%8A%A8%EF%BC%88%E7%AC%AC-36%E2%80%9337-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">五个通用框架活动（第 36–37 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AB%E9%A1%B9%E5%85%B8%E5%9E%8B%E6%99%AE%E9%80%82%E6%80%A7%E6%B4%BB%E5%8A%A8%EF%BC%88%E7%AC%AC-38%E2%80%9339-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.3.</span> <span class="toc-text">八项典型普适性活动（第 38–39 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%87%E7%A8%8B%E7%9A%84%E9%80%82%E5%BA%94%E6%80%A7%E8%B0%83%E6%95%B4%EF%BC%88%E7%AC%AC-40-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.4.</span> <span class="toc-text">过程的适应性调整（第 40 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-4-%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E7%AC%AC-42%E2%80%9353-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">1.4 软件工程实践（第 42–53 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E9%97%AE%E9%A2%98%E7%9A%84%E5%9B%9B%E6%AD%A5%EF%BC%88%E7%AC%AC-42%E2%80%9346-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">解决问题的四步（第 42–46 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#David-Hooker-%E7%9A%84%E4%B8%83%E4%B8%AA%E4%B8%80%E8%88%AC%E5%8E%9F%E5%88%99%EF%BC%88%E7%AC%AC-47%E2%80%9353-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">David Hooker 的七个一般原则（第 47–53 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-5-%E8%BD%AF%E4%BB%B6%E9%A1%B9%E7%9B%AE%E5%A6%82%E4%BD%95%E5%BC%80%E5%A7%8B%EF%BC%88%E7%AC%AC-55-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">1.5 软件项目如何开始（第 55 页）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A1%A5%E5%85%85-%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%E7%A5%9E%E8%AF%9D%EF%BC%88%E7%AC%AC-57%E2%80%9362-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">补充 软件开发神话（第 57–62 页）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%87%AA%E6%B5%8B%E9%A2%98"><span class="toc-number">1.7.</span> <span class="toc-text">自测题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%9C%E4%B8%9A%E4%B8%80%E7%AC%AC-1%E2%80%933-%E9%A2%98"><span class="toc-number">1.7.1.</span> <span class="toc-text">作业一第 1–3 题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%91%E5%B9%B4%E7%9C%9F%E9%A2%98"><span class="toc-number">1.7.2.</span> <span class="toc-text">近年真题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-1%EF%BC%882023-%E5%B9%B4-6-%E6%9C%88%E5%8D%B7%EF%BC%8C%E9%80%89%E6%8B%A9%E9%A2%98%E7%AC%AC-1-%E9%A2%98%EF%BC%8C2-%E5%88%86%EF%BC%89"><span class="toc-number">1.7.2.1.</span> <span class="toc-text">真题 1（2023 年 6 月卷，选择题第 1 题，2 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-2%EF%BC%882024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%EF%BC%8C%E9%80%89%E6%8B%A9%E9%A2%98%E7%AC%AC-1-%E9%A2%98%EF%BC%8C2-%E5%88%86%EF%BC%89"><span class="toc-number">1.7.2.2.</span> <span class="toc-text">真题 2（2024 年 12 月卷，选择题第 1 题，2 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-3%EF%BC%882023-%E5%B9%B4-6-%E6%9C%88%E5%8D%B7%E5%92%8C-2024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%E5%9D%87%E4%B8%BA%E9%80%89%E6%8B%A9%E9%A2%98%E7%AC%AC-9-%E9%A2%98%EF%BC%8C%E5%90%84-2-%E5%88%86%EF%BC%89"><span class="toc-number">1.7.2.3.</span> <span class="toc-text">真题 3（2023 年 6 月卷和 2024 年 12 月卷均为选择题第 9 题，各 2 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-4%EF%BC%882024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%EF%BC%8C%E5%90%8D%E8%AF%8D%E8%A7%A3%E9%87%8A%E7%AC%AC-1-%E9%A2%98%EF%BC%8C3-%E5%88%86%EF%BC%89"><span class="toc-number">1.7.2.4.</span> <span class="toc-text">真题 4（2024 年 12 月卷，名词解释第 1 题，3 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-5%EF%BC%882024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%EF%BC%8C%E5%90%8D%E8%AF%8D%E8%A7%A3%E9%87%8A%E7%AC%AC-5-%E9%A2%98%EF%BC%8C3-%E5%88%86%EF%BC%89"><span class="toc-number">1.7.2.5.</span> <span class="toc-text">真题 5（2024 年 12 月卷，名词解释第 5 题，3 分）</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AD%94%E6%A1%88%E4%B8%8E%E8%A7%A3%E6%9E%90"><span class="toc-number">1.8.</span> <span class="toc-text">答案与解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%9C%E4%B8%9A%E4%B8%80"><span class="toc-number">1.8.1.</span> <span class="toc-text">作业一</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BD%9C%E4%B8%9A%E7%AC%AC-1-%E9%A2%98"><span class="toc-number">1.8.1.1.</span> <span class="toc-text">作业第 1 题</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BD%9C%E4%B8%9A%E7%AC%AC-2-%E9%A2%98"><span class="toc-number">1.8.1.2.</span> <span class="toc-text">作业第 2 题</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BD%9C%E4%B8%9A%E7%AC%AC-3-%E9%A2%98"><span class="toc-number">1.8.1.3.</span> <span class="toc-text">作业第 3 题</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%91%E5%B9%B4%E7%9C%9F%E9%A2%98-1"><span class="toc-number">1.8.2.</span> <span class="toc-text">近年真题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-1"><span class="toc-number">1.8.2.1.</span> <span class="toc-text">真题 1</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-2"><span class="toc-number">1.8.2.2.</span> <span class="toc-text">真题 2</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-3"><span class="toc-number">1.8.2.3.</span> <span class="toc-text">真题 3</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-4"><span class="toc-number">1.8.2.4.</span> <span class="toc-text">真题 4</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-5"><span class="toc-number">1.8.2.5.</span> <span class="toc-text">真题 5</span></a></li></ol></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC26%E7%AB%A0%20%E9%A3%8E%E9%99%A9%E7%AE%A1%E7%90%86/" title="第 26 章 风险管理">第 26 章 风险管理</a><time datetime="2026-11-18T02:19:00.000Z" title="发表于 2026-11-18 10:19:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC25%E7%AB%A0%20%E9%A1%B9%E7%9B%AE%E8%BF%9B%E5%BA%A6%E5%AE%89%E6%8E%92/" title="第 25 章 项目进度安排">第 25 章 项目进度安排</a><time datetime="2026-11-18T02:18:00.000Z" title="发表于 2026-11-18 10:18:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC24%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E9%A1%B9%E7%9B%AE%E4%BC%B0%E7%AE%97/" title="第 24 章 软件项目估算">第 24 章 软件项目估算</a><time datetime="2026-11-18T02:17:00.000Z" title="发表于 2026-11-18 10:17:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC20%E7%AB%A0%20%E8%BF%87%E7%A8%8B%E5%BA%A6%E9%87%8F%E5%92%8C%E9%A1%B9%E7%9B%AE%E5%BA%A6%E9%87%8F/" title="第 20 章 过程度量和项目度量">第 20 章 过程度量和项目度量</a><time datetime="2026-11-18T02:16:00.000Z" title="发表于 2026-11-18 10:16:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC19%E7%AB%A0%20%E9%A1%B9%E7%9B%AE%E7%AE%A1%E7%90%86%E6%A6%82%E5%BF%B5/" title="第 19 章 项目管理概念">第 19 章 项目管理概念</a><time datetime="2026-11-18T02:15:00.000Z" title="发表于 2026-11-18 10:15:00">2026-11-18</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script src="/js/hex-transition.js"></script><script src="/js/hex-wheel.js"></script><script src="/js/pointer.js"></script><script src="/js/island-effects.js?v=20261106_v8"></script><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>

@@ -1,0 +1,522 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>第 10 章 构件级设计 | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="页码沿用本份 PPT 页脚。第 09 章确定软件由哪些构件组成，本章继续说明每个构件提供什么接口、内部怎样处理、如何复用或替换。 第10章.ppt · 自测题">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第 10 章 构件级设计">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC10%E7%AB%A0%20%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="页码沿用本份 PPT 页脚。第 09 章确定软件由哪些构件组成，本章继续说明每个构件提供什么接口、内部怎样处理、如何复用或替换。 第10章.ppt · 自测题">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-11-18T02:11:00.000Z">
+<meta property="article:modified_time" content="2026-11-18T01:13:32.612Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="课程笔记">
+<meta property="article:tag" content="软件工程">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "第 10 章 构件级设计",
+  "url": "https://kanosa0101.github.io/2026/11/18/%E7%AC%AC10%E7%AB%A0%20%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-11-18T02:11:00.000Z",
+  "dateModified": "2026-11-18T01:13:32.612Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC10%E7%AB%A0%20%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '第 10 章 构件级设计',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css?v=20261106_v8"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">38</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">16</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">第 10 章 构件级设计</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">第 10 章 构件级设计</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-18T02:11:00.000Z" title="发表于 2026-11-18 10:11:00">2026-11-18</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-18T01:13:32.612Z" title="更新于 2026-11-18 09:13:32">2026-11-18</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/">软件工程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="第-10-章-构件级设计"><a href="#第-10-章-构件级设计" class="headerlink" title="第 10 章 构件级设计"></a>第 10 章 构件级设计</h1><p>页码沿用本份 PPT 页脚。第 09 章确定软件由哪些构件组成，本章继续说明每个构件提供什么接口、内部怎样处理、如何复用或替换。 <strong>第10章.ppt</strong> · <a href="#%E8%87%AA%E6%B5%8B%E9%A2%98">自测题</a></p>
+<h2 id="10-1-什么是构件（第-2、4–12-页）"><a href="#10-1-什么是构件（第-2、4–12-页）" class="headerlink" title="10.1 什么是构件（第 2、4–12 页）"></a>10.1 什么是构件（第 2、4–12 页）</h2><h3 id="构件与构件级设计（第-2、4–5-页）"><a href="#构件与构件级设计（第-2、4–5-页）" class="headerlink" title="构件与构件级设计（第 2、4–5 页）"></a>构件与构件级设计（第 2、4–5 页）</h3><p><strong>构件（Component）<strong>是系统中</strong>模块化、可部署、可替换</strong>的部件。它<strong>封装实现，暴露一组接口</strong>，通过接口与其他构件或边界外的系统、设备、人员协作。面向对象设计中，一个构件通常包含一组协作的类，也可以由一个类实现。</p>
+<p><strong>构件级设计</strong>在体系结构设计完成第一次迭代后开始。在程序结构和数据组织的基础上，明确构件的<strong>接口、局部数据结构和处理逻辑</strong>，使设计表示足以指导实现。</p>
+<h3 id="理解构件的三种观点（第-5–12-页）"><a href="#理解构件的三种观点（第-5–12-页）" class="headerlink" title="理解构件的三种观点（第 5–12 页）"></a>理解构件的三种观点（第 5–12 页）</h3><table>
+<thead>
+<tr>
+<th>观点</th>
+<th>对构件的理解与设计重点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>面向对象的观点</strong></td>
+<td>把构件看成一组协作的类。细化每个类的属性、操作和接口，明确数据结构及实现操作的算法。</td>
+</tr>
+<tr>
+<td><strong>传统观点</strong></td>
+<td>把构件看成程序的功能要素，也称模块。由处理逻辑、内部数据结构和可调用的接口组成。</td>
+</tr>
+<tr>
+<td><strong>过程相关的观点</strong></td>
+<td>在设计过程中识别并复用已有构件或设计模式，再补充系统所需的新构件。</td>
+</tr>
+</tbody></table>
+<p>传统构件有三种典型角色。<strong>控制构件</strong>在较高层协调其他构件的调用，<strong>问题域构件</strong>承担具体的用户功能，<strong>基础设施构件</strong>提供通信、数据管理等支撑能力。第 9 页的印刷系统以作业管理为上层控制，把计算成本、建立工作单和移交生产等任务分给下属模块。</p>
+<p>印刷系统的目标包括收集客户要求、定价、把任务交给生产设备。第 7 页先用分析类 <code>PrintJob</code> 表达印刷作业，再得到带 <code>computeJob</code> 与 <code>initiateJob</code> 接口的构件。细化后可以看出纸张重量、尺寸、颜色等属性，以及计算每页印刷成本、纸张成本和总成本等操作。</p>
+<p><img src="/images/posts/b614e3d946bcae10bf869d4add35df4f.png" alt="PrintJob 从分析类细化为带有 computeJob 与 initiateJob 接口的构件和设计类"></p>
+<p><em>课件第 7 页　从分析类和体系结构构件细化出设计类及接口</em></p>
+<p>按传统观点设计 <code>ComputePageCost</code> 时，要写清页数、份数、单双面、颜色和纸张尺寸等输入，以及每页印刷成本这一输出。内部先用页数乘份数得到作业量，再访问成本数据库，取得基础单价和因子，结合复杂度计算结果。课件案例中，作业量增加使每页成本降低，印刷复杂度增加使每页成本升高（第 10–11 页）。</p>
+<p><img src="/images/posts/a3d785916ae9dc6f0a009f84b540fa4a.png" alt="ComputePageCost 的数据接口、成本数据库访问、细化后的模块和计算过程"></p>
+<p><em>课件第 11 页　将每页印刷成本构件细化为接口、数据与处理逻辑</em></p>
+<h2 id="10-2-设计基于类的构件（第-14–45-页）"><a href="#10-2-设计基于类的构件（第-14–45-页）" class="headerlink" title="10.2 设计基于类的构件（第 14–45 页）"></a>10.2 设计基于类的构件（第 14–45 页）</h2><p>第 14 页给出四项基本设计原则。<strong>开闭原则</strong>关注怎样扩展，<strong>Liskov 替换原则</strong>关注子类遵守的行为契约，<strong>依赖倒置原则</strong>关注依赖指向，<strong>接口分离原则</strong>关注调用方需要使用的操作。</p>
+<h3 id="开闭原则（第-15–18-页）"><a href="#开闭原则（第-15–18-页）" class="headerlink" title="开闭原则（第 15–18 页）"></a>开闭原则（第 15–18 页）</h3><p>**开闭原则（Open-Closed Principle，OCP）**要求构件对扩展开放、对修改封闭。做法是用抽象规定稳定的行为，再用多态接入新实现。扩展时新增派生类或接口实现，原有构件可沿用同一调用方式。</p>
+<ul>
+<li><strong>传感器案例</strong>。让 <code>Detector</code> 通过 <code>Sensor</code> 接口读取、启用、禁用或测试传感器。门窗、烟雾、运动传感器分别实现接口，新增传感器依然可由 <code>Detector</code> 通过同一组操作使用。</li>
+<li><strong>画图案例</strong>。第 16–17 页的 <code>DrawAllShapes()</code> 按图形类型进行 <code>switch</code> 分派，新增图形会牵动这个分派函数。第 18 页把 <code>Draw()</code> 定义为 <code>Shape</code> 的抽象操作，由 <code>Circle</code>、<code>Square</code> 等派生类各自实现。<code>DrawAllShapes()</code> 只遍历图形并调用 <code>Draw()</code>，扩展图形由新增实现完成。</li>
+</ul>
+<p><img src="/images/posts/ebddb57652649dc8ca478fc694bac4fa.png" alt="Detector 依赖 Sensor 接口，不同传感器各自实现统一的读值、启用、禁用和测试操作"></p>
+<p><em>课件第 15 页　通过传感器接口接入不同类型的实现</em></p>
+<h3 id="Liskov-替换原则（第-19–23-页）"><a href="#Liskov-替换原则（第-19–23-页）" class="headerlink" title="Liskov 替换原则（第 19–23 页）"></a>Liskov 替换原则（第 19–23 页）</h3><p>**Liskov 替换原则（Liskov Substitution Principle，LSP，也称里氏替换原则）**要求在能够使用基类对象的地方，使用其子类对象也能维持调用方依赖的契约。</p>
+<ul>
+<li><strong>前置条件</strong>规定调用者在操作开始前应满足什么。子类应接受基类允许的所有输入和调用状态。</li>
+<li><strong>后置条件</strong>规定操作结束后应保证什么。子类应兑现基类承诺的结果与状态。</li>
+</ul>
+<p>例如基类规定「任意正整数页数都能计算报价，并返回非负金额」，子类就要接受 1 页、5 页等基类允许的请求，并保留有关返回值的保证。替换性使调用方可以通过基类契约使用派生对象，由运行时的实际对象决定执行哪个实现，也便于实施契约式编程。</p>
+<p>第 21–23 页的动物示例中，调用代码接收 <code>Animal</code>，却要先判断 <code>Cat</code> 或 <code>Dog</code>，再调用各自的发声方法。若发声是该调用场景的公共需求，可以让具有同一发声契约的类型实现统一操作，再由多态选择实现。判断替换性时，检查<strong>调用方使用的基类契约</strong>及子类对该契约的履行情况。</p>
+<h3 id="依赖倒置原则（第-24–27-页）"><a href="#依赖倒置原则（第-24–27-页）" class="headerlink" title="依赖倒置原则（第 24–27 页）"></a>依赖倒置原则（第 24–27 页）</h3><p><strong>依赖倒置原则（Dependency Inversion Principle，DIP）<strong>要求高层策略与低层实现都依赖</strong>抽象</strong>。抽象表达高层所需的服务契约，具体实现遵循这个契约。</p>
+<p>课件先让 <code>Copy()</code> 直接读取键盘和写打印机，随后通过 <code>Reader.Read()</code> 与 <code>Writer.Write()</code> 表示读写契约。键盘读取器实现 <code>Reader</code>，打印机写入器实现 <code>Writer</code>。因此，<code>Copy</code> 可以专注于「循环读入并写出」，也可以接入符合契约的文件读写实现。</p>
+<p><img src="/images/posts/352ebebf4c54da2190a3783eeb3fb6d3.png" alt="Copy 使用 Reader 和 Writer 抽象，Keyboard Reader 和 Printer Writer 提供具体实现"></p>
+<p><em>课件第 26 页　复制策略和设备实现共同依赖读写抽象</em></p>
+<h3 id="接口分离原则（第-28–29-页）"><a href="#接口分离原则（第-28–29-页）" class="headerlink" title="接口分离原则（第 28–29 页）"></a>接口分离原则（第 28–29 页）</h3><p><strong>接口分离原则（Interface Segregation Principle，ISP）<strong>要求针对主要的客户类型提供</strong>专用接口</strong>，接口只声明该客户需要使用的操作。第 29 页把一个含 A、B、C 服务的「肥接口」拆成三个专门接口。客户 A 只依赖服务接口 A，其余客户同理。同一个服务实现类可以实现多个专用接口。</p>
+<p><img src="/images/posts/70618fc8bff29551122942d42a90c3c2.png" alt="客户 A、B、C 从依赖同一个肥接口变为分别依赖自己的专用接口"></p>
+<p><em>课件第 29 页　按调用方的需要分解接口</em></p>
+<h3 id="构件级设计指导方针（第-30–31-页）"><a href="#构件级设计指导方针（第-30–31-页）" class="headerlink" title="构件级设计指导方针（第 30–31 页）"></a>构件级设计指导方针（第 30–31 页）</h3><ul>
+<li><strong>命名</strong>。构件和类采用完整、符合领域语言的名称，如 <code>Job management system</code>、<code>Detector</code>。属性和方法可用混合大小写。方法名体现动作和对象，如 <code>computePageCost()</code>，避免空泛命名和与类名重复。</li>
+<li><strong>接口</strong>。按课件绘图约定，用棒棒糖式记号表示接口，将接口放在构件框左侧，图中保留与本构件有关的接口。</li>
+<li><strong>依赖与继承</strong>。课件建议将依赖按从左到右布置，继承从下方派生类指向上方基类。通过接口表达构件间的依赖，使依赖对象与交换的服务清楚可见。</li>
+</ul>
+<h3 id="内聚性（第-32–37-页）"><a href="#内聚性（第-32–37-页）" class="headerlink" title="内聚性（第 32–37 页）"></a>内聚性（第 32–37 页）</h3><p><strong>内聚性（Cohesion）<strong>衡量构件内部各部分联系的紧密程度，体现它的</strong>专一性</strong>。高内聚的构件把相互密切相关的属性和操作封装在一起。</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>判断依据与例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>功能内聚</strong></td>
+<td>模块各部分共同完成一项明确功能，例如计算每页印刷成本。课件将它列为最好的内聚。</td>
+</tr>
+<tr>
+<td><strong>顺序内聚</strong></td>
+<td>前一步的输出是下一步的输入。第 33 页用「输入方程系数 → 求解 → 输出解」举例。</td>
+</tr>
+<tr>
+<td><strong>通信内聚</strong></td>
+<td>多个处理使用同一份数据，第 37 页以「所有成分引用共同数据」考查。</td>
+</tr>
+<tr>
+<td><strong>时间内聚</strong></td>
+<td>因多个任务必须在同一时间段执行而组织到一起，例如初始化字体和窗口、在结束时清理资源。</td>
+</tr>
+<tr>
+<td><strong>逻辑内聚</strong></td>
+<td>将同类操作组合在一起，每次由判定参数选择执行的操作，例如按参数选择读记录或写记录。</td>
+</tr>
+<tr>
+<td><strong>实用内聚（巧合内聚）</strong></td>
+<td>缺少统一职责的工具性处理或零散代码因为方便复用、节省空间等原因归在一起。</td>
+</tr>
+</tbody></table>
+<p>第 08 章还讲了<strong>过程内聚</strong>，其判据是按指定过程顺序执行。做题时用「前一处理的输出被下一处理采用」识别顺序内聚，用「处理共同的数据」识别通信内聚。 <strong>第 08 章的内聚类型</strong></p>
+<h3 id="耦合性（第-38–44-页）"><a href="#耦合性（第-38–44-页）" class="headerlink" title="耦合性（第 38–44 页）"></a>耦合性（第 38–44 页）</h3><p><strong>耦合性（Coupling）<strong>衡量构件之间联系的紧密程度。依赖越多或越深入，局部变化越容易传播。构件设计追求</strong>低耦合</strong>。第 39–43 页重点考查以下几类。</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>如何识别</th>
+<th>对设计的影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>内容耦合</strong></td>
+<td>直接访问另一模块的内部数据，或进入其内部处理流程。课件的多入口例子允许从不同位置进入同一处理过程。</td>
+<td>调用方依赖对方内部细节，这是强度最高的一类。</td>
+</tr>
+<tr>
+<td><strong>共用耦合（公共耦合）</strong></td>
+<td>一组模块共同访问全局数据结构、共享通信区等公共数据环境。</td>
+<td>修改共享数据容易产生连锁影响和副作用。</td>
+</tr>
+<tr>
+<td><strong>控制耦合</strong></td>
+<td>传递开关、标志或名字，用它指定被调用模块选择哪一项功能。</td>
+<td>被调用模块的分支变化可能要求调用方同时调整标志的含义。</td>
+</tr>
+<tr>
+<td><strong>标记耦合（特征耦合）</strong></td>
+<td>把数据结构或对象整体作为参数。典型情形是被调模块只使用其中一部分。</td>
+<td>调用接口依赖结构，引入额外数据和随结构变化的成本。</td>
+</tr>
+<tr>
+<td><strong>数据耦合</strong></td>
+<td>通过简单数据参数交换完成任务所必需的信息，例如传入页数和份数。</td>
+<td>调用关系较容易理解，课件推荐这种直接传值方式。</td>
+</tr>
+</tbody></table>
+<p>第 44 页另列举四种依赖来源。<strong>例程调用耦合</strong>来自操作间的调用，<strong>类型使用耦合</strong>来自使用其他构件定义的数据类型，<strong>包含或导入耦合</strong>来自引入包或内容，<strong>外部耦合</strong>来自与操作系统、数据库、通信等基础设施的协作。可以把外部依赖集中在少数构件，控制接口和变更范围。 <strong>第 08 章的耦合层次</strong></p>
+<h3 id="扇入与扇出（第-45-页）"><a href="#扇入与扇出（第-45-页）" class="headerlink" title="扇入与扇出（第 45 页）"></a>扇入与扇出（第 45 页）</h3><ul>
+<li><strong>扇出</strong>是一个模块直接控制的模块数。扇出过大时，该模块要协调过多直接下属，往往意味着控制逻辑复杂。</li>
+<li><strong>扇入</strong>是直接调用某模块的上级模块数。扇入大表示该模块被更多上级共享。</li>
+</ul>
+<p>例如 A 直接调用 B、C，B 和 C 都直接调用 D，则 A 的扇出为 2，D 的扇入为 2。只按直接调用计数。课件给出的经验参考是平均扇出约 3–4，上限约 5–9。设计较好的结构常表现为<strong>顶层扇出高、中层扇出少、底层扇入高</strong>。</p>
+<h2 id="10-3-实施构件级设计（第-47–57-页）"><a href="#10-3-实施构件级设计（第-47–57-页）" class="headerlink" title="10.3 实施构件级设计（第 47–57 页）"></a>10.3 实施构件级设计（第 47–57 页）</h2><h3 id="七个实施步骤（第-47–48、56–57-页）"><a href="#七个实施步骤（第-47–48、56–57-页）" class="headerlink" title="七个实施步骤（第 47–48、56–57 页）"></a>七个实施步骤（第 47–48、56–57 页）</h3><ol>
+<li><strong>标识问题域设计类</strong>。使用需求模型与体系结构模型，找到并细化业务类和体系结构构件。</li>
+<li><strong>标识基础设施设计类</strong>。补充分析模型中可能没有表达的 GUI、操作系统、对象管理和数据管理等构件。</li>
+<li><strong>细化需要自行实现的设计类</strong>。依次说明消息细节、确定接口、细化属性、详细描述各操作中的处理流。</li>
+<li><strong>说明持久数据源</strong>。明确数据库和文件的结构与组织，以及负责管理数据源的类。</li>
+<li><strong>细化行为表示</strong>。用状态图等表示影响构件或类的事件、对象状态及状态迁移。</li>
+<li><strong>细化部署图</strong>。补充运行硬件、操作系统环境、构件包的位置等实现信息。</li>
+<li><strong>评审并考虑候选方案</strong>。迭代检查完整性、一致性和精确性，必要时重构职责、数据或接口。</li>
+</ol>
+<h3 id="细化设计类的四项工作（第-48–55-页）"><a href="#细化设计类的四项工作（第-48–55-页）" class="headerlink" title="细化设计类的四项工作（第 48–55 页）"></a>细化设计类的四项工作（第 48–55 页）</h3><p><strong>说明消息细节</strong>。为参与协作的对象写清发送者、接收者、消息名称、参数及次序。第 49 页的 <code>ProductionJob</code> 先向 <code>WorkOrder</code> 发 <code>buildJob(WOnumber)</code>，再向 <code>JobQueue</code> 发 <code>submitJob(WOnumber)</code>。消息编号 1、2 表示本次协作的次序。</p>
+<p><img src="/images/posts/d83d6235d3ab0b0e881a566616c804bb.png" alt="ProductionJob 先向 WorkOrder 发送 buildJob 消息，再向 JobQueue 发送 submitJob 消息"></p>
+<p><em>课件第 49 页　印刷任务的协作对象、消息参数和消息次序</em></p>
+<p><strong>确定接口</strong>。接口说明一组<strong>对外可见的操作</strong>。画本章 UML 接口时，在 <code>«interface»</code> 框里列出需要暴露的操作，属性与内部结构写在相应的设计类中。第 51 页的 <code>initiateJob</code> 包括建立工作单、检查优先级和移交生产三个操作。第 52 页把建立工作单放到 <code>WorkOrder</code>，把检查优先级放到 <code>JobQueue</code>，让 <code>initiateJob</code> 集中在移交生产这项职责上。</p>
+<p><img src="/images/posts/269f22eedbd2c2cc45562cef0e06ed4f.png" alt="建立工作单和检查优先级迁入各自的类，initiateJob 对外保留移交生产的操作"></p>
+<p><em>课件第 52 页　按职责重构接口和类，提高接口内聚性</em></p>
+<p><strong>细化属性</strong>。确定属性名、数据类型、默认值和取值约束。例如 <code>numberOfSides: integer = 1 {1, 2 之一}</code> 表示单双面是整数属性，默认值为 1，值域是 1 和 2。复杂且在多个类中反复出现的属性可以提取为专门的类（第 53 页）。</p>
+<p><strong>细化操作中的处理流</strong>。先确定操作，再补齐参数、返回值及处理步骤，例如把 <code>computePaperCost()</code> 精化为 <code>computePaperCost(weight, size, color): numeric</code>。复杂算法可用活动图或伪代码表达。第 55 页先校验输入，按纸张重量查基础成本，再按尺寸和颜色调整，最后返回每页纸张成本。</p>
+<p><img src="/images/posts/04b06cc2b8cb8a9bf5c14ed8cc7f944d.png" alt="纸张成本操作先校验、查询基本价格，再按尺寸和颜色调整后返回"></p>
+<p><em>课件第 55 页　computePaperCost 操作的 UML 活动图</em></p>
+<h2 id="10-4-专用的构件级设计（第-59–70-页）"><a href="#10-4-专用的构件级设计（第-59–70-页）" class="headerlink" title="10.4 专用的构件级设计（第 59–70 页）"></a>10.4 专用的构件级设计（第 59–70 页）</h2><h3 id="设计传统构件（第-59–62-页）"><a href="#设计传统构件（第-59–62-页）" class="headerlink" title="设计传统构件（第 59–62 页）"></a>设计传统构件（第 59–62 页）</h3><p><strong>结构化构造</strong>用少量逻辑块表达处理过程，降低复杂性，提高可读性、可测试性和可维护性。流程图可以表示<strong>顺序、选择和重复</strong>。顺序结构按次序执行任务，选择结构用条件选择双分支或多分支，重复结构控制一组任务是否继续执行。读循环图时看判定节点的位置，先判型在执行循环体之前检查，后判型至少执行一次。</p>
+<p><img src="/images/posts/33c298d0a869ab422ddebf1311399f88.png" alt="结构化流程图显示顺序、双分支、多分支及先判和后判循环"></p>
+<p><em>课件第 60 页　传统构件的图形化设计表示</em></p>
+<p>**决策表（判定表）**把复杂的条件组合和对应动作放在同一张表上。每一列表示一条规则，一条规则可以对应多个动作。它便于检查条件覆盖，也可以作为表驱动算法的输入。课件给出四步（第 61–62 页）。</p>
+<ol>
+<li>列出过程或构件可能执行的所有<strong>动作</strong>。</li>
+<li>列出影响动作的所有<strong>条件</strong>。</li>
+<li>枚举可行的条件组合，剔除无法同时成立的组合。</li>
+<li>为每个组合指定一个或多个动作，形成规则。</li>
+</ol>
+<p>会员折扣表把三个互斥的会员等级和「有／无特别折扣」组合成六条规则。例如第 4 列为白银会员且有特别折扣，动作标记在 8% 折扣和额外优惠两行。</p>
+<p><img src="/images/posts/1128109a8a7e7597bfd3292d99301b35.png" alt="会员折扣决策表上部是会员等级与特别折扣条件，下部是各优惠动作"></p>
+<p><em>课件第 62 页　每一列是一条条件与动作的规则</em></p>
+<h3 id="基于构件的开发（第-64–70-页）"><a href="#基于构件的开发（第-64–70-页）" class="headerlink" title="基于构件的开发（第 64–70 页）"></a>基于构件的开发（第 64–70 页）</h3><p>**基于构件的软件工程（Component-Based Software Engineering，CBSE）**强调使用可复用的软件构件设计和构造系统。工程重点在于查找和评估候选构件、处理适配、组装集成，以及验证组合后能否满足系统目标。持续复用需要构件库、检索与文档、复用投入和相应激励（第 64–65 页）。</p>
+<p><strong>领域工程</strong>为特定应用领域识别、构造、分类并传播可复用构件，以便现有和未来的软件共享。三项主要活动是<strong>分析、构造、传播</strong>。领域分析依次界定领域、对提取的项分类、收集有代表性的应用样本、分析样本并定义分析类、为这些类建立需求模型（第 66 页）。</p>
+<h4 id="合格性检验与适应性修改（第-67–68-页）"><a href="#合格性检验与适应性修改（第-67–68-页）" class="headerlink" title="合格性检验与适应性修改（第 67–68 页）"></a>合格性检验与适应性修改（第 67–68 页）</h4><p><strong>构件合格性检验</strong>要确认候选构件实现所需功能、契合体系结构并满足性能、可靠性、可用性等质量需求。课件给出七项检查因素。</p>
+<ol>
+<li><strong>API</strong> 是否提供所需操作，参数、返回和用法是否匹配。</li>
+<li>所需的<strong>开发与集成工具</strong>。</li>
+<li><strong>运行时需求</strong>，如内存、外存、时间、速度和网络协议。</li>
+<li><strong>服务需求</strong>，如操作系统接口和其他构件提供的支持。</li>
+<li><strong>安全特征</strong>，如访问控制和身份验证机制。</li>
+<li><strong>嵌入式设计假定</strong>，如构件内采用的算法及其前提。</li>
+<li><strong>异常处理</strong>，如异常如何上报、处理或交给应用承担。</li>
+</ol>
+<p>有些候选构件通过合格性检验后仍需解决具体的集成冲突，可以采用<strong>构件包装</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>适应性修改方式</th>
+<th>可用条件</th>
+<th>怎样消除冲突</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>白盒包装</strong></td>
+<td>有权访问构件的内部设计和代码。</td>
+<td>检查内部处理，并在代码层调整冲突之处。</td>
+</tr>
+<tr>
+<td><strong>黑盒包装</strong></td>
+<td>通过构件库给出的扩展语言或 API 进行适配。</td>
+<td>在接口边界加入预处理和后处理，例如转换输入和输出格式。</td>
+</tr>
+</tbody></table>
+<h4 id="构件组合与可复用设计（第-69–70-页）"><a href="#构件组合与可复用设计（第-69–70-页）" class="headerlink" title="构件组合与可复用设计（第 69–70 页）"></a>构件组合与可复用设计（第 69–70 页）</h4><p><strong>构件组合</strong>把经过合格性检验、适应性修改的复用构件，以及自行开发的构件，装配进应用体系结构。基础设施把构件绑定到运行系统，提供协作模型及所需服务。课件列举了 OMG&#x2F;CORBA、COM／.NET 和 JavaBean 等构件技术。</p>
+<p>构成复用设计基础的关键是<strong>标准数据、标准接口协议、程序模板</strong>。标准数据统一领域内共用的文件或数据结构。标准接口协议覆盖模块内部接口的基本属性、外部技术接口和人机接口。程序模板把适合领域的体系结构风格作为新系统的设计起点。</p>
+<h2 id="自测题"><a href="#自测题" class="headerlink" title="自测题"></a>自测题</h2><h3 id="作业二第-3-题（构件级设计部分）"><a href="#作业二第-3-题（构件级设计部分）" class="headerlink" title="作业二第 3 题（构件级设计部分）"></a>作业二第 3 题（构件级设计部分）</h3><p>什么基于类的需求建模，谈谈你对 CRC、类图、ER 图和设计原则（组件级设计）的理解。</p>
+<p>本章练习题干中的「设计原则（组件级设计）」部分。</p>
+<h3 id="近年真题"><a href="#近年真题" class="headerlink" title="近年真题"></a>近年真题</h3><h4 id="真题-1（2023-年-6-月卷，名词解释第-2-题，2-分）"><a href="#真题-1（2023-年-6-月卷，名词解释第-2-题，2-分）" class="headerlink" title="真题 1（2023 年 6 月卷，名词解释第 2 题，2 分）"></a>真题 1（2023 年 6 月卷，名词解释第 2 题，2 分）</h4><p>Liskov 替换原则。</p>
+<h4 id="真题-2（2024-年-12-月卷，名词解释第-5-题，3-分）"><a href="#真题-2（2024-年-12-月卷，名词解释第-5-题，3-分）" class="headerlink" title="真题 2（2024 年 12 月卷，名词解释第 5 题，3 分）"></a>真题 2（2024 年 12 月卷，名词解释第 5 题，3 分）</h4><p>构件。</p>
+<h4 id="真题-3（2023-年-6-月卷选择题第-6-题、2024-年-12-月卷选择题第-5-题，各-2-分）"><a href="#真题-3（2023-年-6-月卷选择题第-6-题、2024-年-12-月卷选择题第-5-题，各-2-分）" class="headerlink" title="真题 3（2023 年 6 月卷选择题第 6 题、2024 年 12 月卷选择题第 5 题，各 2 分）"></a>真题 3（2023 年 6 月卷选择题第 6 题、2024 年 12 月卷选择题第 5 题，各 2 分）</h4><p>为了提高模块的独立性，模块最好是（　）。</p>
+<ul>
+<li>A. 逻辑内聚</li>
+<li>B. 通信内聚</li>
+<li>C. 功能内聚</li>
+<li>D. 层次内聚</li>
+</ul>
+<h4 id="真题-4（2023-年-6-月卷，选择题第-7-题，2-分）"><a href="#真题-4（2023-年-6-月卷，选择题第-7-题，2-分）" class="headerlink" title="真题 4（2023 年 6 月卷，选择题第 7 题，2 分）"></a>真题 4（2023 年 6 月卷，选择题第 7 题，2 分）</h4><p>当类 B 被声明为类 A 某一操作中的一个参数类型时，类 A 和类 B 间的耦合就属于（　）。</p>
+<ul>
+<li>A. 内容耦合</li>
+<li>B. 共用耦合</li>
+<li>C. 控制耦合</li>
+<li>D. 标记耦合</li>
+</ul>
+<h3 id="课件练习（第-37-页）"><a href="#课件练习（第-37-页）" class="headerlink" title="课件练习（第 37 页）"></a>课件练习（第 37 页）</h3><p>请指出以下内聚度类型。</p>
+<ol>
+<li>一组语句在程序的多处出现，为了节省内存空间把这些语句放在一个模块中，该模块的内聚度是 ______ 的。</li>
+<li>模块中所有成分引用共同的数据，该模块的内聚度是 ______ 的。</li>
+<li>模块内的某成分的输出是另一些成分的输入，该模块的内聚度是 ______ 的。</li>
+<li>模块中所有成分结合起来完成一项任务，该模块的内聚度是 ______ 的。</li>
+</ol>
+<h3 id="综合练习（自拟）"><a href="#综合练习（自拟）" class="headerlink" title="综合练习（自拟）"></a>综合练习（自拟）</h3><h4 id="练习-1-印刷系统的设计原则"><a href="#练习-1-印刷系统的设计原则" class="headerlink" title="练习 1　印刷系统的设计原则"></a>练习 1　印刷系统的设计原则</h4><p>指出每种设计最直接涉及的原则，并写出改法。</p>
+<ol>
+<li>每增设一种报价规则，都要修改报价总控的 <code>switch</code>。</li>
+<li>报价基类承诺为任意正整数页数计算报价并返回非负金额，某个子类只接受 10 页及以上的订单。</li>
+<li>印刷流程构件直接依赖某厂商的打印机驱动类。</li>
+<li>前台只需提交订单，却依赖同时声明提交订单、设备自检和更换耗材等操作的接口。</li>
+</ol>
+<h4 id="练习-2-报价构件的复用"><a href="#练习-2-报价构件的复用" class="headerlink" title="练习 2　报价构件的复用"></a>练习 2　报价构件的复用</h4><p>印刷系统拟复用第三方报价构件。本系统的报价接口以分传递金额，候选构件的 API 用元。团队能调用 API，并可在调用前后处理数据。该构件只提供二进制包。需要检查哪些条件来决定能否采用？应使用哪种包装，怎样让构件接入系统？</p>
+<hr>
+<h2 id="答案与解析"><a href="#答案与解析" class="headerlink" title="答案与解析"></a>答案与解析</h2><h3 id="作业二第-3-题"><a href="#作业二第-3-题" class="headerlink" title="作业二第 3 题"></a>作业二第 3 题</h3><p><strong>答案与解析</strong></p>
+<ol>
+<li><strong>开闭原则（OCP）</strong>。对扩展开放、对修改封闭。用抽象和多态为变动预留扩展点，新增业务通常通过新增实现接入。</li>
+<li><strong>Liskov 替换原则（LSP）</strong>。可以在使用基类的地方用子类替换。子类要遵守基类与使用方约定的前置条件和后置条件。</li>
+<li><strong>依赖倒置原则（DIP）</strong>。高层策略与低层实现共同依赖抽象，具体细节实现抽象所规定的契约。</li>
+<li><strong>接口分离原则（ISP）</strong>。按客户的需要设置专用接口，让每种客户依赖自己需要的操作。</li>
+</ol>
+<p><strong>考法、答题要点与易错点</strong>　先写四个名称与完整定义，再用一句话给出每项原则的落地做法。区分考查的是新增功能时改哪里、子类能否履行原契约、依赖指向哪一层，还是接口给哪个调用方使用。</p>
+<p><strong>复习位置</strong>　课件第 14–29 页。 <a href="#%E5%BC%80%E9%97%AD%E5%8E%9F%E5%88%99%E7%AC%AC-1518-%E9%A1%B5">开闭原则</a> · <a href="#liskov-%E6%9B%BF%E6%8D%A2%E5%8E%9F%E5%88%99%E7%AC%AC-1923-%E9%A1%B5">Liskov 替换原则</a> · <a href="#%E4%BE%9D%E8%B5%96%E5%80%92%E7%BD%AE%E5%8E%9F%E5%88%99%E7%AC%AC-2427-%E9%A1%B5">依赖倒置原则</a> · <a href="#%E6%8E%A5%E5%8F%A3%E5%88%86%E7%A6%BB%E5%8E%9F%E5%88%99%E7%AC%AC-2829-%E9%A1%B5">接口分离原则</a> · <strong>第 07-2 章同一作业的需求建模部分</strong></p>
+<h3 id="近年真题-1"><a href="#近年真题-1" class="headerlink" title="近年真题"></a>近年真题</h3><h4 id="真题-1"><a href="#真题-1" class="headerlink" title="真题 1"></a>真题 1</h4><p><strong>答案与解析</strong>　Liskov 替换原则是指在使用基类对象的地方，使用其子类对象仍能满足调用方依赖的行为契约。子类应接受基类的前置条件所允许的调用，并满足基类的后置条件所承诺的结果。</p>
+<p><strong>考法、答题要点与易错点</strong>　名词解释写清<strong>子类替换基类</strong>与<strong>遵守契约</strong>。案例题分别找调用前要满足的条件和调用后要保证的结果，据此检查子类能否接受原调用并给出原承诺的结果。</p>
+<p><strong>复习位置</strong>　课件第 19–23 页。 <a href="#liskov-%E6%9B%BF%E6%8D%A2%E5%8E%9F%E5%88%99%E7%AC%AC-1923-%E9%A1%B5">Liskov 替换原则</a></p>
+<h4 id="真题-2"><a href="#真题-2" class="headerlink" title="真题 2"></a>真题 2</h4><p><strong>答案与解析</strong>　构件是软件体系结构中<strong>模块化、可部署、可替换</strong>的部件。它<strong>封装内部实现并暴露一组接口</strong>，通过这些接口与其他构件或外部实体协作。</p>
+<p><strong>考法、答题要点与易错点</strong>　按「三项性质 → 封装实现 → 提供接口」作答。面向对象的题目还可说明一个构件通常由一组协作的类实现。</p>
+<p><strong>复习位置</strong>　课件第 4–7 页。 <a href="#%E6%9E%84%E4%BB%B6%E4%B8%8E%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1%E7%AC%AC-245-%E9%A1%B5">构件与构件级设计</a> · <a href="#%E7%90%86%E8%A7%A3%E6%9E%84%E4%BB%B6%E7%9A%84%E4%B8%89%E7%A7%8D%E8%A7%82%E7%82%B9%E7%AC%AC-512-%E9%A1%B5">理解构件的三种观点</a></p>
+<h4 id="真题-3"><a href="#真题-3" class="headerlink" title="真题 3"></a>真题 3</h4><p><strong>答案与解析</strong>　选 <strong>C. 功能内聚</strong>。功能内聚的模块把内部各部分集中到同一项功能，内聚度最高。</p>
+<p><strong>考法、答题要点与易错点</strong>　看到「同一数据」判通信内聚，看到「由参数在多项操作中选一个」判逻辑内聚，看到「所有部分共同完成一项明确功能」判功能内聚。若题干问模块独立性如何提高，答出<strong>高内聚、低耦合</strong>两个目标。</p>
+<p><strong>复习位置</strong>　课件第 32–38 页。 <a href="#%E5%86%85%E8%81%9A%E6%80%A7%E7%AC%AC-3237-%E9%A1%B5">内聚性</a> · <a href="#%E8%80%A6%E5%90%88%E6%80%A7%E7%AC%AC-3844-%E9%A1%B5">耦合性</a></p>
+<h4 id="真题-4"><a href="#真题-4" class="headerlink" title="真题 4"></a>真题 4</h4><p><strong>答案与解析</strong>　选 <strong>D. 标记耦合</strong>。题干以类 B 为操作的参数类型，提示类 A 的调用接口使用类 B 的对象。把复合数据作为参数传递时，只用其中少量字段是课件给出的典型标记耦合情形。</p>
+<p><strong>考法、答题要点与易错点</strong>　抓住「作参数」这条线索。通过公共数据环境联系是共用耦合，通过参数选择接收方的分支是控制耦合，直接访问接收方内部细节是内容耦合。题目只描述引用其他构件定义的数据类型时，还可按第 44 页的类型使用耦合识别。</p>
+<p><strong>复习位置</strong>　课件第 39–44 页，重点看第 42 页。 <a href="#%E8%80%A6%E5%90%88%E6%80%A7%E7%AC%AC-3844-%E9%A1%B5">耦合性</a></p>
+<h3 id="课件练习"><a href="#课件练习" class="headerlink" title="课件练习"></a>课件练习</h3><p><strong>答案与解析</strong></p>
+<ol>
+<li><strong>实用内聚（巧合内聚）</strong>。题干给出的组合依据是节省内存空间。</li>
+<li><strong>通信内聚</strong>。各处理引用共同的数据。</li>
+<li><strong>顺序内聚</strong>。一个处理的输出成为另一处理的输入。</li>
+<li><strong>功能内聚</strong>。所有部分协同完成一项任务。</li>
+</ol>
+<p><strong>考法、答题要点与易错点</strong>　判断时给类别和依据各一句。把「使用同一数据」与「数据由上一步产生并交给下一步」这两条线索记清。</p>
+<p><strong>复习位置</strong>　课件第 32–37 页。 <a href="#%E5%86%85%E8%81%9A%E6%80%A7%E7%AC%AC-3237-%E9%A1%B5">内聚性</a></p>
+<h3 id="综合练习"><a href="#综合练习" class="headerlink" title="综合练习"></a>综合练习</h3><h4 id="练习-1"><a href="#练习-1" class="headerlink" title="练习 1"></a>练习 1</h4><p><strong>答案与解析</strong></p>
+<ol>
+<li><strong>开闭原则</strong>。把报价计算抽象为统一接口。每种规则实现该接口，总控通过接口计算，新规则以新增实现的方式接入。</li>
+<li><strong>Liskov 替换原则</strong>。子类要求至少 10 页，拒绝了基类契约允许的 1 到 9 页。应让它也能处理这些调用并兑现返回非负金额的保证，或把仅适用于大批量订单的报价定义为具有单独契约的类型。</li>
+<li><strong>依赖倒置原则</strong>。先从印刷流程需要的操作提炼打印输出接口，流程依赖该接口，由厂商驱动的适配类实现接口。</li>
+<li><strong>接口分离原则</strong>。给前台单独提供提交订单的接口，把设备自检和耗材维护放到面向运维方的专用接口。</li>
+</ol>
+<p><strong>考法、答题要点与易错点</strong>　改造题先点名原则，再指出题干中决定判断的设计事实，最后给出具体职责或接口。LSP 小问要说出是哪一条调用契约受到影响。</p>
+<p><strong>复习位置</strong>　课件第 15–29 页。 <a href="#%E5%BC%80%E9%97%AD%E5%8E%9F%E5%88%99%E7%AC%AC-1518-%E9%A1%B5">开闭原则</a> · <a href="#liskov-%E6%9B%BF%E6%8D%A2%E5%8E%9F%E5%88%99%E7%AC%AC-1923-%E9%A1%B5">Liskov 替换原则</a> · <a href="#%E4%BE%9D%E8%B5%96%E5%80%92%E7%BD%AE%E5%8E%9F%E5%88%99%E7%AC%AC-2427-%E9%A1%B5">依赖倒置原则</a> · <a href="#%E6%8E%A5%E5%8F%A3%E5%88%86%E7%A6%BB%E5%8E%9F%E5%88%99%E7%AC%AC-2829-%E9%A1%B5">接口分离原则</a></p>
+<h4 id="练习-2"><a href="#练习-2" class="headerlink" title="练习 2"></a>练习 2</h4><p><strong>答案与解析</strong></p>
+<ol>
+<li><strong>合格性检验</strong>。核对报价功能与业务规则，确认 API 所需数据、部署环境和其他依赖能接入本系统，检查响应时间、故障处理和金额精度等质量要求。</li>
+<li><strong>黑盒包装</strong>。包装层对系统提供用分计价的接口，调用前将相关金额从分转换成元，再通过构件 API 取得结果。调用后按本系统的金额精度约定转换结果、处理异常。</li>
+<li><strong>构件组合</strong>。把包装层和报价构件配置到运行环境中，接入订单流程，验证正常报价、金额边界、异常响应及整体性能。</li>
+</ol>
+<p><strong>考法、答题要点与易错点</strong>　把「是否适合」「如何消除接口冲突」「怎样组装并验证」分别对应到合格性检验、适应性修改、构件组合。包装方式根据能否访问内部设计和代码、能通过哪些边界机制适配来判断。</p>
+<p><strong>复习位置</strong>　课件第 64、67–70 页。 <a href="#%E5%90%88%E6%A0%BC%E6%80%A7%E6%A3%80%E9%AA%8C%E4%B8%8E%E9%80%82%E5%BA%94%E6%80%A7%E4%BF%AE%E6%94%B9%E7%AC%AC-6768-%E9%A1%B5">合格性检验与适应性修改</a> · <a href="#%E6%9E%84%E4%BB%B6%E7%BB%84%E5%90%88%E4%B8%8E%E5%8F%AF%E5%A4%8D%E7%94%A8%E8%AE%BE%E8%AE%A1%E7%AC%AC-6970-%E9%A1%B5">构件组合与可复用设计</a></p>
+<p>题目来源　<strong>作业二</strong> · <strong>2023-06-09 期末卷</strong> · <strong>2024-12-27 期末卷</strong> · <strong>第10章.ppt 第 37 页</strong></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/11/18/%E7%AC%AC10%E7%AB%A0%20%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1/">https://kanosa0101.github.io/2026/11/18/%E7%AC%AC10%E7%AB%A0%20%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/">软件工程</a><a class="post-meta__tags" href="/tags/%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0/">课程笔记</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/18/%E7%AC%AC15%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95%EF%BC%88%E6%9E%84%E4%BB%B6%E7%BA%A7%EF%BC%89/" title="第 15 章 软件测试（构件级）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">第 15 章 软件测试（构件级）</div></div><div class="info-2"><div class="info-item-1">第 15 章 软件测试（构件级）页码沿用本份 PPT 页脚。先分清测试层次、驱动与桩，再练习画控制流图、计算环路复杂度、列独立路径和推导测试用例。 第15章.ppt · 自测题 15.1 软件测试的策略性方法（第 2–21 页）测试目标、策略与层次（第 2–7、13、17–19 页）软件测试的直接目的是发现错误。测试策略安排测试计划、测试用例设计、测试执行、结果收集与评估。好的策略让测试进度可度量，使缺陷尽早暴露，并按开发阶段、工程方法和测试目标选用相应技术。测试开始前可以通过技术评审排除明显问题。    层次 测试对象 主要依据或目的    单元测试 单个最小可测试单元 核对模块的接口、内部数据和处理逻辑是否符合详细设计。   集成测试 已组装的多个模块 核对软件设计所规定的接口、协作与体系结构。   确认测试 已集成的软件 根据软件需求，检查主要功能和行为能否满足用户需要。   系统测试 软件与硬件、网络等组成的整个系统 在系统环境中检查整体行为和质量要求。   课件用螺旋图说明范围的变化。开发从系统工程、需求和设计逐步进入编码，测试则从代码和构件层向外扩展。第 13 页还列...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC09%E7%AB%A0%20%E4%BD%93%E7%B3%BB%E7%BB%93%E6%9E%84%E8%AE%BE%E8%AE%A1/" title="第 09 章 体系结构设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">第 09 章 体系结构设计</div></div><div class="info-2"><div class="info-item-1">第 09 章 体系结构设计页码沿用本份 PPT 页脚。先看构件怎样组织、通过什么接口协作，再练习从数据流图划出处理边界，画出模块控制结构。 第09章.ppt · 自测题 9.1 软件体系结构（第 5–10 页）软件体系结构（Software Architecture，架构）是软件系统的一个或多个结构。每个结构描述构件、构件的外部可见属性及构件间的相互关系。例如，外部可见属性包括构件提供的服务和接口，关系可以表现为调用、信息传递或依赖。 体系结构帮助团队分析设计能否满足需求、在变更代价较低时比较候选方案、降低软件构造风险。一个规模较小、便于理解的架构模型还能支持利益相关者交流，明确影响后续开发的早期决策，并展示各构件怎样协作（第 5、7 页）。 课件用「类与对象」来解释架构和具体设计的关系。具体设计体现了架构的选择。同一个客户机—服务器架构可以用不同平台、构件和接口实现，例如课件中的 Java EE 与 .NET 方案（第 6 页）。 体系结构描述用不同的视图回答不同利益相关者的关注点。例如，开发人员关心子系统职责和接口，部署人员关心软件元素如何分布在运行节点上。选用什么视图取决于...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/18/%E7%AC%AC01%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E4%B8%8E%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/" title="第 01 章 软件与软件工程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 01 章 软件与软件工程</div></div><div class="info-2"><div class="info-item-1">第 01 章 软件与软件工程页码沿用 PPT 页脚。复习时先掌握软件的组成和退化原因（第 8–14 页）、软件工程定义与层次（第 30–32 页）、过程框架与普适性活动（第 34–40 页）。 第01章.ppt 1.1 软件的本质软件的组成与双重角色（第 5–8 页）软件是程序、文档和数据的集合。    组成 含义 选课系统示例    程序 实现所需功能并达到相应性能要求的指令或代码 检查选课条件、提交选课结果的代码   文档 开发、使用和维护程序所需的图文资料 需求规格说明书、使用手册、维护说明   数据 支撑程序正确处理信息的数据结构及相关数据 课程数据库、系统配置文件    作为产品，软件产生、管理、查询、修改、显示或传递信息，例如选课系统处理学生的选课信息。 作为生产产品的载体，软件为计算机控制、信息通信和应用开发提供基础，例如操作系统、网络软件和开发工具。  现代软件开发由多个专业角色协作完成，仍要处理开发周期长、成本高、交付前难以发现全部缺陷、维护耗时以及过程难以度量等问题（第 6 页）。 软件的工程特性和失效曲线（第 9–14 页） 软件靠设计和开发形成（第 9 页...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC02%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E8%BF%87%E7%A8%8B%E7%BB%93%E6%9E%84/" title="第 02 章 软件过程结构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 02 章 软件过程结构</div></div><div class="info-2"><div class="info-item-1">第 02 章 软件过程结构页码沿用 PPT 页脚。复习时练会区分四种过程流，比较各过程模型的交付物和适用条件，再做选型题。 第02章.ppt 2.1 通用过程模型（第 3–6 页）过程模型又称软件生存周期模型，描述软件过程中的活动如何组织和推进。各模型都支持通用框架活动，对活动的安排和侧重各有不同（第 20 页）。 通用过程框架给出五种基本活动，依次记为沟通、策划、建模、构建、部署（第 3 页）。图中的关系是过程框架 → 框架活动 → 软件工程动作 → 任务集。普适性活动覆盖各个框架活动。 过程流描述框架活动在时间上怎样排列、重复或重叠。    过程流 图形与运行特点 课件页码    线性过程流 沟通 → 策划 → 建模 → 构建 → 部署，沿一条主线依次推进。 第 4 页   迭代过程流 进入下一个活动前，重复当前或先前的一个或多个活动。画图时用回返箭头表示。 第 4 页   演化过程流 多个框架活动组成循环。每轮都加深对系统的理解，产生更完善的版本，图中在部署处标出增量交付。 第 5 页   并行过程流 一个或多个活动与其他活动同时进行，各活动在时间上可以重叠，仍要满足依赖。...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC03%E7%AB%A0%20%E6%95%8F%E6%8D%B7%E4%B8%8E%E6%95%8F%E6%8D%B7%E8%BF%87%E7%A8%8B/" title="第 03 章 敏捷与敏捷过程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 03 章 敏捷与敏捷过程</div></div><div class="info-2"><div class="info-item-1">第 03 章 敏捷与敏捷过程页码沿用 PPT 页脚。复习时先掌握敏捷宣言、敏捷过程的三个假设、Scrum 的过程流和 XP 的四类活动。 第03章.ppt 3.1 什么是敏捷（第 2–10 页）敏捷开发是一种以人为核心、通过迭代和增量交付响应需求变化的软件开发方法。第 2 页指出，成员的技能和沟通方式有差异，僵化的流程容易遇到执行困难。面对需求、团队和技术的变化，敏捷团队通过合作缩短交付周期，让客户持续参与，并根据反馈调整计划（第 3、9–10 页）。 敏捷宣言（第 3 页） 个体与交互胜过过程与工具。 可用的软件胜过完备的文档。 客户协作胜过合同谈判。 响应变化胜过遵循计划。  两边的事项都有价值。遇到取舍时，左侧优先。例如，团队保留用于交付和维护的文档，把主要精力放在能运行、能让客户验证的软件上。 五项价值观（第 3–7 页）   价值观 在开发中怎样体现    沟通 让开发、业务人员和其他利益相关者及时交流，使大家对目标、需求和障碍有共同理解。   简单 选用能解决当前问题且容易交流和修改的设计与表达方式。   反馈 通过模型、测试和交付获得反馈，尽快纠正误解与错误。   ...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC05%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E7%9A%84%E4%BA%BA%E5%91%98%E6%96%B9%E9%9D%A2/" title="第 05 章 软件工程的人员方面"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 05 章 软件工程的人员方面</div></div><div class="info-2"><div class="info-item-1">第 05 章 软件工程的人员方面页码沿用 PPT 页脚。复习时重点掌握软件工程师的七种特质、五种团队毒性的成因与对策，以及四种团队组织模式的适用条件。 第05章.ppt 5.1 软件工程师的特质（第 3–4 页）课件用七种特质说明软件工程师怎样在设计、开发和协作中展现专业性。    特质 在工作中的表现    责任感（第 3 页） 对同事、利益相关者和管理者履行承诺，主动承担完成工作所需的责任。   对他人需求有敏锐的意识（第 3 页） 留意团队成员、利益相关者和管理者的需求，根据对方及所处的工作环境调整交流和做法。   坦诚（第 3 页） 发现有缺陷的设计时，诚实、有建设性地指出问题。   展现抗压能力（第 4 页） 面对需求变化、优先级调整和来自各方的压力，能处理问题并维持交付质量。   有高度的公平感（第 4 页） 公平看待他人的成果，与同事分享荣誉，避免利益冲突。   注重细节（第 4 页） 以性能、成本、质量等项目标准为依据，仔细考虑具体的技术决策。   务实（第 4 页） 根据实际场景调整软件工程方法和过程。   软件工程职业道德规范（作业补充）作业一第 6 题可以依...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC07-1%E7%AB%A0%20%E9%9C%80%E6%B1%82%E5%BB%BA%E6%A8%A1%EF%BC%88%E5%9F%BA%E4%BA%8E%E5%9C%BA%E6%99%AF%E7%9A%84%E6%96%B9%E6%B3%95%EF%BC%89/" title="第 07-1 章 需求建模（基于场景的方法）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 07-1 章 需求建模（基于场景的方法）</div></div><div class="info-2"><div class="info-item-1">第 07-1 章 需求建模（基于场景的方法）页码沿用本份 PPT 页脚。复习时重点掌握主场景与次场景的写法、用例图与活动图的用途，以及怎样用泳道标出责任。 第07-1章.ppt 7.1 需求分析（第 2–12 页）分析目标与经验原则（第 5–9 页）需求分析要确定系统需要提供哪些交互、处理哪些对象、完成哪些功能、表现出什么行为，以及要满足的接口和约束。需求模型有三个目标。  描述客户需要什么，并检查对需求的理解是否正确。 为软件设计奠定基础。 定义软件完成后可以确认的一组需求。  建模时保持在问题或业务域的抽象层，每个元素都要帮助读者理解信息、功能或行为。可以记录非功能约束，把具体基础结构及实现留到设计阶段。控制类和功能之间的互联程度，保留对业务人员确认需求、设计人员开展设计、测试人员编制验收测试都有用的内容。能用清楚的列表说明时，采用简洁的表达即可。 域分析（第 10 页）域分析从同一应用领域中发现或建立可复用的分析类和分析模式。域分析师以技术资料、已有应用、客户调查、专家建议与当前或未来需求为输入，整理出类的分类、复用标准、功能模型和领域术语。  课件第 10 页　域分析的输...</div></div></div></a><a class="pagination-related" href="/2026/11/18/%E7%AC%AC06%E7%AB%A0%20%E7%90%86%E8%A7%A3%E9%9C%80%E6%B1%82/" title="第 06 章 理解需求"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-18</div><div class="info-item-2">第 06 章 理解需求</div></div><div class="info-2"><div class="info-item-1">第 06 章 理解需求页码沿用 PPT 页脚。复习时重点掌握需求工程的七项活动、SRS 的内容、用例的写法及需求确认的方法。 第06章.ppt 6.1 需求工程（第 5–24 页）客户说出的要求可能和实际需要有差距，已明确的需求还会随项目变化。理解偏差发现得越晚，越可能牵涉设计、实现、测试与交付安排。课件用 1994 年的项目调查说明需求不完整、用户参与不足和需求变更带来的风险（第 2–7 页）。 软件需求及分类（第 8–9 页）软件需求是对期望的软件行为的表达。    类型 写什么 例子    功能需求 系统应提供的功能与服务、对输入的响应、在特定条件下的行为、禁止发生的行为，以及处理的数据。 用户可将商品放入购物车。库存不足时，系统提示用户修改数量。   非功能需求中的产品需求 产品行为应达到的质量水平，如性能、可靠性和可用性。 在约定负载下，95% 的商品搜索请求在 2 秒内返回。   非功能需求中的机构需求 客户或开发机构的政策和规定，包括过程标准、实现要求、交付要求。 交付时应提供机构规定的部署与运维文档。   非功能需求中的外部需求 系统外部因素带来的约束，如互操作要...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">38</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">16</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC-10-%E7%AB%A0-%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.</span> <span class="toc-text">第 10 章 构件级设计</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#10-1-%E4%BB%80%E4%B9%88%E6%98%AF%E6%9E%84%E4%BB%B6%EF%BC%88%E7%AC%AC-2%E3%80%814%E2%80%9312-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">10.1 什么是构件（第 2、4–12 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%84%E4%BB%B6%E4%B8%8E%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1%EF%BC%88%E7%AC%AC-2%E3%80%814%E2%80%935-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.1.</span> <span class="toc-text">构件与构件级设计（第 2、4–5 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%90%86%E8%A7%A3%E6%9E%84%E4%BB%B6%E7%9A%84%E4%B8%89%E7%A7%8D%E8%A7%82%E7%82%B9%EF%BC%88%E7%AC%AC-5%E2%80%9312-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.1.2.</span> <span class="toc-text">理解构件的三种观点（第 5–12 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-2-%E8%AE%BE%E8%AE%A1%E5%9F%BA%E4%BA%8E%E7%B1%BB%E7%9A%84%E6%9E%84%E4%BB%B6%EF%BC%88%E7%AC%AC-14%E2%80%9345-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">10.2 设计基于类的构件（第 14–45 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BC%80%E9%97%AD%E5%8E%9F%E5%88%99%EF%BC%88%E7%AC%AC-15%E2%80%9318-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">开闭原则（第 15–18 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Liskov-%E6%9B%BF%E6%8D%A2%E5%8E%9F%E5%88%99%EF%BC%88%E7%AC%AC-19%E2%80%9323-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.2.</span> <span class="toc-text">Liskov 替换原则（第 19–23 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BE%9D%E8%B5%96%E5%80%92%E7%BD%AE%E5%8E%9F%E5%88%99%EF%BC%88%E7%AC%AC-24%E2%80%9327-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.3.</span> <span class="toc-text">依赖倒置原则（第 24–27 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8E%A5%E5%8F%A3%E5%88%86%E7%A6%BB%E5%8E%9F%E5%88%99%EF%BC%88%E7%AC%AC-28%E2%80%9329-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.4.</span> <span class="toc-text">接口分离原则（第 28–29 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1%E6%8C%87%E5%AF%BC%E6%96%B9%E9%92%88%EF%BC%88%E7%AC%AC-30%E2%80%9331-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.5.</span> <span class="toc-text">构件级设计指导方针（第 30–31 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E8%81%9A%E6%80%A7%EF%BC%88%E7%AC%AC-32%E2%80%9337-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.6.</span> <span class="toc-text">内聚性（第 32–37 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%80%A6%E5%90%88%E6%80%A7%EF%BC%88%E7%AC%AC-38%E2%80%9344-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.7.</span> <span class="toc-text">耦合性（第 38–44 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%87%E5%85%A5%E4%B8%8E%E6%89%87%E5%87%BA%EF%BC%88%E7%AC%AC-45-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.2.8.</span> <span class="toc-text">扇入与扇出（第 45 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-3-%E5%AE%9E%E6%96%BD%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1%EF%BC%88%E7%AC%AC-47%E2%80%9357-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">10.3 实施构件级设计（第 47–57 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%83%E4%B8%AA%E5%AE%9E%E6%96%BD%E6%AD%A5%E9%AA%A4%EF%BC%88%E7%AC%AC-47%E2%80%9348%E3%80%8156%E2%80%9357-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">七个实施步骤（第 47–48、56–57 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%86%E5%8C%96%E8%AE%BE%E8%AE%A1%E7%B1%BB%E7%9A%84%E5%9B%9B%E9%A1%B9%E5%B7%A5%E4%BD%9C%EF%BC%88%E7%AC%AC-48%E2%80%9355-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">细化设计类的四项工作（第 48–55 页）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-4-%E4%B8%93%E7%94%A8%E7%9A%84%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1%EF%BC%88%E7%AC%AC-59%E2%80%9370-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">10.4 专用的构件级设计（第 59–70 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E8%AE%A1%E4%BC%A0%E7%BB%9F%E6%9E%84%E4%BB%B6%EF%BC%88%E7%AC%AC-59%E2%80%9362-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">设计传统构件（第 59–62 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E6%9E%84%E4%BB%B6%E7%9A%84%E5%BC%80%E5%8F%91%EF%BC%88%E7%AC%AC-64%E2%80%9370-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">基于构件的开发（第 64–70 页）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E6%80%A7%E6%A3%80%E9%AA%8C%E4%B8%8E%E9%80%82%E5%BA%94%E6%80%A7%E4%BF%AE%E6%94%B9%EF%BC%88%E7%AC%AC-67%E2%80%9368-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.2.1.</span> <span class="toc-text">合格性检验与适应性修改（第 67–68 页）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9E%84%E4%BB%B6%E7%BB%84%E5%90%88%E4%B8%8E%E5%8F%AF%E5%A4%8D%E7%94%A8%E8%AE%BE%E8%AE%A1%EF%BC%88%E7%AC%AC-69%E2%80%9370-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.4.2.2.</span> <span class="toc-text">构件组合与可复用设计（第 69–70 页）</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%87%AA%E6%B5%8B%E9%A2%98"><span class="toc-number">1.5.</span> <span class="toc-text">自测题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%9C%E4%B8%9A%E4%BA%8C%E7%AC%AC-3-%E9%A2%98%EF%BC%88%E6%9E%84%E4%BB%B6%E7%BA%A7%E8%AE%BE%E8%AE%A1%E9%83%A8%E5%88%86%EF%BC%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">作业二第 3 题（构件级设计部分）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%91%E5%B9%B4%E7%9C%9F%E9%A2%98"><span class="toc-number">1.5.2.</span> <span class="toc-text">近年真题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-1%EF%BC%882023-%E5%B9%B4-6-%E6%9C%88%E5%8D%B7%EF%BC%8C%E5%90%8D%E8%AF%8D%E8%A7%A3%E9%87%8A%E7%AC%AC-2-%E9%A2%98%EF%BC%8C2-%E5%88%86%EF%BC%89"><span class="toc-number">1.5.2.1.</span> <span class="toc-text">真题 1（2023 年 6 月卷，名词解释第 2 题，2 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-2%EF%BC%882024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%EF%BC%8C%E5%90%8D%E8%AF%8D%E8%A7%A3%E9%87%8A%E7%AC%AC-5-%E9%A2%98%EF%BC%8C3-%E5%88%86%EF%BC%89"><span class="toc-number">1.5.2.2.</span> <span class="toc-text">真题 2（2024 年 12 月卷，名词解释第 5 题，3 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-3%EF%BC%882023-%E5%B9%B4-6-%E6%9C%88%E5%8D%B7%E9%80%89%E6%8B%A9%E9%A2%98%E7%AC%AC-6-%E9%A2%98%E3%80%812024-%E5%B9%B4-12-%E6%9C%88%E5%8D%B7%E9%80%89%E6%8B%A9%E9%A2%98%E7%AC%AC-5-%E9%A2%98%EF%BC%8C%E5%90%84-2-%E5%88%86%EF%BC%89"><span class="toc-number">1.5.2.3.</span> <span class="toc-text">真题 3（2023 年 6 月卷选择题第 6 题、2024 年 12 月卷选择题第 5 题，各 2 分）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-4%EF%BC%882023-%E5%B9%B4-6-%E6%9C%88%E5%8D%B7%EF%BC%8C%E9%80%89%E6%8B%A9%E9%A2%98%E7%AC%AC-7-%E9%A2%98%EF%BC%8C2-%E5%88%86%EF%BC%89"><span class="toc-number">1.5.2.4.</span> <span class="toc-text">真题 4（2023 年 6 月卷，选择题第 7 题，2 分）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BE%E4%BB%B6%E7%BB%83%E4%B9%A0%EF%BC%88%E7%AC%AC-37-%E9%A1%B5%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">课件练习（第 37 页）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%BC%E5%90%88%E7%BB%83%E4%B9%A0%EF%BC%88%E8%87%AA%E6%8B%9F%EF%BC%89"><span class="toc-number">1.5.4.</span> <span class="toc-text">综合练习（自拟）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%83%E4%B9%A0-1-%E5%8D%B0%E5%88%B7%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99"><span class="toc-number">1.5.4.1.</span> <span class="toc-text">练习 1　印刷系统的设计原则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%83%E4%B9%A0-2-%E6%8A%A5%E4%BB%B7%E6%9E%84%E4%BB%B6%E7%9A%84%E5%A4%8D%E7%94%A8"><span class="toc-number">1.5.4.2.</span> <span class="toc-text">练习 2　报价构件的复用</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AD%94%E6%A1%88%E4%B8%8E%E8%A7%A3%E6%9E%90"><span class="toc-number">1.6.</span> <span class="toc-text">答案与解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%9C%E4%B8%9A%E4%BA%8C%E7%AC%AC-3-%E9%A2%98"><span class="toc-number">1.6.1.</span> <span class="toc-text">作业二第 3 题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%91%E5%B9%B4%E7%9C%9F%E9%A2%98-1"><span class="toc-number">1.6.2.</span> <span class="toc-text">近年真题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-1"><span class="toc-number">1.6.2.1.</span> <span class="toc-text">真题 1</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-2"><span class="toc-number">1.6.2.2.</span> <span class="toc-text">真题 2</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-3"><span class="toc-number">1.6.2.3.</span> <span class="toc-text">真题 3</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9C%9F%E9%A2%98-4"><span class="toc-number">1.6.2.4.</span> <span class="toc-text">真题 4</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BE%E4%BB%B6%E7%BB%83%E4%B9%A0"><span class="toc-number">1.6.3.</span> <span class="toc-text">课件练习</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%BC%E5%90%88%E7%BB%83%E4%B9%A0"><span class="toc-number">1.6.4.</span> <span class="toc-text">综合练习</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%83%E4%B9%A0-1"><span class="toc-number">1.6.4.1.</span> <span class="toc-text">练习 1</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%83%E4%B9%A0-2"><span class="toc-number">1.6.4.2.</span> <span class="toc-text">练习 2</span></a></li></ol></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC26%E7%AB%A0%20%E9%A3%8E%E9%99%A9%E7%AE%A1%E7%90%86/" title="第 26 章 风险管理">第 26 章 风险管理</a><time datetime="2026-11-18T02:19:00.000Z" title="发表于 2026-11-18 10:19:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC25%E7%AB%A0%20%E9%A1%B9%E7%9B%AE%E8%BF%9B%E5%BA%A6%E5%AE%89%E6%8E%92/" title="第 25 章 项目进度安排">第 25 章 项目进度安排</a><time datetime="2026-11-18T02:18:00.000Z" title="发表于 2026-11-18 10:18:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC24%E7%AB%A0%20%E8%BD%AF%E4%BB%B6%E9%A1%B9%E7%9B%AE%E4%BC%B0%E7%AE%97/" title="第 24 章 软件项目估算">第 24 章 软件项目估算</a><time datetime="2026-11-18T02:17:00.000Z" title="发表于 2026-11-18 10:17:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC20%E7%AB%A0%20%E8%BF%87%E7%A8%8B%E5%BA%A6%E9%87%8F%E5%92%8C%E9%A1%B9%E7%9B%AE%E5%BA%A6%E9%87%8F/" title="第 20 章 过程度量和项目度量">第 20 章 过程度量和项目度量</a><time datetime="2026-11-18T02:16:00.000Z" title="发表于 2026-11-18 10:16:00">2026-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/18/%E7%AC%AC19%E7%AB%A0%20%E9%A1%B9%E7%9B%AE%E7%AE%A1%E7%90%86%E6%A6%82%E5%BF%B5/" title="第 19 章 项目管理概念">第 19 章 项目管理概念</a><time datetime="2026-11-18T02:15:00.000Z" title="发表于 2026-11-18 10:15:00">2026-11-18</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script src="/js/hex-transition.js"></script><script src="/js/hex-wheel.js"></script><script src="/js/pointer.js"></script><script src="/js/island-effects.js?v=20261106_v8"></script><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>
