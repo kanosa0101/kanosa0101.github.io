@@ -76,10 +76,13 @@ async function run() {
     const lines = raw.split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('!') && !trimmed.startsWith('|') && !trimmed.startsWith('---')) {
-        desc = trimmed.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_`]/g, '').slice(0, 180);
-        break;
-      }
+      if (!trimmed) continue;
+      if (trimmed.startsWith('#') || trimmed.startsWith('!') || trimmed.startsWith('|') || trimmed.startsWith('---')) continue;
+      if (/^\*.*(?:课件|页码|页脚|页).*?\*$/.test(trimmed)) continue;
+      if (/^(?:\d+(?:\.\d+)*\s*)?[*·_~`\s]*(?:课件|页码|页脚).*$/i.test(trimmed)) continue;
+      if (trimmed.length <= 15) continue;
+      desc = trimmed.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_`]/g, '').slice(0, 180);
+      break;
     }
 
     // Minutes offset: 10:01 to 10:19
