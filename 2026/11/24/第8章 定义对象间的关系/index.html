@@ -1,0 +1,379 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>第8章 定义对象间的关系 | kanosa's blog</title><meta name="author" content="kanosa"><meta name="copyright" content="kanosa"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="- 继承强调特殊类获得一般类特征。泛化是 UML 关系名。分类强调分层，一般类与特殊类是相对的。找类层次时从领域分类、常识、属性和操作共同点、系统责任、领域复用入手。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第8章 定义对象间的关系">
+<meta property="og:url" content="https://kanosa0101.github.io/2026/11/24/%E7%AC%AC8%E7%AB%A0%20%E5%AE%9A%E4%B9%89%E5%AF%B9%E8%B1%A1%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB/index.html">
+<meta property="og:site_name" content="kanosa&#39;s blog">
+<meta property="og:description" content="- 继承强调特殊类获得一般类特征。泛化是 UML 关系名。分类强调分层，一般类与特殊类是相对的。找类层次时从领域分类、常识、属性和操作共同点、系统责任、领域复用入手。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://kanosa0101.github.io/images/avatar.jpg">
+<meta property="article:published_time" content="2026-11-24T02:05:00.000Z">
+<meta property="article:modified_time" content="2026-11-24T01:58:58.272Z">
+<meta property="article:author" content="kanosa">
+<meta property="article:tag" content="课程笔记">
+<meta property="article:tag" content="面向对象分析与设计">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kanosa0101.github.io/images/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "第8章 定义对象间的关系",
+  "url": "https://kanosa0101.github.io/2026/11/24/%E7%AC%AC8%E7%AB%A0%20%E5%AE%9A%E4%B9%89%E5%AF%B9%E8%B1%A1%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB/",
+  "image": "https://kanosa0101.github.io/images/avatar.jpg",
+  "datePublished": "2026-11-24T02:05:00.000Z",
+  "dateModified": "2026-11-24T01:58:58.272Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "kanosa",
+      "url": "https://kanosa0101.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://kanosa0101.github.io/2026/11/24/%E7%AC%AC8%E7%AB%A0%20%E5%AE%9A%E4%B9%89%E5%AF%B9%E8%B1%A1%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.5.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.12.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '第8章 定义对象间的关系',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css?v=20261118_v1"><meta name="generator" content="Hexo 8.1.1"></head><body><div id="web_bg" style="background-image: url(/images/background.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">51</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">17</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">kanosa's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">第8章 定义对象间的关系</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">第8章 定义对象间的关系</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-24T02:05:00.000Z" title="发表于 2026-11-24 10:05:00">2026-11-24</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-24T01:58:58.272Z" title="更新于 2026-11-24 09:58:58">2026-11-24</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E5%88%86%E6%9E%90%E4%B8%8E%E8%AE%BE%E8%AE%A1/">面向对象分析与设计</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="第8章-定义对象间的关系"><a href="#第8章-定义对象间的关系" class="headerlink" title="第8章 定义对象间的关系"></a>第8章 定义对象间的关系</h1><p>对应 <strong>第8章 定义对象间的关系.pdf</strong>，页码按 PDF 阅读器计。考试类图的线型、箭头、多重性和中间类主要在本章。</p>
+<h2 id="1-先决定关系含义（第-1–3、12–13、21–22、38–45-页）"><a href="#1-先决定关系含义（第-1–3、12–13、21–22、38–45-页）" class="headerlink" title="1. 先决定关系含义（第 1–3、12–13、21–22、38–45 页）"></a>1. 先决定关系含义（第 1–3、12–13、21–22、38–45 页）</h2><table>
+<thead>
+<tr>
+<th>关系</th>
+<th>判断句</th>
+<th>画法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>一般–特殊／泛化</td>
+<td>A 是一种 B，A 的任意实例在逻辑上也是 B 的实例</td>
+<td>实线空心三角，从特殊类指向一般类。多个特殊类可共用箭头</td>
+</tr>
+<tr>
+<td>整体–部分／聚合</td>
+<td>B 是 A 的一个组成部分，具有共享或独立的可能</td>
+<td>实线空心菱形，放在<strong>整体端</strong></td>
+</tr>
+<tr>
+<td>整体–部分／组合</td>
+<td>B 被 A 强拥有；同一时刻一个 B 至多属于一个组合整体。在整体结束时仍附属的部分随之销毁</td>
+<td>实线实心菱形，放在<strong>整体端</strong>。部分可依业务规则先脱离整体</td>
+</tr>
+<tr>
+<td>关联</td>
+<td>A 与 B 的实例之间有持久或有业务意义的联系，需要查询、保存或使用</td>
+<td>实线，可在两端标角色与多重性。导航箭头指向可被访问的一端</td>
+</tr>
+<tr>
+<td>消息</td>
+<td>A 的一次操作向 B 请求服务或传送信息</td>
+<td>交互图沿发送方到接收方画箭头。课程在类图可借虚线依赖标 <code>«call»</code>／<code>«send»</code></td>
+</tr>
+<tr>
+<td>依赖</td>
+<td>客户的定义或运行依赖服务者</td>
+<td>虚线开口箭头，依赖者指向被依赖者，宜说明依赖原因</td>
+</tr>
+</tbody></table>
+<p><img src="/images/posts/44008c0354576bde7f683528922dd67c.png" alt="课件第 13 页，聚合／组合的菱形和整体、部分两端多重性"></p>
+<h2 id="2-一般–特殊结构（第-2–11-页）"><a href="#2-一般–特殊结构（第-2–11-页）" class="headerlink" title="2. 一般–特殊结构（第 2–11 页）"></a>2. 一般–特殊结构（第 2–11 页）</h2><ul>
+<li><strong>继承</strong>强调特殊类获得一般类特征。<strong>泛化</strong>是 UML 关系名。<strong>分类</strong>强调分层，一般类与特殊类是相对的。找类层次时从领域分类、常识、属性和操作共同点、系统责任、领域复用入手。</li>
+<li>提取适用于所有子类的共同成员。新增子类需有实际特化。课件用「汽车和飞机同为运输工具」说明共同特征宜上移，飞机特有飞行高度和自动导航留在飞机。</li>
+<li>三种简化办法。去掉没有特殊性的子类。只反映值差异的子类可改为属性，如性别、国籍。去掉用途单一的中间一般类以缩浅层次。一般类有多个子类、需要直接创建实例或支持复用时有保留理由。</li>
+<li><strong>多继承</strong>指特殊类有多个一般类。菱形路径可能重复带来共同祖先，也可能从两个父类获得同名冲突特征。课件例「在职研究生」分别继承研究生、教职工，两者的「专业」可能含义不同。</li>
+<li><strong>多态</strong>是同一命名在不同特殊类里有不同语义。课程以不同顶点数据结构和 <code>绘图()</code> 行为为例。课件图上 <code>*</code> 表示重定义，<code>×</code> 表示拒绝继承。这是课程的成员标记，出现于属性或操作旁。关联端的 <code>*</code> 表示多重性。</li>
+</ul>
+<h2 id="3-整体–部分与多重性（第-12–20-页）"><a href="#3-整体–部分与多重性（第-12–20-页）" class="headerlink" title="3. 整体–部分与多重性（第 12–20 页）"></a>3. 整体–部分与多重性（第 12–20 页）</h2><p>整体–部分关系在<strong>类层定义</strong>，描述实例间的构成。多条关系连成整体–部分结构。六个寻找方向是物理零件、组织下级、团体成员、空间包容、抽象构成、对象的某个方面（如人员与履历）。从问题域、系统责任、部分是否有值得独立管理的特征和真实构成关系四个方面筛选。</p>
+<p>读多重性时<strong>先固定对面一个实例</strong>。例如 <code>照相机 0..1 ◆── 1 机身</code> 表示一个相机有一个机身，一个机身最多属于一个相机。常用 <code>1</code>、<code>2</code>、<code>0..1</code>、<code>1..4</code>、<code>*</code>（即 <code>0..*</code>）和 <code>1..*</code>。<code>0</code> 表示可无，<code>*</code> 表示上界不定。两端分别读，不能从一端数字推断另一端。</p>
+<table>
+<thead>
+<tr>
+<th>用法</th>
+<th>如何处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>简化复杂对象</td>
+<td>飞机的发动机和驾驶室各自组织相关数据、行为</td>
+</tr>
+<tr>
+<td>支持复用</td>
+<td>机床、起重机、送料车使用同一电动机类。类的复用与同一个具体电动机实例是否共享是两个判断</td>
+</tr>
+<tr>
+<td>容纳不定数量的部分</td>
+<td>订单包含多条订单行，每条订单行引用一个商品。数量、成交价由订单行保存</td>
+</tr>
+<tr>
+<td>表达动态身份</td>
+<td>人员保留稳定身份，营业员／会计师／经理身份做可增减的部分对象，避免靠删除并重建人员改变分类</td>
+</tr>
+<tr>
+<td>继承与聚合并用</td>
+<td>冷藏车是一种汽车且有制冷设备，可画冷藏车到汽车的继承、冷藏车到制冷设备的整体–部分</td>
+</tr>
+</tbody></table>
+<p><img src="/images/posts/08e4e6583332aa9b99f8cd14adda6f6e.png" alt="课件第 18 页，订单、订单行、商品三者的职责和多重性"></p>
+<h2 id="4-关联、链与复杂关联（第-21–37-页）"><a href="#4-关联、链与复杂关联（第-21–37-页）" class="headerlink" title="4. 关联、链与复杂关联（第 21–37 页）"></a>4. 关联、链与复杂关联（第 21–37 页）</h2><p><strong>关联</strong>是类的实例集合笛卡尔积的一个子集。二元关联的实例是有序对，n 元关联的实例是 n 元组，称为<strong>链（link）</strong>。关联对链就像类对对象。二元关联可在两端写角色和数量，中间写名称。端点导航箭头表示访问方向。类与自身也能关联，例如城市间航线。角色可区分同一个类在不同端扮演的作用。</p>
+<table>
+<thead>
+<tr>
+<th>题干线索</th>
+<th>画图和实现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>一对一／一对多</td>
+<td>在需要引用的一端持有指针或对象标识。数据库一对多时在<strong>多方</strong>放引用一方主键的外键</td>
+</tr>
+<tr>
+<td>多对多</td>
+<td>引入中间类，每条中间记录各连两端一个对象。映成表时中间表持有两个外键</td>
+</tr>
+<tr>
+<td>联系上还有自己的属性或行为</td>
+<td>可用关联类（类框用虚线连到关联线中点）。教材偏向用普通类表达真实事物，例如「毕业论文」保存题目、答辩时间、成绩，再连教师和学生</td>
+</tr>
+<tr>
+<td>三元及以上关联</td>
+<td>菱形连各参与类。可以新增一个对象类代表整个 n 元组，拆为多条二元关联，便于确定多重性与实现</td>
+</tr>
+<tr>
+<td>同一个类多次出现</td>
+<td>两个学生是合作者可画学生自关联。若还要保存设备和题目，增「实习」类，每组对应两名学生、一台设备和一个题目。两名同角色学生可在学生端标 <code>2</code>，角色不同时分别连线</td>
+</tr>
+</tbody></table>
+<p>先问实际业务是否需要这项联系，是否需保存、查询、维护，再确定它的名称、角色和多重性。最后<strong>定位关系</strong>。例如系统管理员操作各类计算机时连一般类「计算机」，普通用户若只能使用客户机则连特殊类「客户机」。</p>
+<p><img src="/images/posts/09d373463094428aa0b446f2858f33d2.png" alt="课件第 28 页，关联类改写成普通类的两个二元关联"></p>
+<h2 id="5-消息与依赖（第-38–45-页）"><a href="#5-消息与依赖（第-38–45-页）" class="headerlink" title="5. 消息与依赖（第 38–45 页）"></a>5. 消息与依赖（第 38–45 页）</h2><ul>
+<li>消息狭义是服务请求，广义是两个对象一次交互所传送的信息，包括控制和数据。发送者与接收者遵循共同语法与语义。消息把封装后的对象行为串起来。</li>
+<li>按课件顺序系统模型，一个流中通常是同步调用，发送者等待，服务由唯一接收者处理。并发系统的流内仍可同步调用，跨流可同步或异步，可发数据、通知、信号，接收者可能创建控制流、立即或延迟响应，消息可定向或广播。</li>
+<li>模型依次考虑消息是否存在、在流内还是跨流、起讫操作、同步或异步、发送者是否等待。课件在类图用 <code>«call»</code> 标流内调用、<code>«send»</code> 标跨流发送。两者借用依赖虚线。顺序图同步用实线实心头，异步用实线开口，返回用虚线开口。</li>
+<li>一般依赖可表达客户／服务者。泛化、聚合、关联等本身已有明确含义，同时画一根泛依赖会重复表达。操作临时传入对象后发消息可以是依赖，持有对象且需长期管理其联系时再画关联。</li>
+</ul>
+<h2 id="6-三道分析类图的落笔稿"><a href="#6-三道分析类图的落笔稿" class="headerlink" title="6. 三道分析类图的落笔稿"></a>6. 三道分析类图的落笔稿</h2><table>
+<thead>
+<tr>
+<th>案例</th>
+<th>关系和勘误</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>案例分析 2 第 3 页</strong> 图书管理</td>
+<td><code>读者 1 ─ 0..* 借阅记录</code> 和 <code>图书 1 ─ 0..* 借阅记录</code>。记录有预约或已借状态。两个管理员特化「管理员」，把题干规定且参考图漏掉的<strong>密码</strong>补到一般类，并把查询、借还、预约审核、列表维护等责任落实到相应类和操作；可用依赖说明管理员使用列表或业务操作。图书、读者列表的菱形在各自列表端，部分端写 <code>0..*</code>。借阅记录关联到读者和图书，参考图里的「图书列表编号」可省去。若把库存数定义在图书类上，录入、注销要能分别更新库存。第 3 页明确要求从当前借阅记录删除，仍可在行为题另登记归还历史，以满足第 5–7 页的题干。</td>
+</tr>
+<tr>
+<td><strong>案例分析 4 第 3 页</strong> 网上订餐</td>
+<td>菜单汇集菜品、顾客列表汇集顾客，菱形在集合端。顾客对应多张订单，每张订单一位顾客。一条订单项对应一种菜品，同一菜品可出现于多条订单项。参考图让订单项<strong>始终同时</strong>属于一张订单和一个购物车，无法表达提交前。可把订单端与购物车端均标 <code>0..1</code>，加「提交前归购物车，提交后归订单」规则，订单包含 <code>1..*</code> 条订单项。另一种建模是提交时从购物车项生成独立订单项。送餐员可关联多张订单，一张订单分配前允许没有送餐员，分配后至多一个。</td>
+</tr>
+<tr>
+<td><strong>案例分析 5 第 3 页</strong> 在线选课</td>
+<td>画 <code>学生 1 ─ 0..* 选课记录 0..* ─ 1 课程</code>，每条记录只对应一名学生和一门课程。学生和教务管理员继承「用户」。列表和所属项可以画聚合。参考图缺少「设置选课约束」和课程人数更新的明确落点，补入课程或列表的操作。已选人数、限选人数和可选人数各有业务含义，若可选人数由前两项计算可标为派生属性并注明规则。</td>
+</tr>
+</tbody></table>
+<p>作图后逐条口读关系。例如「一名学生能有零到多条记录，每条记录只属于一名学生」，能同时复核线两端。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io">kanosa</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://kanosa0101.github.io/2026/11/24/%E7%AC%AC8%E7%AB%A0%20%E5%AE%9A%E4%B9%89%E5%AF%B9%E8%B1%A1%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB/">https://kanosa0101.github.io/2026/11/24/%E7%AC%AC8%E7%AB%A0%20%E5%AE%9A%E4%B9%89%E5%AF%B9%E8%B1%A1%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://kanosa0101.github.io" target="_blank">kanosa's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E8%AF%BE%E7%A8%8B%E7%AC%94%E8%AE%B0/">课程笔记</a><a class="post-meta__tags" href="/tags/%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E5%88%86%E6%9E%90%E4%B8%8E%E8%AE%BE%E8%AE%A1/">面向对象分析与设计</a></div><div class="post-share"><div class="social-share" data-image="/images/avatar.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/24/%E7%AC%AC9%E7%AB%A0%20UML%E4%B8%AD%E7%9A%84%E5%87%A0%E7%A7%8D%E5%85%B6%E4%BB%96%E5%9B%BE(a)/" title="第9章 UML 中的几种其他图 (a)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">第9章 UML 中的几种其他图 (a)</div></div><div class="info-2"><div class="info-item-1">第9章 UML 中的几种其他图 (a)对应 第9章 UML中的几种其他图(a).pdf.pdf&gt;)，页码按 PDF 阅读器计。本份涵盖包图与顺序图，也叫时序图。 1. 基本模型和辅助模型（第 1–3 页）课程以类图为基本模型，表达对象、特征、关系三层。用况图反映需求。包图表达组织，顺序图、活动图等补充特定视角，文字规约补精确细节。历史上，OMT 同时采用对象、动态、功能模型，OOSE 为需求、健壮性、设计提供不同模型，Booch 和 Coad&#x2F;Yourdon 以 OO 模型为核心，并由其他图说明细节。UML1 的 9 种图与课件的 UML2 13 图见 第 1–4 章。 2. 包图（第 4–10 页）**包（package）**把有内在联系的模型元素组织成较大单位。它可包含类或其他模型元素，也可嵌套。包是命名空间，跨包可用 包名::元素名。符号像带标签的文件夹。压缩式只给名字，展开式在大框内列内容，名字移到标签处。    关系 含义及画法    «import» 引入 从引入者指向被引入包的虚线箭头，引入的可见元素在源包中可直接引用，公开引入可对外继续可见   «...</div></div></div></a><a class="pagination-related" href="/2026/11/24/%E7%AC%AC7%E7%AB%A0%20%E5%AE%9A%E4%B9%89%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%B1%9E%E6%80%A7%E5%92%8C%E6%93%8D%E4%BD%9C/" title="第7章 定义对象的属性和操作"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">第7章 定义对象的属性和操作</div></div><div class="info-2"><div class="info-item-1">第7章 定义对象的属性和操作对应 第7章 定义对象的属性和操作.pdf，页码按 PDF 阅读器计。 1. 属性与操作的基本表示（第 1–3 页）   概念 选择题辨析    属性 描述静态特征的数据项。实例属性随对象而定，例如仪表编号、实测精度。类属性由该类共享，例如课件仪表例中的额定指标。类级成员在 UML 中可用下划线标示。   操作 描述动态行为的动作序列。课件把方法、服务列为近义词。操作也可通过签名声明，具体方法体给出实现。   主动与被动操作 被动操作收到消息才执行，例如普通函数或过程。主动操作可主动执行，例如课件用进程、线程说明的操作。一个类可以同时有主动和被动操作。   分析级按 属性名: 类型、操作名() 写到能看懂。实现级可加 属性名: 类型 = 初始值、操作名(参数: 类型): 返回类型。课件用 «主动» 标注主动操作，主动类的外框见 第 6 章。 2. 定义属性（第 4–5 页） 找候选。从常识、问题域、系统责任、需保存的信息、操作所需参数、对象状态、关联和聚合所需的信息出发。例如库存量用于库存管理，采样间隔支撑采样操作。 筛选。每项特征要符合当前系统目标，...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/24/%E7%AC%AC1-4%E7%AB%A0/" title="第1–4章 面向对象方法、UML 与分析设计框架"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-24</div><div class="info-item-2">第1–4章 面向对象方法、UML 与分析设计框架</div></div><div class="info-2"><div class="info-item-1">第1–4章 面向对象方法、UML 与分析设计框架对应 第1-4章.pdf，页码按 PDF 阅读器计。四章在同一份课件内。 第1章 面向对象方法概论（第 2–33 页）基本出发点（第 2–9 页）面向对象既是一种编程范型，也是一种贯穿软件生命周期的开发方法。以现实问题域中的事物为起点，把与系统目标相关的部分抽象为对象。用属性与操作描述事物的静态、动态特征，利用类与类之间的继承、聚合、关联和消息构造系统，尽量保持对问题域的直接映射。 自然语言用于理解现实世界，程序语言用于精确实现。机器语言、汇编、高级语言、OO 语言逐步提高抽象层次。传统软件工程的分析与设计之间往往更换概念和表示，OOA 与 OOD 沿用共同概念、符号和模型，更容易追溯到实现。 核心概念（第 10–25 页）   概念 含义及辨析    对象、类 对象对应一个具体的有形或无形事物，由对象标识、属性与操作描述。标识可区分外部业务标识与内部标识。类是共同特征的抽象，描述一组实例。对象是类的实例   属性、操作 属性是静态特征的数据项，操作是动态行为的动作序列。封装将二者结合   抽象、分类 抽象聚焦与目标相关的特征，分类...</div></div></div></a><a class="pagination-related" href="/2026/11/24/%E7%AC%AC11%E7%AB%A0%20%E9%97%AE%E9%A2%98%E5%9F%9F%E9%83%A8%E5%88%86%E7%9A%84%E8%AE%BE%E8%AE%A1/" title="第11章 问题域部分的设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-24</div><div class="info-item-2">第11章 问题域部分的设计</div></div><div class="info-2"><div class="info-item-1">第11章 问题域部分的设计对应 第11章 问题域部分的设计.pdf，页码按 PDF 阅读器计。案例分析 3 第 2–4 页对应多继承化简、多态化简和类复用。 1. OOD 模型与问题域部分（第 1–7 页）OOD 有一个核心和三个外围。核心是问题域部分，外围是人机交互、控制驱动、数据接口。各部分仍可用需求模型、类图、辅助模型和规约表达。设计以 OOA 为输入，先得到问题域部分，三个外围在此基础上细化，最后组织构件并部署，输出给实现。 问题域部分由领域对象构成。在 OOA 模型副本上修正需求与模型问题，再按实现条件调整。课件的 MDA 图把 OOA 模型和实现条件作为设计转换的输入。编程语言影响多继承、多态与类型支持，硬件、操作系统和网络影响分布、并发、通信和性能，类库影响复用，数据管理系统影响持久化，界面框架影响消息衔接。 2. 多继承转为单继承（第 8–11 页）狭义菱形有一个共同根类、两条中间继承路径和一个多继承子类。广义菱形可有更多交叉路径。先找出每条路径承载的事实，化简后检查共同祖先信息只存一处，专属信息仍可取得。    方法 变换 判题依据    简单转换 保留一条合理...</div></div></div></a><a class="pagination-related" href="/2026/11/24/%E7%AC%AC12%E7%AB%A0%20%E4%BA%BA%E6%9C%BA%E4%BA%A4%E4%BA%92%E9%83%A8%E5%88%86%E7%9A%84%E8%AE%BE%E8%AE%A1/" title="第12章 人机交互部分的设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-24</div><div class="info-item-2">第12章 人机交互部分的设计</div></div><div class="info-2"><div class="info-item-1">第12章 人机交互部分的设计对应 第12章 人机交互部分的设计.pdf，页码按 PDF 阅读器计。案例分析 3 第 5–7 页是页面类图、交互用况抽取、对话框复用。 1. 人机交互部分及需求（第 1–3 页）人机交互是 OOD 的外围部分，界面对象共同构成人机界面。设计同时取决于人机交互需求和界面支持系统。单列该部分可隔离更换界面技术对问题域对象的影响。界面工作同时需要理解人如何发命令、系统如何向人提交信息，以及交互和视觉习惯。  客观需求是实现功能所必须的交互内容。主观需求是不同使用者对风格、表现和操作方式的偏好。 列出会使用系统的人员角色，调研、分类、估算各类比例，并了解各类用户的偏好与能力。按交互内容和用户特征选适合的表现。  2. 从用况提取人机交互（第 4–7 页）把参与者与系统的行为按时间分栏。找人发给系统的命令、数据，以及系统返回给当前参与者的提示、反馈和结果。把混合动作拆开，仅保留有输入或输出的部分。删掉失去内容的控制语句及其成对标记，保留依然决定输入／输出顺序的循环与分支。随后细化每次 I&#x2F;O 的步骤、设备、信息表示。课件把一次输入广义称作一条命令，输...</div></div></div></a><a class="pagination-related" href="/2026/11/24/%E7%AC%AC13%E7%AB%A0%20%E6%8E%A7%E5%88%B6%E9%A9%B1%E5%8A%A8%E9%83%A8%E5%88%86%E7%9A%84%E8%AE%BE%E8%AE%A1/" title="第13章 控制驱动部分的设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-24</div><div class="info-item-2">第13章 控制驱动部分的设计</div></div><div class="info-2"><div class="info-item-1">第13章 控制驱动部分的设计对应 第13章 控制驱动部分的设计.pdf，页码按 PDF 阅读器计。本章重点是架构辨析、按结点识别控制流，以及主动类符号。 1. 控制驱动部分（第 1–4 页）控制驱动是 OOD 外围部分，由系统中的主动类组成。控制流在本章指进程或线程；每次执行一个主动操作可发起一个控制流。在这条运行轨迹中，主动操作可以依次调用其他对象的被动操作。多控制流并发的系统又称多任务系统。 分开设计这部分，便于表达领域固有并发和实现决策，隔离硬件、OS、网络的变化。并发可来自设备与主机、多窗口、多用户、多子系统、多处理机，也可能发生在单处理机。设计条件包括 CPU 数量和存储性能、OS 的并发通信能力、网络拓扑与速率、语言的进程线程支持，以及 DBMS、界面与构件库的共享能力。 软件体系结构描述系统元素、元素间交互、组合模式及约束。课件第 4 页列出的风格有管道与过滤器、数据抽象、面向对象、隐式调用、层次、仓库、黑板、解释器、进程控制、客户–服务器。风格可作为组织构成与通信方式的分类依据。 2. 网络体系结构（第 5–16 页）客户–服务器   形态 功能和数据在哪里 识别...</div></div></div></a><a class="pagination-related" href="/2026/11/24/%E7%AC%AC14%E7%AB%A0%20%E6%95%B0%E6%8D%AE%E6%8E%A5%E5%8F%A3%E9%83%A8%E5%88%86%E7%9A%84%E8%AE%BE%E8%AE%A1/" title="第14章 数据接口部分的设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-24</div><div class="info-item-2">第14章 数据接口部分的设计</div></div><div class="info-2"><div class="info-item-1">第14章 数据接口部分的设计对应 第14章 数据接口部分的设计.pdf，页码按 PDF 阅读器计。第 51–59 页随附第 15 章「构件化与系统部署」。案例分析 3 第 9–11 页依次考多对多、一般–特殊、整体–部分到关系表的映射。 1. 数据接口及数据管理系统（第 1–16 页）数据接口是 OOD 的外围部分，负责把需持久化的对象接到选定数据管理系统，提供保存、检索及恢复。持久化对象时记录需要保留的属性状态与必要引用，操作代码随实现提供。集中存取有利于隔离持久化技术的更换，减少问题域部分的改动。    方式 要记的定义和取舍    文件系统 通常由 OS 管理外存文件。物理结构指存储组织，逻辑结构是用户看到的流式或记录式等组织。普通命令或程序指令包括创建、删除、打开、关闭、读写。成本低、基本类型限制少，属性查询、共享、完整性、事务和恢复通常要额外处理   数据库与 DBMS 数据库是长期存储、有组织、可共享的数据集合。DBMS 用来建立、使用与维护，负责管理安全和完整性。数据模型包含结构、操作及完整性约束，有层次、网状、关系、OO 等   RDBMS 关系是各属性域笛卡尔积...</div></div></div></a><a class="pagination-related" href="/2026/11/24/%E7%AC%AC5%E7%AB%A0%20%E7%94%A8%E5%86%B5%E5%9B%BE/" title="第5章 用况图"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-24</div><div class="info-item-2">第5章 用况图</div></div><div class="info-2"><div class="info-item-1">第5章 用况图对应 第5章 用况图.pdf，页码按 PDF 阅读器计。练习题见案例分析 2、4、5 的第 2 页。 1. 从系统边界确定参与者（第 1–11 页）用况建模把待开发系统当作黑箱，通过边界两侧的请求和响应，说明系统提供哪些用户可观察的功能。边界是系统成分与外部事物的分界线，划分依据是当前系统责任。    现实事物与系统的关系 判断示例    抽象为内部成分 商品作为销售系统内的类或对象   在边界外直接交互 收款员、传感器或与本系统协作的外系统   外部角色和内部描述同时存在 真人收款员是参与者，系统里的收款员账号是内部对象   与系统责任无关 若保安与销售系统无交互，图上省去    **参与者（actor）**是一组高内聚的外部交互角色，以小人符号表示。同一人可以扮演不同角色，一个角色也可有多个实例。参与者可以请求服务、接收响应，也可按系统要求采取行动。 识别三类来源。人员看有谁直接使用或直接为系统服务。设备看有谁直接供给信息或受控，普通键盘、鼠标、屏幕通常归为界面设施。外系统看开发责任和交互边界，上级系统、子系统和其他协作应用都可能是外部角色。 特殊参与者继承一般...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/images/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">kanosa</div><div class="author-info-description">💻 全栈开发 · 探索 AI 智能体<br>🎓 福州大学 2024-2028 · 坐标福州</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">51</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">17</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/kanosa0101"><i class="fab fa-github"></i><span>GitHub 主页</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/kanosa0101" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到 kanosa 的个人博客。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC8%E7%AB%A0-%E5%AE%9A%E4%B9%89%E5%AF%B9%E8%B1%A1%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-text">第8章 定义对象间的关系</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%85%88%E5%86%B3%E5%AE%9A%E5%85%B3%E7%B3%BB%E5%90%AB%E4%B9%89%EF%BC%88%E7%AC%AC-1%E2%80%933%E3%80%8112%E2%80%9313%E3%80%8121%E2%80%9322%E3%80%8138%E2%80%9345-%E9%A1%B5%EF%BC%89"><span class="toc-text">1. 先决定关系含义（第 1–3、12–13、21–22、38–45 页）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%B8%80%E8%88%AC%E2%80%93%E7%89%B9%E6%AE%8A%E7%BB%93%E6%9E%84%EF%BC%88%E7%AC%AC-2%E2%80%9311-%E9%A1%B5%EF%BC%89"><span class="toc-text">2. 一般–特殊结构（第 2–11 页）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%95%B4%E4%BD%93%E2%80%93%E9%83%A8%E5%88%86%E4%B8%8E%E5%A4%9A%E9%87%8D%E6%80%A7%EF%BC%88%E7%AC%AC-12%E2%80%9320-%E9%A1%B5%EF%BC%89"><span class="toc-text">3. 整体–部分与多重性（第 12–20 页）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%85%B3%E8%81%94%E3%80%81%E9%93%BE%E4%B8%8E%E5%A4%8D%E6%9D%82%E5%85%B3%E8%81%94%EF%BC%88%E7%AC%AC-21%E2%80%9337-%E9%A1%B5%EF%BC%89"><span class="toc-text">4. 关联、链与复杂关联（第 21–37 页）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E6%B6%88%E6%81%AF%E4%B8%8E%E4%BE%9D%E8%B5%96%EF%BC%88%E7%AC%AC-38%E2%80%9345-%E9%A1%B5%EF%BC%89"><span class="toc-text">5. 消息与依赖（第 38–45 页）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E4%B8%89%E9%81%93%E5%88%86%E6%9E%90%E7%B1%BB%E5%9B%BE%E7%9A%84%E8%90%BD%E7%AC%94%E7%A8%BF"><span class="toc-text">6. 三道分析类图的落笔稿</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/24/%E7%AC%AC14%E7%AB%A0%20%E6%95%B0%E6%8D%AE%E6%8E%A5%E5%8F%A3%E9%83%A8%E5%88%86%E7%9A%84%E8%AE%BE%E8%AE%A1/" title="第14章 数据接口部分的设计">第14章 数据接口部分的设计</a><time datetime="2026-11-24T02:12:00.000Z" title="发表于 2026-11-24 10:12:00">2026-11-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/24/%E7%AC%AC13%E7%AB%A0%20%E6%8E%A7%E5%88%B6%E9%A9%B1%E5%8A%A8%E9%83%A8%E5%88%86%E7%9A%84%E8%AE%BE%E8%AE%A1/" title="第13章 控制驱动部分的设计">第13章 控制驱动部分的设计</a><time datetime="2026-11-24T02:11:00.000Z" title="发表于 2026-11-24 10:11:00">2026-11-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/24/%E7%AC%AC12%E7%AB%A0%20%E4%BA%BA%E6%9C%BA%E4%BA%A4%E4%BA%92%E9%83%A8%E5%88%86%E7%9A%84%E8%AE%BE%E8%AE%A1/" title="第12章 人机交互部分的设计">第12章 人机交互部分的设计</a><time datetime="2026-11-24T02:10:00.000Z" title="发表于 2026-11-24 10:10:00">2026-11-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/24/%E7%AC%AC11%E7%AB%A0%20%E9%97%AE%E9%A2%98%E5%9F%9F%E9%83%A8%E5%88%86%E7%9A%84%E8%AE%BE%E8%AE%A1/" title="第11章 问题域部分的设计">第11章 问题域部分的设计</a><time datetime="2026-11-24T02:09:00.000Z" title="发表于 2026-11-24 10:09:00">2026-11-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/24/%E7%AC%AC10%E7%AB%A0%20%E6%A8%A1%E5%9E%8B%E8%A7%84%E7%BA%A6/" title="第10章 模型规约">第10章 模型规约</a><time datetime="2026-11-24T02:08:00.000Z" title="发表于 2026-11-24 10:08:00">2026-11-24</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By kanosa</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.2"></script><script src="/js/main.js?v=5.5.2"></script><script src="https://cdn.jsdelivr.net/npm/instant.page@5.2.0/instantpage.min.js" type="module"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        loader: {
+          load: [
+            // Four font extension packages (optional)
+            //- '[tex]/bbm',
+            //- '[tex]/bboldx',
+            //- '[tex]/dsfont',
+            '[tex]/mhchem'
+          ],
+          paths: {
+            'mathjax-newcm': '[mathjax]/../@mathjax/mathjax-newcm-font',
+
+            //- // Four font extension packages (optional)
+            //- 'mathjax-bbm-extension': '[mathjax]/../@mathjax/mathjax-bbm-font-extension',
+            //- 'mathjax-bboldx-extension': '[mathjax]/../@mathjax/mathjax-bboldx-font-extension',
+            //- 'mathjax-dsfont-extension': '[mathjax]/../@mathjax/mathjax-dsfont-font-extension',
+            'mathjax-mhchem-extension': '[mathjax]/../@mathjax/mathjax-mhchem-font-extension'
+          }
+        },
+        output: {
+          font: 'mathjax-newcm',
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'none',
+          packages: {
+            '[+]': [
+              'mhchem'
+            ]
+          }
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          menuOptions: {
+            settings: {
+              enrich: false  // Turn off Braille and voice narration text automatic generation
+            }
+          },
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.0.0/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  btf.addGlobalFn('pjaxComplete', loadMathjax, 'mathjax')
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadMathjax)
+  } else {
+    loadMathjax()
+  }
+})()</script></div><script src="/js/hex-transition.js?v=20261118_v1"></script><script src="/js/hex-wheel.js"></script><script src="/js/pointer.js"></script><script src="/js/island-effects.js?v=20261118_v1"></script><script src="/js/stats-guard.js?v=20261118_v1"></script><script async data-pjax src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"jsonPath":"/live2dw/assets/koharu.model.json"},"display":{"position":"left","width":150,"height":300},"mobile":{"show":false},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body></html>
