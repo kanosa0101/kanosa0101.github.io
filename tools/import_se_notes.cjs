@@ -46,13 +46,21 @@ const fileOrder = [
   '第20章 过程度量和项目度量.md',
   '第24章 软件项目估算.md',
   '第25章 项目进度安排.md',
-  '第26章 风险管理.md'
+  '第26章 风险管理.md',
+  '老师重点题.md'
 ];
 
 async function run() {
   console.log('Starting Software Engineering notes import...');
   const existingFiles = fs.readdirSync(SOURCE_DIR).filter(f => f.endsWith('.md'));
   console.log(`Found ${existingFiles.length} files in source directory.`);
+
+  // Append any extra files from SOURCE_DIR not in fileOrder
+  for (const f of existingFiles) {
+    if (!fileOrder.includes(f)) {
+      fileOrder.push(f);
+    }
+  }
 
   let totalImagesProcessed = 0;
   const uniqueImageHashes = new Set();
@@ -62,7 +70,8 @@ async function run() {
     const fileName = fileOrder[i];
     const filePath = path.join(SOURCE_DIR, fileName);
     if (!fs.existsSync(filePath)) {
-      throw new Error(`File not found: ${filePath}`);
+      console.warn(`File not found: ${filePath}, skipping`);
+      continue;
     }
 
     let raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '').replaceAll('\r\n', '\n');
